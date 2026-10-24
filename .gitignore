@@ -1,0 +1,32 @@
+# Environment Files
+.env
+.env.*
+!.env.example
+*.env
+
+# Dependencies
+node_modules/
+
+# Database and Backup Storage
+data/
+backups/
+scratch/
+
+# Build Artefacts
+dist/
+build/
+.next/
+
+# Logs
+*.log
+logs/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Tooling
+.vscode/
+.idea/
+.system_generated/

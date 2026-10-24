@@ -1,0 +1,325 @@
+/* =========================================================
+   EGSA Instructor Portal — Unified Clean Dark Mode Login
+   Palette: Linear / GitHub / Vercel-inspired SaaS Theme
+   ========================================================= */
+
+.wrap {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  background-color: #0D1117;
+}
+
+@media (max-width: 900px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -------------------------------------------------------------
+   Left Visual Section — Aerospace Identity
+   ------------------------------------------------------------- */
+.hero {
+  position: relative;
+  background-color: #161B22;
+  color: #C9D1D9;
+  padding: 3.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border-inline-end: 1px solid #30363D;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    padding: 2.5rem 1.75rem;
+    min-height: 240px;
+  }
+}
+
+/* Subtle background elements (Clean, No Neon Halos) */
+.ambientPattern {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: 32px 32px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+.orbitalRing {
+  position: absolute;
+  bottom: -15%;
+  inset-inline-end: -10%;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  border: 1px solid #30363D;
+  pointer-events: none;
+}
+
+.orbitalRing::after {
+  content: '';
+  position: absolute;
+  inset: 50px;
+  border-radius: 50%;
+  border: 1px solid #21262D;
+}
+
+.brandCenter {
+  position: relative;
+  z-index: 2;
+  margin: auto 0;
+}
+
+.logoPlate {
+  display: inline-block;
+  background: #161B22;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #30363D;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  margin-bottom: 1.5rem;
+  transition: border-color 150ms ease;
+}
+
+.logoPlate:hover {
+  border-color: #58A6FF;
+}
+
+.agencyTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #F0F6FC;
+  margin: 0;
+  letter-spacing: -0.015em;
+  font-family: var(--font-heading, inherit);
+}
+
+.academySubtitle {
+  font-size: 0.85rem;
+  color: #58A6FF;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+[dir="rtl"] .academySubtitle {
+  letter-spacing: 0;
+  font-family: var(--font-sans, inherit);
+}
+
+.visualFooter {
+  position: relative;
+  z-index: 2;
+  font-size: 0.78rem;
+  color: #8B949E;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #238636;
+}
+
+/* -------------------------------------------------------------
+   Right Form Section — Clean, Focused Authentication
+   ------------------------------------------------------------- */
+.panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem 2rem;
+  position: relative;
+  background-color: #0D1117;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    padding: 2rem 1.25rem;
+  }
+}
+
+.formCard {
+  width: 100%;
+  max-width: 400px;
+  background: #161B22;
+  border: 1px solid #30363D;
+  border-radius: 8px;
+  padding: 2.25rem 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.topBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+}
+
+.langBtn {
+  background: transparent;
+  border: 1px solid #30363D;
+  border-radius: 6px;
+  color: #8B949E;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 150ms ease;
+}
+
+.langBtn:hover {
+  background: #21262D;
+  color: #F0F6FC;
+  border-color: #8B949E;
+}
+
+.formHeader {
+  margin-bottom: 1.5rem;
+}
+
+.formTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #F0F6FC;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.formSubtitle {
+  font-size: 0.8125rem;
+  color: #8B949E;
+  margin: 0.35rem 0 0;
+}
+
+/* Role Selector Button Group */
+.roleGroup {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background-color: #0D1117;
+  border: 1px solid #30363D;
+  border-radius: 6px;
+  padding: 3px;
+  margin-bottom: 1.25rem;
+}
+
+.roleToggleBtn {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #8B949E;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.roleToggleBtn:hover {
+  color: #F0F6FC;
+}
+
+.roleToggleActive {
+  background-color: #161B22 !important;
+  color: #F0F6FC !important;
+  border: 1px solid #30363D !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.inputGroupWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  inset-inline-start: 0.95rem;
+  color: #8B949E;
+  font-size: 0.9rem;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.controlWithIcon {
+  padding-inline-start: 2.45rem !important;
+  padding-inline-end: 2.5rem !important;
+  height: 42px;
+  border-radius: 6px !important;
+  border: 1px solid #30363D !important;
+  font-size: 0.875rem !important;
+  color: #F0F6FC !important;
+  background-color: #0D1117 !important;
+  transition: border-color 150ms ease !important;
+}
+
+.controlWithIcon:focus {
+  border-color: #58A6FF !important;
+  outline: 2px solid #58A6FF !important;
+  box-shadow: none !important;
+}
+
+.togglePassBtn {
+  position: absolute;
+  inset-inline-end: 0.65rem;
+  background: transparent;
+  border: none;
+  color: #8B949E;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease;
+  z-index: 3;
+}
+
+.togglePassBtn:hover {
+  color: #F0F6FC;
+}
+
+.submitBtn {
+  width: 100%;
+  height: 42px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #1F6FEB;
+  border: 1px solid #1F6FEB;
+  color: #FFFFFF;
+  transition: background-color 150ms ease;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #388BFD;
+  border-color: #388BFD;
+}
+
+.formFooter {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #8B949E;
+}

@@ -1,0 +1,514 @@
+/* =========================================================================
+   Egyptian Space Agency Academy — Unified Brand Identity Design System
+   Core Tokens & Common Component Patterns for Student, Admin & Instructor Portals
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* =========================================================================
+     1. MANDATORY OFFICIAL BRAND COLOR PALETTE
+     ========================================================================= */
+  --egsa-cosmos-blue: #3A6985;        /* Primary brand color, navigation, links, selected states */
+  --egsa-cosmos-blue-dark: #2B4E63;   /* Pressed / deep hover states */
+  --egsa-cosmos-blue-light: #5286A5;  /* Subtle tints & focus states */
+  --egsa-cosmos-blue-subtle: rgba(58, 105, 133, 0.12);
+
+  --egsa-teal-green: #1E7C85;         /* Secondary brand color, instructor workspace accents, active indicators */
+  --egsa-teal-green-dark: #165D64;    /* Pressed / deep hover states */
+  --egsa-teal-green-light: #28A1AD;   /* Bright accents */
+  --egsa-teal-green-subtle: rgba(30, 124, 133, 0.12);
+
+  --egsa-gold-tan: #D4B87C;           /* Premium highlights, restrained emphasis, decorative accents */
+  --egsa-gold-tan-dark: #8A671A;      /* Accessible dark gold for text on light backgrounds (WCAG AA 5.5:1) */
+  --egsa-gold-tan-light: #E8D3A7;     /* Soft highlight background */
+  --egsa-gold-tan-subtle: rgba(212, 184, 124, 0.18);
+
+  --egsa-red-coral: #DF4F4C;          /* Destructive actions, errors, rejected payments, urgent warnings */
+  --egsa-red-coral-dark: #B53432;     /* Pressed / deep warning state */
+  --egsa-red-coral-light: #EA7573;    /* Focus & soft tint */
+  --egsa-red-coral-subtle: rgba(223, 79, 76, 0.12);
+
+  --egsa-black: #000000;              /* Selected dark details, high contrast */
+  --egsa-white: #FFFFFF;
+
+  /* =========================================================================
+     2. NEUTRALS & ARCHITECTURAL SURFACES
+     ========================================================================= */
+  --egsa-page-bg: #F4F7F9;            /* Soft cool neutral page canvas (eye comfort) */
+  --egsa-surface: #FFFFFF;            /* Pure white primary card surface */
+  --egsa-surface-elevated: #FFFFFF;   /* Modals & dropdowns */
+  --egsa-surface-subtle: #EDF2F5;     /* Table headers, code blocks, recessed panels */
+  --egsa-surface-dark: #172B36;       /* Deep Cosmos Navy for institutional dark surfaces */
+
+  --egsa-text-primary: #172B36;       /* Deep navy-slate (WCAG AAA 11.8:1 contrast on white) */
+  --egsa-text-secondary: #526773;     /* Readable body secondary (WCAG AA 5.8:1 contrast on white) */
+  --egsa-text-muted: #6E828E;         /* Helper text (WCAG AA 4.6:1 contrast on white) */
+  --egsa-text-inverse: #FFFFFF;
+
+  --egsa-border: #DCE5EA;             /* Architectural card & divider border */
+  --egsa-border-strong: #C4D2DA;      /* Input borders & active table borders */
+
+  /* =========================================================================
+     3. TYPOGRAPHY SCALES
+     ========================================================================= */
+  --egsa-font-sans: 'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --egsa-font-ar: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  --egsa-font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --egsa-fs-2xs: 0.6875rem; /* 11px */
+  --egsa-fs-xs: 0.75rem;    /* 12px */
+  --egsa-fs-sm: 0.84rem;    /* 13.5px */
+  --egsa-fs-base: 0.95rem;  /* 15px */
+  --egsa-fs-md: 1.05rem;    /* 17px */
+  --egsa-fs-lg: 1.25rem;    /* 20px */
+  --egsa-fs-xl: 1.5rem;     /* 24px */
+  --egsa-fs-2xl: 1.875rem;  /* 30px */
+  --egsa-fs-3xl: 2.25rem;   /* 36px */
+
+  /* =========================================================================
+     4. SPACING SCALE & CONTAINERS
+     ========================================================================= */
+  --egsa-space-3xs: 2px;
+  --egsa-space-2xs: 4px;
+  --egsa-space-xs: 8px;
+  --egsa-space-sm: 12px;
+  --egsa-space-md: 16px;
+  --egsa-space-lg: 20px;
+  --egsa-space-xl: 24px;
+  --egsa-space-2xl: 32px;
+  --egsa-space-3xl: 48px;
+
+  --egsa-container-max: 1440px;
+  --egsa-container-wide: 1600px;
+  --egsa-container-reading: 1040px;
+  --egsa-container-form: 840px;
+  --egsa-container-modal: 680px;
+
+  /* =========================================================================
+     5. ELEVATION, RADIUS & SHADOWS
+     ========================================================================= */
+  --egsa-radius-xs: 4px;
+  --egsa-radius-sm: 6px;
+  --egsa-radius-md: 8px;
+  --egsa-radius-lg: 12px;
+  --egsa-radius-xl: 16px;
+  --egsa-radius-pill: 9999px;
+
+  --egsa-shadow-sm: 0 1px 3px rgba(23, 43, 54, 0.05);
+  --egsa-shadow-md: 0 4px 16px -2px rgba(23, 43, 54, 0.08), 0 2px 6px -1px rgba(23, 43, 54, 0.04);
+  --egsa-shadow-lg: 0 12px 32px -4px rgba(23, 43, 54, 0.12), 0 4px 12px -2px rgba(23, 43, 54, 0.05);
+
+  --egsa-focus-ring: 0 0 0 3px rgba(58, 105, 133, 0.28);
+  --egsa-focus-ring-teal: 0 0 0 3px rgba(30, 124, 133, 0.28);
+  --egsa-focus-ring-coral: 0 0 0 3px rgba(223, 79, 76, 0.25);
+}
+
+/* =========================================================================
+   6. UNIFIED COMPONENT PATTERNS
+   ========================================================================= */
+
+/* Brand Buttons */
+.btn-egsa-primary {
+  background-color: var(--egsa-cosmos-blue) !important;
+  border-color: var(--egsa-cosmos-blue) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: var(--egsa-radius-md);
+  transition: all 0.18s ease-in-out;
+}
+.btn-egsa-primary:hover,
+.btn-egsa-primary:focus {
+  background-color: var(--egsa-cosmos-blue-dark) !important;
+  border-color: var(--egsa-cosmos-blue-dark) !important;
+  color: #ffffff !important;
+  box-shadow: var(--egsa-focus-ring);
+}
+
+.btn-egsa-teal {
+  background-color: var(--egsa-teal-green) !important;
+  border-color: var(--egsa-teal-green) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: var(--egsa-radius-md);
+  transition: all 0.18s ease-in-out;
+}
+.btn-egsa-teal:hover,
+.btn-egsa-teal:focus {
+  background-color: var(--egsa-teal-green-dark) !important;
+  border-color: var(--egsa-teal-green-dark) !important;
+  color: #ffffff !important;
+  box-shadow: var(--egsa-focus-ring-teal);
+}
+
+.btn-egsa-coral,
+.btn-egsa-danger {
+  background-color: var(--egsa-red-coral) !important;
+  border-color: var(--egsa-red-coral) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: var(--egsa-radius-md);
+  transition: all 0.18s ease-in-out;
+}
+.btn-egsa-coral:hover,
+.btn-egsa-coral:focus,
+.btn-egsa-danger:hover,
+.btn-egsa-danger:focus {
+  background-color: var(--egsa-red-coral-dark) !important;
+  border-color: var(--egsa-red-coral-dark) !important;
+  color: #ffffff !important;
+  box-shadow: var(--egsa-focus-ring-coral);
+}
+
+.btn-egsa-outline {
+  background-color: transparent !important;
+  border-color: var(--egsa-border-strong) !important;
+  color: var(--egsa-text-primary) !important;
+  font-weight: 600;
+  border-radius: var(--egsa-radius-md);
+  transition: all 0.18s ease-in-out;
+}
+.btn-egsa-outline:hover,
+.btn-egsa-outline:focus {
+  background-color: var(--egsa-surface-subtle) !important;
+  border-color: var(--egsa-cosmos-blue) !important;
+  color: var(--egsa-cosmos-blue) !important;
+}
+
+/* Accessible Status Badges */
+.egsa-badge-primary {
+  background-color: var(--egsa-cosmos-blue-subtle) !important;
+  color: var(--egsa-cosmos-blue) !important;
+  border: 1px solid rgba(58, 105, 133, 0.25) !important;
+  font-weight: 600;
+}
+
+.egsa-badge-teal {
+  background-color: var(--egsa-teal-green-subtle) !important;
+  color: var(--egsa-teal-green-dark) !important;
+  border: 1px solid rgba(30, 124, 133, 0.25) !important;
+  font-weight: 600;
+}
+
+.egsa-badge-gold {
+  background-color: var(--egsa-gold-tan-subtle) !important;
+  color: var(--egsa-gold-tan-dark) !important;
+  border: 1px solid rgba(212, 184, 124, 0.4) !important;
+  font-weight: 600;
+}
+
+.egsa-badge-coral {
+  background-color: var(--egsa-red-coral-subtle) !important;
+  color: var(--egsa-red-coral-dark) !important;
+  border: 1px solid rgba(223, 79, 76, 0.3) !important;
+  font-weight: 600;
+}
+
+.egsa-badge-neutral {
+  background-color: var(--egsa-surface-subtle) !important;
+  color: var(--egsa-text-secondary) !important;
+  border: 1px solid var(--egsa-border) !important;
+  font-weight: 500;
+}
+
+/* =========================================================================
+   7. PLATFORM CONTAINER SYSTEM
+   ========================================================================= */
+
+.egsa-container {
+  width: 100%;
+  max-width: var(--egsa-container-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.75rem 1.5rem 3rem 1.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.egsa-container-wide {
+  width: 100%;
+  max-width: var(--egsa-container-wide);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.75rem 1.5rem 3rem 1.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.egsa-container-reading {
+  width: 100%;
+  max-width: var(--egsa-container-reading);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.75rem 1.5rem 3rem 1.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.egsa-container-form {
+  width: 100%;
+  max-width: var(--egsa-container-form);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.75rem 1.5rem 3rem 1.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 991.98px) {
+  .egsa-container,
+  .egsa-container-wide,
+  .egsa-container-reading,
+  .egsa-container-form {
+    padding: 1.25rem 1rem 2rem 1rem;
+  }
+}
+
+/* =========================================================================
+   8. PLATFORM GRID SYSTEM
+   ========================================================================= */
+
+/* KPI / Metrics Stats Grid */
+.egsa-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: var(--egsa-space-md);
+  margin-bottom: var(--egsa-space-xl);
+}
+
+/* Standard Card Catalog Grid */
+.egsa-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: var(--egsa-space-xl);
+  margin-bottom: var(--egsa-space-xl);
+}
+
+.egsa-course-card-title {
+  min-height: 2.8em;
+}
+
+/* Dense Card Grid (Tools, Assets, Mini Cards) */
+.egsa-grid-cards-dense {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--egsa-space-md);
+  margin-bottom: var(--egsa-space-xl);
+}
+
+/* Split 2:1 (Main Content + Sidebar / Detail Panel) */
+.egsa-grid-split-2-1 {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--egsa-space-xl);
+  align-items: start;
+}
+
+/* Split 1:2 (Left Nav / Filter + Right Content) */
+.egsa-grid-split-1-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--egsa-space-xl);
+  align-items: start;
+}
+
+/* Split 3:1 (Wide Analytics / Table + Compact Control Panel) */
+.egsa-grid-split-3-1 {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: var(--egsa-space-xl);
+  align-items: start;
+}
+
+/* Split Equal 1:1 */
+.egsa-grid-split-equal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--egsa-space-xl);
+  align-items: start;
+}
+
+/* Explicit 2, 3, 4 Column Grids with auto-wrapping */
+.egsa-grid-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--egsa-space-xl);
+}
+
+.egsa-grid-cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--egsa-space-xl);
+}
+
+.egsa-grid-cols-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--egsa-space-lg);
+}
+
+.egsa-grid-stats-6 {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--egsa-space-md);
+}
+
+@media (max-width: 1199.98px) {
+  .egsa-grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .egsa-grid-stats-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 991.98px) {
+  .egsa-grid-split-2-1,
+  .egsa-grid-split-1-2,
+  .egsa-grid-split-3-1,
+  .egsa-grid-split-equal,
+  .egsa-grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .egsa-grid-stats,
+  .egsa-grid-stats-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--egsa-space-sm);
+  }
+  .egsa-grid-cards,
+  .egsa-grid-cards-dense,
+  .egsa-grid-cols-2,
+  .egsa-grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 379.98px) {
+  .egsa-grid-stats,
+  .egsa-grid-stats-6 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================================
+   9. COMMON SECTION & TOOLBAR LAYOUTS
+   ========================================================================= */
+
+/* Unified Page Header */
+.egsa-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--egsa-space-md);
+  margin-bottom: var(--egsa-space-xl);
+  flex-wrap: wrap;
+}
+
+.egsa-page-title-group {
+  min-width: 0;
+  flex: 1 1 300px;
+}
+
+.egsa-page-title {
+  font-size: var(--egsa-fs-2xl);
+  font-weight: 700;
+  color: var(--egsa-text-primary);
+  margin: 0 0 var(--egsa-space-2xs) 0;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.egsa-page-subtitle {
+  font-size: var(--egsa-fs-base);
+  color: var(--egsa-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.egsa-page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--egsa-space-sm);
+  flex-wrap: wrap;
+}
+
+/* Filter Toolbar */
+.egsa-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--egsa-space-md);
+  background: var(--egsa-surface);
+  border: 1px solid var(--egsa-border);
+  border-radius: var(--egsa-radius-md);
+  padding: var(--egsa-space-md) var(--egsa-space-lg);
+  margin-bottom: var(--egsa-space-xl);
+  box-shadow: var(--egsa-shadow-sm);
+  flex-wrap: wrap;
+}
+
+.egsa-filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--egsa-space-sm);
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+
+.egsa-filter-search {
+  position: relative;
+  min-width: 240px;
+  flex: 1 1 280px;
+}
+
+/* Contained Responsive Data Table */
+.egsa-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--egsa-surface);
+  border: 1px solid var(--egsa-border);
+  border-radius: var(--egsa-radius-md);
+  box-shadow: var(--egsa-shadow-sm);
+  margin-bottom: var(--egsa-space-xl);
+}
+
+.egsa-table-responsive table {
+  margin-bottom: 0 !important;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Standard Surface Card */
+.egsa-card {
+  background: var(--egsa-surface);
+  border: 1px solid var(--egsa-border);
+  border-radius: var(--egsa-radius-lg);
+  padding: var(--egsa-space-xl);
+  box-shadow: var(--egsa-shadow-sm);
+  box-sizing: border-box;
+  min-width: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.egsa-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--egsa-space-md);
+  padding-bottom: var(--egsa-space-md);
+  margin-bottom: var(--egsa-space-md);
+  border-bottom: 1px solid var(--egsa-border);
+}
+
+.egsa-card-title {
+  font-size: var(--egsa-fs-md);
+  font-weight: 700;
+  color: var(--egsa-text-primary);
+  margin: 0;
+}
+
