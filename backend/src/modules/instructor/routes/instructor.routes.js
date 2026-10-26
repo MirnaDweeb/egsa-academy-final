@@ -60,10 +60,12 @@ router.post('/profile/avatar', avatarUpload.single('avatar'), c.uploadAvatar);
 router.delete('/profile/avatar', c.deleteAvatar);
 router.get('/conversations', c.conversations);
 router.post('/conversations', V.startConversation, validate, c.createConversation);
+router.post('/conversations/admin-support', c.contactAdmin);
 router.get('/conversations/:id', V.id(), validate, c.conversation);
 router.get('/conversations/:id/messages', V.id(), validate, c.messages);
 router.post('/conversations/:id/messages', V.sendMessage, validate, c.sendMessage);
 router.patch('/conversations/:id/read', V.id(), validate, c.markRead);
+router.patch('/conversations/:id/status', V.id(), validate, c.updateStatus);
 router.get('/messages/unread-count', c.unreadCount);
 
 router.post('/upload', fileUpload.single('file'), c.uploadFile);

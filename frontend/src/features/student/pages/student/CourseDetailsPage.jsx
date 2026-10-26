@@ -4,6 +4,7 @@ import { courseService } from '../../services/courseService';
 import { applicationService } from '../../services/cycleServices';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingState, ErrorState, PageHeader } from '../../components/StateComponents.jsx';
+import ApplyModal from '../../components/student/ApplyModal.jsx';
 
 export default function CourseDetailsPage() {
   const { id } = useParams();
@@ -37,35 +38,14 @@ export default function CourseDetailsPage() {
 
   useEffect(load, [id]);
 
-  const handleDirectEnroll = async () => {
+  const [showApplyModal, setShowApplyModal] = useState(false);
+
+  const handleOpenApply = () => {
     if (!isAuthenticated) {
       navigate(`/student/login?redirect=/student/courses/${id}`);
       return;
     }
-
-    try {
-      setIsEnrolling(true);
-      const res = await applicationService.create({
-        courseId: id,
-        directEnroll: true,
-      });
-
-      const app = res.data;
-      const invId = res.invoice?._id || app?.invoice?._id || app?.invoice;
-
-      if (app?.status === 'Waitlisted') {
-        navigate('/student/applications');
-      } else if (invId) {
-        navigate(`/student/payments?invoiceId=${invId}&applicationId=${app._id}`);
-      } else {
-        navigate('/student/applications');
-      }
-    } catch (err) {
-      console.error('Direct enrollment failed:', err);
-      alert(err.response?.data?.message || 'Failed to initialize direct enrollment.');
-    } finally {
-      setIsEnrolling(false);
-    }
+    setShowApplyModal(true);
   };
 
   if (loading) return <LoadingState label="Loading space academy curriculum…" />;
@@ -75,100 +55,150 @@ export default function CourseDetailsPage() {
   const renderAction = (isHeader = false) => {
     const btnSize = isHeader ? 'btn-sm px-3' : 'py-2';
     if (application) {
-      if (application.enrollment || application.status === 'Confirmed') {
-        return (
-          <Link to="/student/dashboard" className={`btn btn-success ${btnSize}`}>
-            <i className="fa-solid fa-circle-check me-1"></i> Enrolled
-          </Link>
-        );
-      }
-      if (application.status === 'Waitlisted') {
-        return (
-          <Link to={`/student/applications/${application._id}`} className={`btn btn-secondary ${btnSize}`}>
-            <i className="fa-solid fa-clock me-1"></i> Waitlisted (#{application.waitlistPosition || 1})
-          </Link>
-        );
-      }
-      if (['Accepted', 'Eligible - Payment Pending'].includes(application.status)) {
-        const inv = application.invoice;
-        const invId = inv?._id || (typeof inv === 'string' ? inv : '');
-        if (inv?.status === 'Payment Initiated') {
+      const renderAppBtn = () => {
+        if (application.enrollment || application.status === 'Confirmed') {
+          return (
+            <Link to="/student/dashboard" className={`btn btn-success ${btnSize}`}>
+              <i className="fa-solid fa-circle-check me-1"></i> Enrolled
+            </Link>
+          );
+        }
+        if (application.status === 'Waitlisted') {
+          return (
+            <Link to={`/student/applications/${application._id}`} className={`btn btn-secondary ${btnSize}`}>
+              <i className="fa-solid fa-clock me-1"></i> Waitlisted (#{application.waitlistPosition || 1})
+            </Link>
+          );
+        }
+        if (['Accepted', 'Eligible - Payment Pending'].includes(application.status)) {
+          const inv = application.invoice;
+          const invId = inv?._id || (typeof inv === 'string' ? inv : '');
+          if (inv?.status === 'Payment Initiated') {
+            return (
+              <Link
+                to={`/student/payments?invoiceId=${invId}&applicationId=${application._id}`}
+                className={`btn btn-accent ${btnSize} fw-bold`}
+              >
+                <i className="fa-solid fa-spinner fa-spin me-1"></i> Continue Payment
+              </Link>
+            );
+          }
           return (
             <Link
               to={`/student/payments?invoiceId=${invId}&applicationId=${application._id}`}
               className={`btn btn-accent ${btnSize} fw-bold`}
             >
-              <i className="fa-solid fa-spinner fa-spin me-1"></i> Continue Payment
+              <i className="fa-solid fa-credit-card me-1"></i> Pay Now
+            </Link>
+          );
+        }
+        if (application.status === 'Manual Review') {
+          return (
+            <Link to={`/student/applications/${application._id}`} className={`btn btn-outline-info text-dark ${btnSize}`}>
+              <i className="fa-solid fa-clipboard-user me-1"></i> Manual Review Required
+            </Link>
+          );
+        }
+        if (application.status === 'Under Review' || application.status === 'Submitted') {
+          return (
+            <Link to={`/student/applications/${application._id}`} className={`btn btn-outline-info text-dark ${btnSize}`}>
+              <i className="fa-solid fa-clock-rotate-left me-1"></i> Under Review
+            </Link>
+          );
+        }
+        if (application.status === 'Foundation Recommended' || application.status === 'Foundation Required') {
+          return (
+            <Link to={`/student/applications/${application._id}/foundation`} className={`btn btn-outline-warning text-dark ${btnSize}`}>
+              <i className="fa-solid fa-graduation-cap me-1"></i> Review Foundation Request
             </Link>
           );
         }
         return (
-          <Link
-            to={`/student/payments?invoiceId=${invId}&applicationId=${application._id}`}
-            className={`btn btn-accent ${btnSize} fw-bold`}
-          >
-            <i className="fa-solid fa-credit-card me-1"></i> Pay Now
+          <Link to={`/student/applications/${application._id}`} className={`btn btn-outline-primary ${btnSize}`}>
+            View Application
           </Link>
         );
-      }
-      if (application.status === 'Manual Review') {
-        return (
-          <Link to={`/student/applications/${application._id}`} className={`btn btn-outline-info text-dark ${btnSize}`}>
-            <i className="fa-solid fa-clipboard-user me-1"></i> Manual Review Required
-          </Link>
-        );
-      }
-      if (application.status === 'Under Review') {
-        return (
-          <Link to={`/student/applications/${application._id}`} className={`btn btn-outline-info text-dark ${btnSize}`}>
-            <i className="fa-solid fa-clipboard-user me-1"></i> Under Review
-          </Link>
-        );
-      }
-      if (application.status === 'Foundation Recommended') {
-        return (
-          <Link to={`/student/applications/${application._id}/foundation`} className={`btn btn-outline-warning text-dark ${btnSize}`}>
-            <i className="fa-solid fa-graduation-cap me-1"></i> Review Foundation Request
-          </Link>
-        );
-      }
-    }
+      };
 
-    if (course.price == null) {
+      if (isHeader) {
+        return (
+          <div className="d-flex align-items-center gap-2">
+            {renderAppBtn()}
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="btn btn-outline-secondary btn-sm fw-semibold"
+              title="Prerequisite & Course Fit Check"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart me-1"></i> Course Fit
+            </Link>
+            <Link
+              to={`/student/readiness/start?courseId=${course._id}`}
+              className="btn btn-outline-primary btn-sm fw-semibold"
+              title="Evaluate readiness before enrolling"
+            >
+              <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
+            </Link>
+          </div>
+        );
+      }
+
       return (
-        <button className={`btn btn-secondary ${btnSize}`} disabled>
-          Pricing TBA
-        </button>
+        <div className="d-flex flex-column gap-2 w-100">
+          {renderAppBtn()}
+          <div className="d-flex gap-2 w-100">
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="btn btn-outline-secondary py-2 flex-grow-1 fw-semibold"
+              title="Evaluate prerequisite alignment"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart me-1"></i> Course Fit
+            </Link>
+            <Link
+              to={`/student/readiness/start?courseId=${course._id}`}
+              className="btn btn-outline-primary py-2 flex-grow-1 fw-semibold"
+              title="Diagnostic foundational assessment (optional)"
+            >
+              <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
+            </Link>
+          </div>
+        </div>
       );
     }
 
-    // Path A (Enroll & Pay Now) + Path B (Check My Readiness)
+    const isDirectAvailable = course.price != null && course.directEnrollmentPermitted !== false;
+
     if (isHeader) {
       return (
         <div className="d-flex align-items-center gap-2">
           <button
             type="button"
-            className="btn btn-primary btn-sm fw-bold shadow-sm"
-            onClick={handleDirectEnroll}
-            disabled={isEnrolling}
+            className="btn btn-primary btn-sm fw-bold shadow-sm px-3"
+            onClick={() => handleOpenApply(false)}
           >
-            {isEnrolling ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                Processing…
-              </>
-            ) : (
-              <>
-                <i className="fa-solid fa-credit-card me-1"></i> Enroll & Pay Now
-              </>
-            )}
+            <i className="fa-solid fa-paper-plane me-1"></i> Apply Now
           </button>
+          {isDirectAvailable && (
+            <button
+              type="button"
+              className="btn btn-outline-success btn-sm fw-bold px-3"
+              onClick={() => handleOpenApply(true)}
+            >
+              <i className="fa-solid fa-bolt me-1"></i> Enroll & Pay
+            </button>
+          )}
+          <Link
+            to={`/student/courses/${course._id}/fit`}
+            className="btn btn-outline-secondary btn-sm fw-semibold"
+            title="Prerequisite & Course Fit Check"
+          >
+            <i className="fa-solid fa-magnifying-glass-chart me-1"></i> Course Fit
+          </Link>
           <Link
             to={`/student/readiness/start?courseId=${course._id}`}
             className="btn btn-outline-primary btn-sm fw-semibold"
             title="Evaluate readiness before enrolling"
           >
-            <i className="fa-solid fa-clipboard-check me-1"></i> Check Readiness
+            <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
           </Link>
         </div>
       );
@@ -179,30 +209,42 @@ export default function CourseDetailsPage() {
         <button
           type="button"
           className="btn btn-primary py-2 fw-bold w-100 shadow-sm"
-          onClick={handleDirectEnroll}
-          disabled={isEnrolling}
+          onClick={() => handleOpenApply(false)}
         >
-          {isEnrolling ? (
-            <>
-              <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-              Processing Direct Enrollment…
-            </>
-          ) : (
-            <>
-              <i className="fa-solid fa-credit-card me-2"></i> Enroll & Pay Now
-            </>
-          )}
+          <i className="fa-solid fa-paper-plane me-2"></i> Apply Now
         </button>
-        <Link
-          to={`/student/readiness/start?courseId=${course._id}`}
-          className="btn btn-outline-primary py-2 w-100 fw-semibold"
-        >
-          <i className="fa-solid fa-clipboard-check me-2"></i> Check My Readiness (Optional)
-        </Link>
+        {isDirectAvailable && (
+          <button
+            type="button"
+            className="btn btn-outline-success py-2 fw-bold w-100 shadow-sm"
+            onClick={() => handleOpenApply(true)}
+          >
+            <i className="fa-solid fa-bolt me-2"></i> Enroll & Pay Now ({course.price.toLocaleString()} {course.currency || 'EGP'})
+          </button>
+        )}
+        <div className="d-flex gap-2 w-100">
+          <Link
+            to={`/student/courses/${course._id}/fit`}
+            className="btn btn-outline-secondary py-2 flex-grow-1 fw-semibold"
+            title="Evaluate prerequisite alignment"
+          >
+            <i className="fa-solid fa-magnifying-glass-chart me-1"></i> Course Fit
+          </Link>
+          <Link
+            to={`/student/readiness/start?courseId=${course._id}`}
+            className="btn btn-outline-primary py-2 flex-grow-1 fw-semibold"
+            title="Diagnostic foundational assessment (optional)"
+          >
+            <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
+          </Link>
+        </div>
         <div className="text-center pt-1">
           <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-            <i className="fa-regular fa-circle-check text-success me-1"></i>
-            Assessment optional · Direct pay available
+            {course.price == null ? (
+              <span className="text-secondary"><i className="fa-solid fa-circle-info me-1"></i>Admissions Review · Tuition TBA</span>
+            ) : (
+              <><i className="fa-regular fa-circle-check text-success me-1"></i>Official Space Academy Accredited</>
+            )}
           </small>
         </div>
       </div>
@@ -756,6 +798,13 @@ export default function CourseDetailsPage() {
           </div>
         </div>
       </div>
+
+      <ApplyModal
+        isOpen={showApplyModal}
+        course={course}
+        onClose={() => setShowApplyModal(false)}
+        onSuccess={() => load()}
+      />
     </div>
   );
 }

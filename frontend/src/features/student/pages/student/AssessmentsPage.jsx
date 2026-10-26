@@ -173,9 +173,17 @@ export default function AssessmentsPage() {
           </li>
         </ul>
 
-        <div className="text-muted small">
-          <i className="fa-solid fa-shield-halved text-primary me-1"></i>
-          {isAr ? 'وكالة الفضاء المصرية — الشؤون الأكاديمية' : 'Egyptian Space Agency — Academic Affairs'}
+        <div className="d-flex align-items-center gap-2">
+          <Link
+            to="/student/readiness/start"
+            className="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold"
+          >
+            <i className="fa-solid fa-play me-1"></i> {isAr ? 'تقييم جاهزية جديد' : 'New Readiness Assessment'}
+          </Link>
+          <div className="text-muted small d-none d-md-block">
+            <i className="fa-solid fa-shield-halved text-primary me-1"></i>
+            {isAr ? 'وكالة الفضاء المصرية' : 'EGSA Academic Affairs'}
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,4 @@
-import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import './studentSidebar.css';
 
 // Grouped navigation per prompt specification
@@ -24,16 +23,10 @@ const SIDEBAR_SECTIONS = [
         matchPrefixes: ['/student/programs', '/student/courses'],
       },
       {
-        name: 'My Applications',
-        path: '/student/applications',
-        icon: 'fa-file-lines',
-        matchPrefixes: ['/student/applications'],
-      },
-      {
         name: 'My Training',
         path: '/student/training',
         icon: 'fa-graduation-cap',
-        matchPrefixes: ['/student/training', '/student/enrollments'],
+        matchPrefixes: ['/student/training', '/student/enrollments', '/student/my-training', '/student/applications'],
       },
       {
         name: 'Attendance',
@@ -44,7 +37,7 @@ const SIDEBAR_SECTIONS = [
         name: 'Assessments',
         path: '/student/assessments',
         icon: 'fa-list-check',
-        matchPrefixes: ['/student/assessments', '/student/readiness'],
+        matchPrefixes: ['/student/assessments'],
       },
       {
         name: 'My Progress',
@@ -79,6 +72,18 @@ const SIDEBAR_SECTIONS = [
         matchPrefixes: ['/student/certificate', '/student/certificates'],
       },
       {
+        name: 'Contact Admin',
+        path: '/student/contact-admin',
+        icon: 'fa-headset',
+        matchPrefixes: ['/student/contact-admin', '/student/contact'],
+      },
+      {
+        name: 'Contact My Instructor',
+        path: '/student/contact-instructor',
+        icon: 'fa-chalkboard-user',
+        matchPrefixes: ['/student/contact-instructor'],
+      },
+      {
         name: 'Notifications',
         path: '/student/notifications',
         icon: 'fa-bell',
@@ -102,6 +107,16 @@ export default function StudentSidebar({
   user,
   onLogout,
 }) {
+  const location = useLocation();
+
+  const isItemActive = (item, defaultActive) => {
+    if (defaultActive) return true;
+    if (item.matchPrefixes && Array.isArray(item.matchPrefixes)) {
+      return item.matchPrefixes.some((prefix) => location.pathname.startsWith(prefix));
+    }
+    return location.pathname === item.path;
+  };
+
   const handleNavClick = () => {
     // Close mobile drawer when a link is clicked
     if (isMobileOpen && setIsMobileOpen) {
@@ -193,7 +208,7 @@ export default function StudentSidebar({
                       to={item.path}
                       onClick={handleNavClick}
                       className={({ isActive }) =>
-                        `sidebar-link ${isActive ? 'active' : ''}`
+                        `sidebar-link ${isItemActive(item, isActive) ? 'active' : ''}`
                       }
                       title={isCollapsed ? item.name : undefined}
                     >

@@ -16,7 +16,6 @@ import DashboardPage from './pages/student/DashboardPage.jsx';
 import ExploreProgramsPage from './pages/student/ExploreProgramsPage.jsx';
 import CourseDetailsPage from './pages/student/CourseDetailsPage.jsx';
 import CourseFitPage from './pages/student/CourseFitPage.jsx';
-import ApplicationsPage from './pages/student/ApplicationsPage.jsx';
 import ApplicationDetailPage from './pages/student/ApplicationDetailPage.jsx';
 import FoundationReviewPage from './pages/student/FoundationReviewPage.jsx';
 import TrainingPage from './pages/student/TrainingPage.jsx';
@@ -34,6 +33,7 @@ import MockCheckoutPage from './pages/student/MockCheckoutPage.jsx';
 import MediaPage from './pages/student/MediaPage.jsx';
 import CertificatePage from './pages/student/CertificatePage.jsx';
 import NotificationsPage from './pages/student/NotificationsPage.jsx';
+import MessagesPage from './pages/student/MessagesPage.jsx';
 import ProfilePage from './pages/student/ProfilePage.jsx';
 import AdminLayout from './layouts/AdminLayout.jsx';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx';
@@ -76,14 +76,16 @@ export default function App() {
           <Route path="courses/:id" element={<CourseDetailsPage />} />
           <Route path="courses/:id/fit" element={<CourseFitPage />} />
 
-          {/* 3. My Applications */}
-          <Route path="applications" element={<ApplicationsPage />} />
+          {/* 3. Training & Applications Unified Hub */}
+          <Route path="applications" element={<Navigate to="/student/training?tab=applications" replace />} />
           <Route path="applications/:id" element={<ApplicationDetailPage />} />
           <Route path="applications/:id/foundation" element={<FoundationReviewPage />} />
 
           {/* 4. My Training */}
           <Route path="training" element={<TrainingPage />} />
-          <Route path="enrollments" element={<TrainingPage />} />
+          <Route path="my-training" element={<Navigate to="/student/training" replace />} />
+          <Route path="my-courses" element={<Navigate to="/student/training" replace />} />
+          <Route path="enrollments" element={<Navigate to="/student/training" replace />} />
 
           {/* 5. Attendance */}
           <Route path="attendance" element={<AttendancePage />} />
@@ -116,7 +118,13 @@ export default function App() {
           {/* 12. Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />
 
-          {/* 13. My Profile */}
+          {/* 13. Contact & Real-Time Communications with Administration */}
+          <Route path="contact" element={<MessagesPage />} />
+          <Route path="contact/:conversationId" element={<MessagesPage />} />
+          <Route path="messages" element={<Navigate to="/student/contact" replace />} />
+          <Route path="messages/:conversationId" element={<MessagesPage />} />
+
+          {/* 14. My Profile */}
           <Route path="profile" element={<ProfilePage />} />
 
           {/* Catch-all student route */}

@@ -14,6 +14,13 @@ export default function UnifiedLogin() {
   const [lang, setLang] = useState(() => localStorage.getItem('egsa_lang') || 'en');
   const isAr = lang === 'ar';
 
+  // Pre-fill demo accounts if user clicks or toggles for testing ease
+  const roleDefaults = {
+    student: { email: 'sara.demo@egsa-academy.example', password: 'Password123!' },
+    instructor: { email: 'instructor@egsa-dev.test', password: 'Instructor#Dev123' },
+    admin: { email: 'superadmin@esa.dev', password: 'Password123!' },
+  };
+
   const [selectedRole, setSelectedRole] = useState(() => {
     // Check state or URL param or default to student
     const paramRole = searchParams.get('role');
@@ -23,9 +30,16 @@ export default function UnifiedLogin() {
     return 'student';
   });
 
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
+  const [form, setForm] = useState(() => {
+    const paramRole = searchParams.get('role');
+    const initRole = (paramRole === 'instructor' || paramRole === 'admin' || paramRole === 'student')
+      ? paramRole
+      : location.pathname.includes('/instructor')
+        ? 'instructor'
+        : location.pathname.includes('/admin')
+          ? 'admin'
+          : 'student';
+    return roleDefaults[initRole] || { email: '', password: '' };
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -33,13 +47,6 @@ export default function UnifiedLogin() {
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(location.state?.message || '');
-
-  // Pre-fill demo accounts if user clicks or toggles for testing ease
-  const roleDefaults = {
-    student: { email: 'sara.demo@egsa-academy.example', password: 'Password123!' },
-    instructor: { email: 'instructor@egsa-dev.test', password: 'Instructor#Dev123' },
-    admin: { email: 'superadmin@esa.dev', password: 'Password123!' },
-  };
 
   useEffect(() => {
     localStorage.setItem('egsa_lang', lang);
@@ -109,9 +116,16 @@ export default function UnifiedLogin() {
 
         if (effectiveAccess && userData) {
           localStorage.setItem('egsa_access_token', effectiveAccess);
+          localStorage.setItem('egsa_token', effectiveAccess);
           if (refresh) localStorage.setItem('egsa_refresh_token', refresh);
           localStorage.setItem('egsa_user', JSON.stringify(userData));
-          navigate('/student/dashboard', { replace: true });
+
+          const redirectParam = searchParams.get('redirect');
+          const fromPath = location.state?.from?.pathname;
+          const validRedirect = redirectParam && !redirectParam.startsWith('/login') && !redirectParam.startsWith('/student/login') ? redirectParam : null;
+          const validFrom = fromPath && !fromPath.startsWith('/login') && !fromPath.startsWith('/student/login') ? fromPath : null;
+          const destination = validRedirect || validFrom || '/student/dashboard';
+          navigate(destination, { replace: true });
         } else {
           throw new Error('Unexpected response format from Student backend.');
         }

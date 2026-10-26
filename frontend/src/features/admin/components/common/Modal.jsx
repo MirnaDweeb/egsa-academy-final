@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import styles from './Modal.module.css';
 
 export default function Modal({
-  isOpen,
+  isOpen = true,
   onClose,
   title,
   subtitle,

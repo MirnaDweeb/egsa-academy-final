@@ -14,6 +14,8 @@ const adminService = {
       .then((r) => r.data),
   getApplication: (id) =>
     apiClient.get(`/admin/applications/${id}`).then((r) => r.data.data),
+  fetchApplicationDocumentBlob: (id) =>
+    apiClient.get(`/admin/applications/${id}/document`, { responseType: 'blob' }).then((r) => r.data),
   addApplicationNote: (id, note) =>
     apiClient.post(`/admin/applications/${id}/notes`, { note }).then((r) => r.data.data),
   updateApplicationDecision: (id, decision, reason) =>
@@ -86,9 +88,9 @@ const adminService = {
   getPaymentProof: (id) =>
     apiClient.get(`/admin/payment-proofs/${id}`).then((r) => r.data.data),
   approvePaymentProof: (id) =>
-    apiClient.patch(`/admin/payment-proofs/${id}/approve`).then((r) => r.data),
+    apiClient.patch(`/admin/payment-proofs/${id}/approve`).then((r) => r.data?.data || r.data),
   rejectPaymentProof: (id, rejectionReason) =>
-    apiClient.patch(`/admin/payment-proofs/${id}/reject`, { rejectionReason }).then((r) => r.data),
+    apiClient.patch(`/admin/payment-proofs/${id}/reject`, { rejectionReason }).then((r) => r.data?.data || r.data),
   getPaymentProofFileUrl: (id) => `/admin-api/admin/payment-proofs/${id}/file`,
   getManualPaymentSettings: () =>
     apiClient.get('/admin/payment-settings').then((r) => r.data.data),
@@ -225,21 +227,21 @@ const adminService = {
   listPaymentProofs: (params = {}) =>
     apiClient.get('/admin/payment-proofs', { params }).then((r) => r.data),
   getPaymentProofDetails: (id) =>
-    apiClient.get(`/admin/payment-proofs/${id}`).then((r) => r.data.data),
+    apiClient.get(`/admin/payment-proofs/${id}`).then((r) => r.data?.data || r.data),
   approvePaymentProof: (id) =>
-    apiClient.patch(`/admin/payment-proofs/${id}/approve`).then((r) => r.data.data),
+    apiClient.patch(`/admin/payment-proofs/${id}/approve`).then((r) => r.data?.data || r.data),
   rejectPaymentProof: (id, rejectionReason) =>
-    apiClient.patch(`/admin/payment-proofs/${id}/reject`, { rejectionReason }).then((r) => r.data.data),
+    apiClient.patch(`/admin/payment-proofs/${id}/reject`, { rejectionReason }).then((r) => r.data?.data || r.data),
   getManualPaymentSettings: () =>
-    apiClient.get('/admin/payment-settings').then((r) => r.data.data),
+    apiClient.get('/admin/payment-settings').then((r) => r.data?.data || r.data),
   updateManualPaymentSettings: (payload) =>
-    apiClient.put('/admin/payment-settings', payload).then((r) => r.data.data),
+    apiClient.put('/admin/payment-settings', payload).then((r) => r.data?.data || r.data),
   getPaymentProofFileUrl: (id) =>
     `/admin-api/admin/payment-proofs/${id}/file`,
   fetchPaymentProofFileBlob: (id) =>
     apiClient.get(`/admin/payment-proofs/${id}/file`, { responseType: 'blob' }).then((r) => r.data),
   sendPaymentProofMessage: (id, payload) =>
-    apiClient.post(`/admin/payment-proofs/${id}/message`, payload).then((r) => r.data),
+    apiClient.post(`/admin/payment-proofs/${id}/message`, payload).then((r) => r.data?.data || r.data),
 };
 
 export default adminService;

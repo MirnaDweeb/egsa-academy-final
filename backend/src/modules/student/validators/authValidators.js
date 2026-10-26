@@ -21,7 +21,9 @@ const registerValidator = [
   body('phone')
     .trim()
     .notEmpty()
-    .withMessage('Phone number is required.'),
+    .withMessage('Phone number is required.')
+    .matches(/^(\+?20|0020|0)?1[0125]\d{8}$/)
+    .withMessage('Please enter a valid Egyptian mobile phone number (e.g. 01012345678).'),
   body('nationalId')
     .trim()
     .notEmpty()
@@ -29,20 +31,18 @@ const registerValidator = [
     .matches(/^\d{14}$/)
     .withMessage('National ID must be exactly 14 digits.'),
   body('university')
-    .trim()
-    .notEmpty()
-    .withMessage('University is required.'),
+    .optional({ checkFalsy: true })
+    .trim(),
   body('faculty')
-    .trim()
-    .notEmpty()
-    .withMessage('Faculty / Department is required.'),
+    .optional({ checkFalsy: true })
+    .trim(),
   body('department')
     .optional()
     .trim(),
   body('status')
-    .optional()
-    .isIn(['student', 'graduate'])
-    .withMessage('Status must be student or graduate.'),
+    .optional({ checkFalsy: true })
+    .isIn(['student', 'graduate', 'graduated', 'working', 'engineer', 'practicing_engineer'])
+    .withMessage('Status must be student, graduate, or practicing engineer.'),
   body('graduationYear')
     .optional({ checkFalsy: true })
     .isInt({ min: 1990, max: 2100 })

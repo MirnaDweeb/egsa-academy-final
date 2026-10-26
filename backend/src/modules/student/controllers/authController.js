@@ -82,11 +82,15 @@ async function register(req, res, next) {
     });
 
     // Create associated StudentProfile with academic information
+    const normalizedStatus = ['graduate', 'graduated', 'working', 'engineer', 'practicing_engineer'].includes(status)
+      ? 'graduate'
+      : 'student';
+
     await StudentProfile.create({
       user: user._id,
-      status: status || 'student',
+      status: normalizedStatus,
       university: (university || '').trim() || 'Egyptian Space Academy Candidate',
-      faculty: (faculty || '').trim() || 'General Engineering',
+      faculty: (faculty || '').trim() || (university || '').trim() || 'General Engineering',
       department: (department || '').trim() || undefined,
       graduationYear: graduationYear ? Number(graduationYear) : undefined,
       profileCompleted: false,

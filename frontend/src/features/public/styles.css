@@ -207,7 +207,7 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
   color: #ffffff;
   border-bottom-color: var(--gold);
 }
-.row{display:flex;gap:14px;flex-wrap:wrap;margin-top:24px}
+.hero .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:24px}
 .hero{min-height:100svh;display:flex;align-items:center;background-size:cover;background-position:62% 40%;position:relative;padding:110px 0 70px}
 .hero.short{min-height:70svh}
 .hero .wrap{position:relative;max-width:1160px;width:100%}

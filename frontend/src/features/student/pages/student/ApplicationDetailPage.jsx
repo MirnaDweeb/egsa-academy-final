@@ -307,7 +307,69 @@ export default function ApplicationDetailPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [enrolling, setEnrolling] = useState(false);
+
+  // Supporting Document state
+  const [docFile, setDocFile] = useState(null);
+  const [docType, setDocType] = useState('National ID / Passport');
+  const [showReplaceDoc, setShowReplaceDoc] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docMessage, setDocMessage] = useState({ text: '', type: '' });
+  const [docBlobUrl, setDocBlobUrl] = useState(null);
+  const [docViewing, setDocViewing] = useState(false);
+  const [docLoadingPreview, setDocLoadingPreview] = useState(false);
+
   const navigate = useNavigate();
+
+  const handleUploadDoc = async (e) => {
+    e.preventDefault();
+    if (!docFile) {
+      setDocMessage({ text: 'Please select an image or PDF file to upload.', type: 'danger' });
+      return;
+    }
+    setUploadingDoc(true);
+    setDocMessage({ text: '', type: '' });
+    const formData = new FormData();
+    formData.append('document', docFile);
+    formData.append('documentType', docType);
+    try {
+      await applicationService.uploadDocument(id, formData);
+      setDocMessage({ text: 'Supporting document uploaded successfully.', type: 'success' });
+      setDocFile(null);
+      setShowReplaceDoc(false);
+      load();
+    } catch (err) {
+      setDocMessage({ text: err.response?.data?.message || 'Failed to upload document.', type: 'danger' });
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleOpenDocPreview = async () => {
+    setDocViewing(true);
+    setDocLoadingPreview(true);
+    if (docBlobUrl) {
+      URL.revokeObjectURL(docBlobUrl);
+      setDocBlobUrl(null);
+    }
+    try {
+      const blob = await applicationService.fetchDocumentBlob(id);
+      const url = URL.createObjectURL(blob);
+      setDocBlobUrl(url);
+    } catch (err) {
+      setDocMessage({ text: err.response?.data?.message || 'Failed to preview document.', type: 'danger' });
+      setDocViewing(false);
+    } finally {
+      setDocLoadingPreview(false);
+    }
+  };
+
+  const handleCloseDocPreview = () => {
+    if (docBlobUrl) {
+      URL.revokeObjectURL(docBlobUrl);
+    }
+    setDocBlobUrl(null);
+    setDocViewing(false);
+  };
 
   const handleDirectEnroll = async () => {
     setEnrolling(true);
@@ -369,13 +431,13 @@ export default function ApplicationDetailPage() {
         subtitle={`Application ID: ${application._id}`}
         breadcrumbs={[
           { label: 'Portal', to: '/student/dashboard' },
-          { label: 'My Applications', to: '/student/applications' },
+          { label: 'My Training', to: '/student/training?tab=applications' },
           { label: course.title || 'Details' },
         ]}
         actions={
           <div className="d-flex gap-2">
-            <Link to="/student/applications" className="btn btn-outline-secondary btn-sm">
-              <i className="fa-solid fa-arrow-left me-1"></i> Back to Applications
+            <Link to="/student/training?tab=applications" className="btn btn-outline-secondary btn-sm">
+              <i className="fa-solid fa-arrow-left me-1"></i> Back to My Training
             </Link>
             {canCancel && (
               <button
@@ -494,7 +556,7 @@ export default function ApplicationDetailPage() {
                       <strong>Reason:</strong> {application.rejectionReason}
                     </div>
                   )}
-                  <Link to="/catalog" className="btn btn-outline-secondary btn-sm">
+                  <Link to="/student/programs" className="btn btn-outline-secondary btn-sm">
                     <i className="fa-solid fa-compass me-1"></i> Explore Available Courses
                   </Link>
                 </div>
@@ -538,7 +600,7 @@ export default function ApplicationDetailPage() {
                       >
                         <i className="fa-solid fa-graduation-cap me-1"></i> Review Foundation Request
                       </Link>
-                      {course.directEnrollmentPermitted !== false && (
+                      {course.directEnrollmentPermitted !== false && course.price != null && (
                         <button
                           type="button"
                           className="btn btn-primary btn-sm fw-bold px-3"
@@ -610,6 +672,194 @@ export default function ApplicationDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Supporting Documents & Verification Screenshot Card */}
+          <div className="egsa-card mb-4 p-4 shadow-sm">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                  <i className="fa-solid fa-file-shield text-primary-egsa"></i>
+                  Supporting Documents & Verification Screenshot
+                </h6>
+                <small className="text-muted">
+                  Official verification documents, student ID, transcripts, or requested screenshots.
+                </small>
+              </div>
+              {application.supportingDocument?.filename && (
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                  <i className="fa-solid fa-check me-1"></i> Document Attached
+                </span>
+              )}
+            </div>
+
+            {docMessage.text && (
+              <div className={`alert alert-${docMessage.type} small py-2 px-3 mb-3 d-flex align-items-center gap-2`}>
+                <i className={`fa-solid ${docMessage.type === 'success' ? 'fa-circle-check text-success' : 'fa-circle-exclamation text-danger'}`}></i>
+                <span>{docMessage.text}</span>
+              </div>
+            )}
+
+            {/* Currently Uploaded Document Display */}
+            {application.supportingDocument?.filename ? (
+              <div className="p-3 bg-light rounded border mb-3">
+                <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                  <div>
+                    <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                      <i className="fa-solid fa-file-image text-primary-egsa fa-lg"></i>
+                      <span>{application.supportingDocument.originalName}</span>
+                    </div>
+                    <div className="text-muted small mt-1">
+                      <span className="badge bg-secondary-subtle text-secondary me-2">
+                        {application.supportingDocument.documentType || 'Verification Screenshot'}
+                      </span>
+                      <span>
+                        Size: {application.supportingDocument.size ? `${Math.round(application.supportingDocument.size / 1024)} KB` : '—'}
+                      </span>
+                      <span className="mx-2">•</span>
+                      <span>
+                        Uploaded: {new Date(application.supportingDocument.uploadedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="d-flex gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm px-3"
+                      onClick={handleOpenDocPreview}
+                      disabled={docLoadingPreview}
+                    >
+                      {docLoadingPreview ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa-solid fa-eye me-1"></i> View Document
+                        </>
+                      )}
+                    </button>
+                    {!['Cancelled', 'No Show', 'Rejected'].includes(application.status) && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => setShowReplaceDoc(!showReplaceDoc)}
+                      >
+                        <i className="fa-solid fa-arrows-rotate me-1"></i>
+                        {showReplaceDoc ? 'Cancel' : 'Replace File'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Notice if application is in terminal state without doc */}
+            {['Cancelled', 'No Show', 'Rejected'].includes(application.status) && !application.supportingDocument?.filename && (
+              <div className="alert alert-secondary small py-2 px-3 mb-0">
+                <i className="fa-solid fa-circle-info me-2 text-secondary"></i>
+                Document upload is closed because this application is {application.status.toLowerCase()}.
+              </div>
+            )}
+
+            {/* Document Upload Form (Available only in active/valid application states) */}
+            {!['Cancelled', 'No Show', 'Rejected'].includes(application.status) && (!application.supportingDocument?.filename || showReplaceDoc) && (
+              <form onSubmit={handleUploadDoc} className="border rounded p-3 bg-white">
+                <h6 className="fw-semibold text-dark small mb-2">
+                  <i className="fa-solid fa-upload me-1 text-primary-egsa"></i>
+                  {application.supportingDocument?.filename ? 'Replace Uploaded Document' : 'Upload Verification Document / Screenshot'}
+                </h6>
+                <p className="text-muted small mb-3">
+                  Upload an image or document (JPEG, PNG, WEBP, or PDF, max 5 MB). This file will be reviewed directly by the admissions administration.
+                </p>
+
+                <div className="row g-2 mb-3">
+                  <div className="col-sm-6">
+                    <label className="form-label small fw-bold text-dark mb-1">Document Category:</label>
+                    <select
+                      className="form-select form-select-sm"
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                    >
+                      <option value="National ID / Passport">National ID / Passport</option>
+                      <option value="Student ID / University Card">Student ID / University Card</option>
+                      <option value="Academic Degree / Transcript">Academic Degree / Transcript</option>
+                      <option value="Enrollment Certificate">Enrollment Certificate</option>
+                      <option value="Other Supporting Document">Other Supporting Document</option>
+                    </select>
+                  </div>
+                  <div className="col-sm-6">
+                    <label className="form-label small fw-bold text-dark mb-1">Select File:</label>
+                    <input
+                      type="file"
+                      className="form-control form-control-sm"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                      onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
+                </div>
+
+                <div className="d-flex justify-content-end gap-2">
+                  {showReplaceDoc && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={() => {
+                        setShowReplaceDoc(false);
+                        setDocFile(null);
+                      }}
+                      disabled={uploadingDoc}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="btn btn-success btn-sm px-3 fw-bold"
+                    disabled={uploadingDoc || !docFile}
+                  >
+                    {uploadingDoc ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-cloud-arrow-up me-1"></i> Upload & Submit Document
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Separate Manual Payment Proof Status (if exists) */}
+            {application.paymentProof && (
+              <div className="mt-3 pt-3 border-top">
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="small text-muted">
+                    <i className="fa-solid fa-receipt me-1 text-primary-egsa"></i>
+                    Tuition Payment Proof Submission:
+                  </span>
+                  <span className={`badge ${
+                    application.paymentProof.status === 'Approved'
+                      ? 'bg-success'
+                      : application.paymentProof.status === 'Rejected'
+                      ? 'bg-danger'
+                      : 'bg-warning text-dark'
+                  }`}>
+                    Payment Proof {application.paymentProof.status}
+                  </span>
+                </div>
+                {application.paymentProof.rejectionReason && (
+                  <small className="text-danger d-block mt-1">
+                    Finance Note: {application.paymentProof.rejectionReason}
+                  </small>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Dual Evaluation Breakdown Card */}
@@ -941,6 +1191,94 @@ export default function ApplicationDetailPage() {
                   ) : (
                     'Confirm Cancellation'
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {docViewing && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1070 }}
+          role="dialog"
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content shadow border-0" style={{ borderRadius: 'var(--radius-md)' }}>
+              <div className="modal-header bg-dark text-white">
+                <h5 className="modal-title fw-bold">
+                  <i className="fa-solid fa-file-shield text-info me-2"></i>
+                  Supporting Document: {application.supportingDocument?.originalName || 'Document'}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={handleCloseDocPreview}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4 text-center">
+                <div className="d-flex justify-content-between align-items-center bg-light p-3 rounded border mb-3 text-start small">
+                  <div>
+                    <div><strong>Document Type:</strong> {application.supportingDocument?.documentType || 'Verification Screenshot'}</div>
+                    <div><strong>Original Name:</strong> {application.supportingDocument?.originalName}</div>
+                  </div>
+                  <div className="text-end">
+                    <div><strong>Format:</strong> {application.supportingDocument?.mimetype || 'Unknown'}</div>
+                    <div>
+                      <strong>Size:</strong>{' '}
+                      {application.supportingDocument?.size
+                        ? `${Math.round(application.supportingDocument.size / 1024)} KB`
+                        : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {docLoadingPreview ? (
+                  <div className="py-5">
+                    <span className="spinner-border text-primary" role="status"></span>
+                    <p className="text-muted small mt-2">Loading document stream securely...</p>
+                  </div>
+                ) : docBlobUrl ? (
+                  <div className="text-center">
+                    {application.supportingDocument?.mimetype?.startsWith('image/') ? (
+                      <img
+                        src={docBlobUrl}
+                        alt="Supporting Document"
+                        className="img-fluid rounded border shadow-sm"
+                        style={{ maxHeight: '65vh', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <iframe
+                        src={docBlobUrl}
+                        title="Supporting Document PDF"
+                        className="w-100 rounded border"
+                        style={{ height: '65vh' }}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="modal-footer bg-light d-flex justify-content-between">
+                {docBlobUrl ? (
+                  <a
+                    href={docBlobUrl}
+                    download={application.supportingDocument?.originalName || 'application_document'}
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    <i className="fa-solid fa-download me-1"></i> Download File
+                  </a>
+                ) : <span />}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm px-4"
+                  onClick={handleCloseDocPreview}
+                >
+                  Close
                 </button>
               </div>
             </div>

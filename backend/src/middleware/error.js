@@ -28,6 +28,15 @@ class ApiError extends Error {
 }
 
 function errorHandler(err, req, res, next) {
+  if (err.name === 'CastError') {
+    err.statusCode = 404;
+    err.message = `Resource not found with id: ${err.value}`;
+    err.isOperational = true;
+  }
+  if (err.name === 'MulterError') {
+    err.statusCode = 400;
+    err.isOperational = true;
+  }
   const statusCode = err.statusCode || err.status || 500;
   const message = err.isOperational || !env.isProduction ? err.message : 'An unexpected error occurred';
 

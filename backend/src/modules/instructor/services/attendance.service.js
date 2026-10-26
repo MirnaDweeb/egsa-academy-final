@@ -97,6 +97,16 @@ async function saveAttendance(instructorId, sessionId, records) {
     );
   }
   await activity.log(instructorId, 'attendance.saved', 'Session', session._id, `Recorded attendance for "${session.title}" (${records.length} students)`);
+
+  try {
+    const { syncAttendanceFromInstructor } = require('../../integration/unifiedSyncService');
+    syncAttendanceFromInstructor({
+      instructorId,
+      sessionId,
+      records,
+    }).catch(err => console.warn('[ATTENDANCE SYNC] Cross-portal sync notice:', err.message));
+  } catch (_) {}
+
   return sessionRoster(instructorId, sessionId);
 }
 

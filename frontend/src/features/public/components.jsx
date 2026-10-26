@@ -104,6 +104,8 @@ export function Header() {
           <button className="lang" disabled title="Arabic content is not yet available">العربية</button>
           {config.loginUrl ? (
             <a className="btn gold sm" href={config.loginUrl}>Sign In</a>
+          ) : localStorage.getItem('egsa_access_token') ? (
+            <Link className="btn gold sm" to="/student/dashboard" onClick={() => setOpen(false)}>Academy Portal &rarr;</Link>
           ) : (
             <Link className="btn gold sm" to="/login" onClick={() => setOpen(false)}>Sign In</Link>
           )}

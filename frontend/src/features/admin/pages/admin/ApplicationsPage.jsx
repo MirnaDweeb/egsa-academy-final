@@ -148,6 +148,29 @@ export default function ApplicationsPage() {
   const [appPaymentLoading, setAppPaymentLoading] = useState(false);
   const [appPaymentError, setAppPaymentError] = useState('');
 
+  // Supporting Document state
+  const [docBlobUrl, setDocBlobUrl] = useState(null);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState('');
+
+  const handleFetchDocument = async (id) => {
+    setDocLoading(true);
+    setDocError('');
+    if (docBlobUrl) {
+      URL.revokeObjectURL(docBlobUrl);
+      setDocBlobUrl(null);
+    }
+    try {
+      const blob = await adminService.fetchApplicationDocumentBlob(id);
+      const url = URL.createObjectURL(blob);
+      setDocBlobUrl(url);
+    } catch (err) {
+      setDocError(err.message || 'Failed to load document');
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
   // Fetch available programs for dropdown
   useEffect(() => {
     let isMounted = true;
@@ -863,6 +886,104 @@ export default function ApplicationsPage() {
                     </span>
                   </div>
                 </>
+              )}
+            </div>
+
+            {/* SUPPORTING VERIFICATION DOCUMENT */}
+            <div className={styles.detailSection}>
+              <div className={styles.detailTitle}>
+                <i className="fa-solid fa-file-shield me-1" aria-hidden="true"></i> Supporting Verification Document
+              </div>
+              {detailApp.supportingDocument?.filename ? (
+                <div>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailKey}>Document Type:</span>
+                    <span className={styles.detailValue}>
+                      {detailApp.supportingDocument.documentType || 'Verification Screenshot'}
+                    </span>
+                  </div>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailKey}>File Name:</span>
+                    <span className={styles.detailValue}>
+                      {detailApp.supportingDocument.originalName} (
+                      {detailApp.supportingDocument.size
+                        ? `${Math.round(detailApp.supportingDocument.size / 1024)} KB`
+                        : '—'}
+                      )
+                    </span>
+                  </div>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailKey}>Uploaded At:</span>
+                    <span className={styles.detailValue}>
+                      {detailApp.supportingDocument.uploadedAt
+                        ? new Date(detailApp.supportingDocument.uploadedAt).toLocaleString()
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    {!docBlobUrl ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                        onClick={() => handleFetchDocument(detailApp._id)}
+                        disabled={docLoading}
+                      >
+                        {docLoading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                            Loading Document...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa-solid fa-eye me-1"></i> Open & Review Document
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="border rounded p-2 bg-light text-center mt-2">
+                        {detailApp.supportingDocument.mimetype?.startsWith('image/') ? (
+                          <img
+                            src={docBlobUrl}
+                            alt="Applicant Supporting Document"
+                            className="img-fluid rounded border shadow-sm"
+                            style={{ maxHeight: '400px', objectFit: 'contain' }}
+                          />
+                        ) : (
+                          <iframe
+                            src={docBlobUrl}
+                            title="Applicant Supporting Document PDF"
+                            className="w-100 rounded border"
+                            style={{ height: '400px' }}
+                          />
+                        )}
+                        <div className="mt-2 d-flex justify-content-center gap-2">
+                          <a
+                            href={docBlobUrl}
+                            download={detailApp.supportingDocument.originalName || 'application_document'}
+                            className="btn btn-outline-secondary btn-sm"
+                          >
+                            <i className="fa-solid fa-download me-1"></i> Download
+                          </a>
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => {
+                              URL.revokeObjectURL(docBlobUrl);
+                              setDocBlobUrl(null);
+                            }}
+                          >
+                            Hide Preview
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {docError && <div className="text-danger small mt-1">{docError}</div>}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-muted small py-1">
+                  <i className="fa-solid fa-circle-info me-1"></i> No supporting document or screenshot attached to this application.
+                </div>
               )}
             </div>
 

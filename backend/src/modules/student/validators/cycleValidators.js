@@ -14,6 +14,10 @@ const submitAssessmentValidator = [
 const createApplicationValidator = [
   body('courseId').isMongoId().withMessage('A valid courseId is required.'),
   body('readinessAttemptId').optional().isMongoId().withMessage('Invalid readiness attempt id.'),
+  body('directEnroll').optional().isBoolean().withMessage('directEnroll must be a boolean.'),
+  body('selectedPackage').optional().isIn(['WITHOUT_TRANSPORTATION', 'WITH_TRANSPORTATION']).withMessage('Invalid package type.'),
+  body('notes').optional().isString().trim(),
+  body('statementOfInterest').optional().isString().trim(),
 ];
 
 const payInvoiceValidator = [

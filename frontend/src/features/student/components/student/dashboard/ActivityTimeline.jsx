@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -7,6 +7,11 @@ import { Link } from 'react-router-dom';
  * cohort enrollment events, and official certificate milestones.
  */
 export default function ActivityTimeline({ timeline = [] }) {
+  const [expanded, setExpanded] = useState(false);
+  const VISIBLE_LIMIT = 4;
+  const displayedEvents = expanded ? timeline : timeline.slice(0, VISIBLE_LIMIT);
+  const hasMore = timeline.length > VISIBLE_LIMIT;
+
   return (
     <div className="egsa-institutional-card mb-4" aria-labelledby="activity-heading">
       <div className="card-header-clean">
@@ -31,39 +36,54 @@ export default function ActivityTimeline({ timeline = [] }) {
           </p>
         </div>
       ) : (
-        <div className="institutional-timeline-tree">
-          {timeline.map((event, idx) => (
-            <div key={event.id || idx} className="timeline-node-item">
-              {/* Vertical connector line */}
-              <div className="timeline-node-rail">
-                <div className="timeline-node-marker">
-                  <i className={`fa-solid ${event.icon || 'fa-circle-dot'}`}></i>
+        <>
+          <div className="institutional-timeline-tree">
+            {displayedEvents.map((event, idx) => (
+              <div key={event.id || idx} className="timeline-node-item">
+                {/* Vertical connector line */}
+                <div className="timeline-node-rail">
+                  <div className="timeline-node-marker">
+                    <i className={`fa-solid ${event.icon || 'fa-circle-dot'}`}></i>
+                  </div>
+                  {idx < displayedEvents.length - 1 && <div className="timeline-node-connector"></div>}
                 </div>
-                {idx < timeline.length - 1 && <div className="timeline-node-connector"></div>}
-              </div>
 
-              {/* Node content */}
-              <div className="timeline-node-content">
-                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                  <span className="timeline-event-title">{event.title}</span>
-                  <span className="timeline-event-time">
-                    {new Date(event.timestamp).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </span>
+                {/* Node content */}
+                <div className="timeline-node-content">
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                    <span className="timeline-event-title">{event.title}</span>
+                    <span className="timeline-event-time">
+                      {new Date(event.timestamp).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                  <p className="timeline-event-desc text-muted mb-1">{event.description}</p>
+                  {event.link && (
+                    <Link to={event.link} className="timeline-event-link">
+                      Review Details <i className="fa-solid fa-chevron-right ms-1"></i>
+                    </Link>
+                  )}
                 </div>
-                <p className="timeline-event-desc text-muted mb-1">{event.description}</p>
-                {event.link && (
-                  <Link to={event.link} className="timeline-event-link">
-                    Review Details <i className="fa-solid fa-chevron-right ms-1"></i>
-                  </Link>
-                )}
               </div>
+            ))}
+          </div>
+
+          {hasMore && (
+            <div className="card-bottom-action pt-3 mt-1 border-top text-center">
+              <button
+                type="button"
+                className="btn btn-light btn-sm w-100 fw-semibold text-primary d-inline-flex align-items-center justify-content-center gap-2"
+                onClick={() => setExpanded(!expanded)}
+              >
+                <span>{expanded ? 'Show Less Activity' : `View More Activities (${timeline.length - VISIBLE_LIMIT} more)`}</span>
+                <i className={`fa-solid ${expanded ? 'fa-chevron-up' : 'fa-chevron-down'} small`}></i>
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -23,7 +23,7 @@ export default function AdminLayout() {
   const handleLogout = () => {
     setShowLogoutConfirm(false);
     logout();
-    navigate('/login');
+    navigate('/', { replace: true });
   };
 
   return (

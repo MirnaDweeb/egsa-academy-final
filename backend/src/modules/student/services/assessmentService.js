@@ -10,6 +10,10 @@ const TrainingSession = require('../models/TrainingSession');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { AppError } = require('../middleware/error');
+let unifiedSyncService;
+try {
+  unifiedSyncService = require('../../integration/unifiedSyncService');
+} catch (_) {}
 
 /**
  * Creates an institutional notification safely without blocking main thread.
@@ -342,7 +346,16 @@ async function listAssessments(callerUser, query = {}) {
     }).select('cohort course');
 
     const cohortIds = enrollments.map((e) => e.cohort).filter(Boolean);
-    filter.cohort = { $in: cohortIds };
+    const courseIds = enrollments.map((e) => e.course).filter(Boolean);
+    if (cohortIds.length > 0 && courseIds.length > 0) {
+      filter.$or = [{ cohort: { $in: cohortIds } }, { course: { $in: courseIds } }];
+    } else if (cohortIds.length > 0) {
+      filter.cohort = { $in: cohortIds };
+    } else if (courseIds.length > 0) {
+      filter.course = { $in: courseIds };
+    } else {
+      filter.cohort = { $in: [] };
+    }
   }
 
   const assessments = await Assessment.find(filter)
@@ -845,13 +858,25 @@ async function submitAssessment(assessmentId, studentUser, data = {}, file = nul
     throw new AppError('This assessment has been cancelled.', 400);
   }
 
-  // Verify student enrollment in the assessment's cohort
+  // Verify student enrollment in the assessment's cohort or course
   const cohortId = assessment.cohort?._id || assessment.cohort;
-  const enrollment = await Enrollment.findOne({
+  let enrollment = await Enrollment.findOne({
     student: studentUser._id,
     cohort: cohortId,
     status: { $in: ['Active', 'Confirmed', 'Completed'] },
   });
+
+  if (!enrollment && assessment.course) {
+    enrollment = await Enrollment.findOne({
+      student: studentUser._id,
+      course: assessment.course,
+      status: { $in: ['Active', 'Confirmed', 'Completed'] },
+    });
+    if (enrollment && !enrollment.cohort && cohortId) {
+      enrollment.cohort = cohortId;
+      await enrollment.save();
+    }
+  }
 
   if (!enrollment) {
     throw new AppError('You are not an active enrolled member of this assessment cohort.', 403);
@@ -939,6 +964,16 @@ async function submitAssessment(assessmentId, studentUser, data = {}, file = nul
       assessment.course
     );
 
+    if (unifiedSyncService?.syncSubmissionFromStudent) {
+      unifiedSyncService.syncSubmissionFromStudent({
+        studentUser,
+        assessment,
+        submission: existing,
+        filePayload,
+        textAnswer,
+      }).catch((err) => console.warn('[ASSESSMENT] Sync to instructor failed:', err.message));
+    }
+
     return existing;
   }
 
@@ -966,6 +1001,16 @@ async function submitAssessment(assessmentId, studentUser, data = {}, file = nul
     'success',
     assessment.course
   );
+
+  if (unifiedSyncService?.syncSubmissionFromStudent) {
+    unifiedSyncService.syncSubmissionFromStudent({
+      studentUser,
+      assessment,
+      submission: newSubmission,
+      filePayload,
+      textAnswer,
+    }).catch((err) => console.warn('[ASSESSMENT] Sync to instructor failed:', err.message));
+  }
 
   return newSubmission;
 }

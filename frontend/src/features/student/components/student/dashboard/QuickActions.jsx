@@ -88,7 +88,7 @@ export default function QuickActions({
       icon: 'fa-file-lines',
       link: currentApplicationId
         ? `/student/applications/${currentApplicationId}`
-        : '/student/applications',
+        : '/student/training?tab=applications',
     });
   }
 
@@ -145,7 +145,7 @@ export default function QuickActions({
               <i className={`fa-solid ${act.icon}`}></i>
             </div>
             <div className="tile-text-box">
-              <div className="d-flex align-items-center justify-content-between mb-1">
+              <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
                 <span className="tile-title">{act.title}</span>
                 {act.badge && <span className="tile-priority-badge">{act.badge}</span>}
               </div>

@@ -43,7 +43,9 @@ export default function NotificationsPreview({
     });
   };
 
-  const displayedNotifications = notifications.slice(0, 5);
+  const VISIBLE_LIMIT = 3;
+  const displayedNotifications = notifications.slice(0, VISIBLE_LIMIT);
+  const hasMore = notifications.length > VISIBLE_LIMIT;
 
   return (
     <div className="egsa-institutional-card mb-4" aria-labelledby="notifications-heading">
@@ -82,33 +84,47 @@ export default function NotificationsPreview({
           </p>
         </div>
       ) : (
-        <div className="notifications-compact-list">
-          {displayedNotifications.map((notif) => {
-            const { icon, colorClass } = getNotificationIcon(notif.type);
-            const isUnread = notif.isRead === false;
+        <>
+          <div className="notifications-compact-list">
+            {displayedNotifications.map((notif) => {
+              const { icon, colorClass } = getNotificationIcon(notif.type);
+              const isUnread = notif.isRead === false;
 
-            return (
-              <div
-                key={notif._id}
-                className={`notification-item-compact ${isUnread ? 'is-unread' : 'is-read'}`}
-              >
-                <div className={`notif-icon-wrap ${colorClass}`}>
-                  <i className={`fa-solid ${icon}`}></i>
-                </div>
-
-                <div className="notif-content-wrap">
-                  <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
-                    <span className="notif-title-text">{notif.title}</span>
-                    <span className="notif-timestamp-text">{formatTimestamp(notif.createdAt)}</span>
+              return (
+                <div
+                  key={notif._id}
+                  className={`notification-item-compact ${isUnread ? 'is-unread' : 'is-read'}`}
+                >
+                  <div className={`notif-icon-wrap ${colorClass}`}>
+                    <i className={`fa-solid ${icon}`}></i>
                   </div>
-                  <p className="notif-message-text mb-0">{notif.message}</p>
-                </div>
 
-                {isUnread && <span className="notif-unread-dot" title="Unread"></span>}
-              </div>
-            );
-          })}
-        </div>
+                  <div className="notif-content-wrap">
+                    <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+                      <span className="notif-title-text">{notif.title}</span>
+                      <span className="notif-timestamp-text">{formatTimestamp(notif.createdAt)}</span>
+                    </div>
+                    <p className="notif-message-text mb-0">{notif.message}</p>
+                  </div>
+
+                  {isUnread && <span className="notif-unread-dot" title="Unread"></span>}
+                </div>
+              );
+            })}
+          </div>
+
+          {hasMore && (
+            <div className="card-bottom-action pt-3 mt-3 border-top text-center">
+              <Link
+                to="/student/notifications"
+                className="btn btn-light btn-sm w-100 fw-semibold text-primary d-inline-flex align-items-center justify-content-center gap-2"
+              >
+                <span>View All Notifications ({notifications.length})</span>
+                <i className="fa-solid fa-arrow-right small"></i>
+              </Link>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

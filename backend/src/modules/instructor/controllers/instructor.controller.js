@@ -84,5 +84,8 @@ exports.messages = h(async (req, res) => { const r = await S.messaging.listMessa
 exports.sendMessage = h(async (req, res) => ok(res, await S.messaging.sendMessage(me(req), req.params.id, req.body.body), null, 201));
 exports.markRead = h(async (req, res) => ok(res, await S.messaging.markAsRead(me(req), req.params.id)));
 exports.unreadCount = h(async (req, res) => ok(res, await S.messaging.getUnreadCount(me(req))));
+exports.contactAdmin = h(async (req, res) => ok(res, await S.messaging.instructorGetOrCreateAdminConversation(me(req), req.body), null, 201));
+exports.updateStatus = h(async (req, res) => ok(res, await S.messaging.updateConversationStatus({ id: me(req), role: 'instructor' }, req.params.id, req.body.status)));
+
 
 

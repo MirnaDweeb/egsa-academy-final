@@ -12,21 +12,60 @@ const { issueInvoice, processExpiredInvoices, releaseSeatAndPromoteWaitlist } = 
 const { notify } = require('../services/notificationService');
 const { sendApplicationSubmittedEmail } = require('../utils/email');
 const { AppError } = require('../middleware/error');
+const fs = require('fs');
+const path = require('path');
+const PaymentProof = require('../models/PaymentProof');
+const { validateDocumentMagicBytes, privateDocsDir } = require('../middleware/applicationDocumentUpload');
 
 async function createApplication(req, res, next) {
   try {
-    const { courseId, readinessAttemptId, directEnroll } = req.body;
+    const {
+      courseId,
+      readinessAttemptId,
+      directEnroll,
+      selectedPackage = 'WITHOUT_TRANSPORTATION',
+      notes,
+      statementOfInterest,
+    } = req.body;
     const isDirectEnroll = directEnroll === true;
+
     const course = await Course.findById(courseId);
     if (!course) throw new AppError('Course not found.', 404);
-    if (course.price == null) {
-      throw new AppError('This course does not have published pricing yet, so applications are not open.', 400);
+
+    // 1. Validate Course Availability & Application Window
+    if (course.published === false || course.isActive === false || course.status === 'Closed' || course.status === 'Archived') {
+      throw new AppError('Applications are currently closed for this course.', 400);
+    }
+    if (course.applicationCloseDate && new Date(course.applicationCloseDate) < new Date()) {
+      throw new AppError('The application deadline for this course has passed.', 400);
+    }
+    if (course.applicationOpenDate && new Date(course.applicationOpenDate) > new Date()) {
+      throw new AppError('Applications for this course have not opened yet.', 400);
     }
 
-    const profile = await StudentProfile.findOne({ user: req.user._id });
-    if (!profile) throw new AppError('Complete your profile first.', 400);
+    // 2. Direct Enrollment Constraints
+    if (isDirectEnroll) {
+      if (course.price == null) {
+        throw new AppError('This course does not have published pricing yet. Please submit an application for admissions review.', 400);
+      }
+      if (course.directEnrollmentPermitted === false) {
+        throw new AppError('Direct enrollment is not permitted for this program. Mandatory readiness completion or committee review required.', 400);
+      }
+    }
 
-    // Prevent duplicate active applications for the same student and course
+    // 3. Resolve or Auto-initialize Student Profile
+    let profile = await StudentProfile.findOne({ user: req.user._id });
+    if (!profile) {
+      profile = await StudentProfile.create({
+        user: req.user._id,
+        status: 'student',
+        university: 'Egyptian Space Academy Candidate',
+        faculty: 'Engineering & Space Sciences',
+        profileCompleted: false,
+      });
+    }
+
+    // 4. Prevent duplicate active applications for the same student and course
     let existingQuery = Application.findOne({
       student: req.user._id,
       course: course._id,
@@ -43,27 +82,49 @@ async function createApplication(req, res, next) {
         await existingActiveApp.save();
       }
 
-      // If student opts for direct enrollment, ensure eligibility is activated
-      if (isDirectEnroll && (course.directEnrollmentPermitted !== false || existingActiveApp.status !== 'Foundation Recommended') && existingActiveApp.status !== 'Manual Review') {
+      // If student opts for direct enrollment on existing eligible app with published pricing
+      if (
+        isDirectEnroll &&
+        course.price != null &&
+        course.directEnrollmentPermitted !== false &&
+        existingActiveApp.status !== 'Foundation Recommended' &&
+        existingActiveApp.status !== 'Manual Review'
+      ) {
         existingActiveApp.eligibilityStatus = 'Eligible';
-        if (existingActiveApp.status === 'Foundation Recommended' && course.directEnrollmentPermitted !== false) {
+        if (['Under Review', 'Submitted', 'Draft'].includes(existingActiveApp.status)) {
           existingActiveApp.status = 'Submitted';
         }
         await existingActiveApp.save();
-      }
 
-      // Self-heal eligible application if pending review or opted for direct enrollment
-      let admissionRes = null;
-      if (existingActiveApp.eligibilityStatus === 'Eligible' && ['Under Review', 'Submitted', 'Draft'].includes(existingActiveApp.status)) {
-        admissionRes = await autoAcceptAndReserveSeat({ application: existingActiveApp, directEnroll: isDirectEnroll });
+        let admissionRes = await autoAcceptAndReserveSeat({
+          application: existingActiveApp,
+          directEnroll: true,
+          packageType: selectedPackage || existingActiveApp.selectedPackage,
+        });
         if (admissionRes?.application) {
           existingActiveApp = admissionRes.application;
         }
+
+        let invoice = admissionRes?.invoice || null;
+        if (!invoice && ['Accepted', 'Eligible - Payment Pending'].includes(existingActiveApp.status)) {
+          invoice = await Invoice.findOne({ application: existingActiveApp._id, status: { $ne: 'Cancelled' } });
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: existingActiveApp,
+          invoice,
+          waitlisted: existingActiveApp.status === 'Waitlisted',
+          waitlistPosition: existingActiveApp.waitlistPosition,
+          message: existingActiveApp.status === 'Accepted'
+            ? 'Seat reserved and invoice ready for payment.'
+            : 'Active application already exists for this course.',
+        });
       }
 
-      // Retrieve or attach active invoice
-      let invoice = admissionRes?.invoice || null;
-      if (!invoice && ['Accepted', 'Eligible - Payment Pending'].includes(existingActiveApp.status)) {
+      // Retrieve or attach active invoice if any
+      let invoice = null;
+      if (['Accepted', 'Eligible - Payment Pending'].includes(existingActiveApp.status)) {
         invoice = await Invoice.findOne({ application: existingActiveApp._id, status: { $ne: 'Cancelled' } });
       }
 
@@ -71,22 +132,34 @@ async function createApplication(req, res, next) {
         success: true,
         data: existingActiveApp,
         invoice,
+        waitlisted: existingActiveApp.status === 'Waitlisted',
+        waitlistPosition: existingActiveApp.waitlistPosition,
         message: 'Active application already exists for this course.',
       });
     }
 
+    // 5. Evaluate Course Fit & Prerequisites
     const fit = await checkCourseFit(profile, course);
+    const applicantNotes = notes || statementOfInterest || undefined;
+
     if (fit.result === 'Foundation Required') {
       const application = await Application.create({
         student: req.user._id,
         course: course._id,
         status: 'Foundation Recommended',
         eligibilityStatus: 'Not Eligible',
+        selectedPackage,
+        notes: applicantNotes,
+        statementOfInterest: applicantNotes,
         statusHistory: [{ status: 'Foundation Recommended', note: fit.reasons[0]?.message }],
         fitResultSnapshot: fit,
         submittedAt: new Date(),
       });
-      return res.status(201).json({ success: true, data: application, message: 'Foundation course required before applying.' });
+      return res.status(201).json({
+        success: true,
+        data: application,
+        message: fit.reasons[0]?.message || 'Foundation course required before applying.',
+      });
     }
 
     if (fit.result === 'Manual Review') {
@@ -95,13 +168,21 @@ async function createApplication(req, res, next) {
         course: course._id,
         status: 'Manual Review',
         eligibilityStatus: 'In Progress',
+        selectedPackage,
+        notes: applicantNotes,
+        statementOfInterest: applicantNotes,
         statusHistory: [{ status: 'Manual Review', note: fit.reasons[0]?.message || 'Admissions committee manual review required.' }],
         fitResultSnapshot: fit,
         submittedAt: new Date(),
       });
-      return res.status(201).json({ success: true, data: application, message: 'Application requires manual review by admissions committee.' });
+      return res.status(201).json({
+        success: true,
+        data: application,
+        message: 'Application requires manual review by admissions committee.',
+      });
     }
 
+    // 6. Check for Readiness Attempt
     let readinessAttempt = null;
     if (readinessAttemptId) {
       readinessAttempt = await ReadinessAttempt.findOne({
@@ -112,7 +193,6 @@ async function createApplication(req, res, next) {
       });
     }
 
-    // Also look for any previous submitted readiness attempt for this student & course if not passed in body
     if (!readinessAttempt) {
       readinessAttempt = await ReadinessAttempt.findOne({
         student: req.user._id,
@@ -123,37 +203,99 @@ async function createApplication(req, res, next) {
 
     let cohort = await Cohort.findOne({ course: course._id, status: 'Scheduled' }).sort({ startDate: 1 });
 
-    // Determine initial status and eligibilityStatus
-    let eligibilityStatus = 'Not Started';
-    let status = 'Submitted';
+    // 7. Case A: Course has no published pricing (price == null)
+    if (course.price == null) {
+      const application = await Application.create({
+        student: req.user._id,
+        course: course._id,
+        cohort: cohort ? cohort._id : undefined,
+        readinessAttempt: readinessAttempt ? readinessAttempt._id : undefined,
+        status: 'Under Review',
+        eligibilityStatus: 'In Progress',
+        selectedPackage,
+        notes: applicantNotes,
+        statementOfInterest: applicantNotes,
+        statusHistory: [{ status: 'Under Review', note: 'Application registered for admissions review. Tuition will be finalized upon acceptance.' }],
+        fitResultSnapshot: fit,
+        submittedAt: new Date(),
+      });
 
-    if (readinessAttempt) {
-      if (['FOUNDATION_REQUIRED', 'FOUNDATION_RECOMMENDED'].includes(readinessAttempt.outcome)) {
-        if (isDirectEnroll || course.directEnrollmentPermitted === true) {
-          eligibilityStatus = 'Eligible';
-          status = isDirectEnroll ? 'Submitted' : 'Foundation Recommended';
-        } else {
-          eligibilityStatus = 'Not Eligible';
-          status = 'Foundation Recommended';
-        }
-      } else if (['READY', 'CONDITIONALLY_READY', 'ELIGIBLE'].includes(readinessAttempt.outcome)) {
-        eligibilityStatus = 'Eligible';
-        status = 'Submitted';
-      } else {
-        eligibilityStatus = 'In Progress';
-        status = 'Manual Review';
-      }
-    } else {
-      const hasQuestions = await ReadinessQuestion.exists({ course: course._id });
-      if (isDirectEnroll || !hasQuestions || course.directEnrollmentPermitted === true) {
-        // Direct enrollment: assessment is optional!
-        eligibilityStatus = 'Eligible';
-        status = 'Submitted';
-      } else {
-        eligibilityStatus = 'Not Started';
-        status = 'Submitted';
-      }
+      try {
+        await sendApplicationSubmittedEmail({
+          to: req.user.email,
+          fullName: req.user.fullName,
+          courseTitle: course.title,
+          applicationNumber: application.referenceNumber,
+          preferredLanguage: req.user.preferredLanguage || 'en',
+        });
+      } catch (_) {}
+
+      try {
+        await notify({
+          recipient: req.user._id,
+          title: 'Application Submitted for Review',
+          message: `Your application for ${course.title} has been received and is under review by admissions.`,
+          type: 'info',
+          relatedCourse: course._id,
+          relatedApplication: application._id,
+        });
+      } catch (_) {}
+
+      return res.status(201).json({
+        success: true,
+        data: application,
+        message: 'Application submitted successfully. Your application is under review by the admissions committee.',
+      });
     }
+
+    // 8. Case B: Standard Application (isDirectEnroll is false)
+    if (!isDirectEnroll) {
+      const application = await Application.create({
+        student: req.user._id,
+        course: course._id,
+        cohort: cohort ? cohort._id : undefined,
+        readinessAttempt: readinessAttempt ? readinessAttempt._id : undefined,
+        status: 'Submitted',
+        eligibilityStatus: 'In Progress',
+        selectedPackage,
+        notes: applicantNotes,
+        statementOfInterest: applicantNotes,
+        statusHistory: [{ status: 'Submitted', note: 'Application submitted by student for admissions review.' }],
+        fitResultSnapshot: fit,
+        submittedAt: new Date(),
+      });
+
+      try {
+        await sendApplicationSubmittedEmail({
+          to: req.user.email,
+          fullName: req.user.fullName,
+          courseTitle: course.title,
+          applicationNumber: application.referenceNumber,
+          preferredLanguage: req.user.preferredLanguage || 'en',
+        });
+      } catch (_) {}
+
+      try {
+        await notify({
+          recipient: req.user._id,
+          title: 'Application Submitted',
+          message: `Your application for ${course.title} has been received and is under processing.`,
+          type: 'info',
+          relatedCourse: course._id,
+          relatedApplication: application._id,
+        });
+      } catch (_) {}
+
+      return res.status(201).json({
+        success: true,
+        data: application,
+        message: 'Application submitted successfully. Your application has been received and is under processing.',
+      });
+    }
+
+    // 9. Case C: Direct Enrollment (isDirectEnroll is true and course.price != null)
+    let eligibilityStatus = 'Eligible';
+    let status = 'Submitted';
 
     let application = await Application.create({
       student: req.user._id,
@@ -162,12 +304,14 @@ async function createApplication(req, res, next) {
       readinessAttempt: readinessAttempt ? readinessAttempt._id : undefined,
       status,
       eligibilityStatus,
-      statusHistory: [{ status, note: `Application registered with status ${status}.` }],
+      selectedPackage,
+      notes: applicantNotes,
+      statementOfInterest: applicantNotes,
+      statusHistory: [{ status, note: `Direct enrollment initiated with status ${status}.` }],
       fitResultSnapshot: fit,
       submittedAt: new Date(),
     });
 
-    // Always dispatch institutional application acknowledgement email upon registration
     try {
       await sendApplicationSubmittedEmail({
         to: req.user.email,
@@ -176,35 +320,23 @@ async function createApplication(req, res, next) {
         applicationNumber: application.referenceNumber,
         preferredLanguage: req.user.preferredLanguage || 'en',
       });
-    } catch (emailErr) {
-      console.error('[EMAIL ERROR] Failed to send application submitted email:', emailErr.message);
-    }
+    } catch (_) {}
 
-    // Direct Automatic Acceptance, Atomic Seat Reservation & Invoice Generation
-    let invoice = null;
-    if (eligibilityStatus === 'Eligible') {
-      const admissionRes = await autoAcceptAndReserveSeat({
-        application,
-        studentId: req.user._id,
-        courseId: course._id,
-        cohortId: cohort ? cohort._id : undefined,
-      });
-      if (admissionRes?.application) {
-        application = admissionRes.application;
-      }
-      invoice = admissionRes?.invoice || null;
-      if (!invoice && ['Accepted', 'Eligible - Payment Pending'].includes(application.status)) {
-        invoice = await Invoice.findOne({ application: application._id, status: { $ne: 'Cancelled' } });
-      }
-    } else {
-      await notify({
-        recipient: req.user._id,
-        title: 'Application Submitted',
-        message: 'Your application has been received and is under processing.',
-        type: 'info',
-        relatedCourse: course._id,
-        relatedApplication: application._id,
-      });
+    const admissionRes = await autoAcceptAndReserveSeat({
+      application,
+      studentId: req.user._id,
+      courseId: course._id,
+      cohortId: cohort ? cohort._id : undefined,
+      packageType: selectedPackage,
+      directEnroll: true,
+    });
+
+    if (admissionRes?.application) {
+      application = admissionRes.application;
+    }
+    let invoice = admissionRes?.invoice || null;
+    if (!invoice && ['Accepted', 'Eligible - Payment Pending'].includes(application.status)) {
+      invoice = await Invoice.findOne({ application: application._id, status: { $ne: 'Cancelled' } });
     }
 
     res.status(201).json({
@@ -215,7 +347,9 @@ async function createApplication(req, res, next) {
       waitlistPosition: application.waitlistPosition,
       message: application.status === 'Accepted'
         ? 'Application automatically accepted and seat reserved. Payment is now available.'
-        : 'Application submitted successfully. Your application has been received and is under processing.',
+        : application.status === 'Waitlisted'
+        ? 'Cohort is currently full. You have been placed on the priority waitlist.'
+        : 'Application submitted successfully.',
     });
   } catch (err) {
     next(err);
@@ -226,7 +360,7 @@ async function myApplications(req, res, next) {
   try {
     await processExpiredInvoices();
     const rawApplications = await Application.find({ student: req.user._id })
-      .populate('course', 'title level price transportationPrice currency startDate')
+      .populate('course', 'title level price transportationPrice currency startDate directEnrollmentPermitted')
       .populate('cohort')
       .populate('readinessAttempt')
       .sort({ createdAt: -1 });
@@ -234,7 +368,12 @@ async function myApplications(req, res, next) {
     // Self-heal eligible applications previously stuck in Under Review / Submitted
     const applications = [];
     for (const app of rawApplications) {
-      if (app.eligibilityStatus === 'Eligible' && ['Under Review', 'Submitted'].includes(app.status)) {
+      if (
+        app.eligibilityStatus === 'Eligible' &&
+        ['Under Review', 'Submitted'].includes(app.status) &&
+        app.course?.price != null &&
+        app.course?.directEnrollmentPermitted !== false
+      ) {
         const healed = await autoAcceptAndReserveSeat({ application: app });
         applications.push(healed?.application || app);
       } else {
@@ -273,7 +412,12 @@ async function getApplication(req, res, next) {
     if (!application) throw new AppError('Application not found.', 404);
 
     // Self-heal eligible application stuck in Under Review / Submitted
-    if (application.eligibilityStatus === 'Eligible' && ['Under Review', 'Submitted'].includes(application.status)) {
+    if (
+      application.eligibilityStatus === 'Eligible' &&
+      ['Under Review', 'Submitted'].includes(application.status) &&
+      application.course?.price != null &&
+      application.course?.directEnrollmentPermitted !== false
+    ) {
       const healed = await autoAcceptAndReserveSeat({ application });
       if (healed?.application) {
         application = healed.application;
@@ -295,9 +439,10 @@ async function getApplication(req, res, next) {
       } catch (_) {}
     }
 
-    const [invoice, enrollment] = await Promise.all([
+    const [invoice, enrollment, paymentProof] = await Promise.all([
       Invoice.findOne({ application: application._id, student: req.user._id }),
       Enrollment.findOne({ application: application._id, student: req.user._id }),
+      PaymentProof.findOne({ application: application._id, student: req.user._id }).sort({ createdAt: -1 }),
     ]);
 
     res.json({
@@ -306,6 +451,7 @@ async function getApplication(req, res, next) {
         ...(typeof application.toObject === 'function' ? application.toObject() : application),
         invoice: invoice || null,
         enrollment: enrollment || null,
+        paymentProof: paymentProof || null,
       },
     });
   } catch (err) {
@@ -384,12 +530,20 @@ async function directEnrollApplication(req, res, next) {
     const course = application.course;
     if (!course) throw new AppError('Course not found.', 404);
 
+    if (course.price == null) {
+      throw new AppError('Direct enrollment is not available for this program as tuition has not yet been finalized.', 400);
+    }
+
     if (course.directEnrollmentPermitted === false) {
-      throw new AppError('Direct enrollment is not permitted for this program. Mandatory readiness completion required.', 400);
+      throw new AppError('Direct enrollment is not permitted for this program. Mandatory readiness completion or committee review required.', 400);
+    }
+
+    if (application.status === 'Foundation Recommended' || application.eligibilityStatus === 'Not Eligible') {
+      throw new AppError('Prerequisite course requirements must be completed before direct enrollment.', 400);
     }
 
     application.eligibilityStatus = 'Eligible';
-    if (['Foundation Recommended', 'Draft', 'Submitted', 'Under Review'].includes(application.status)) {
+    if (['Draft', 'Submitted', 'Under Review'].includes(application.status)) {
       application.status = 'Submitted';
     }
     await application.save();
@@ -413,10 +567,130 @@ async function directEnrollApplication(req, res, next) {
   }
 }
 
+async function uploadApplicationDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      throw new AppError('File is required. Please upload an image (JPEG, PNG, WEBP) or PDF.', 400);
+    }
+
+    const isValid = validateDocumentMagicBytes(file.path);
+    if (!isValid) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (_) {}
+      throw new AppError('Uploaded file is corrupted or invalid. Please upload an authentic image or PDF.', 400);
+    }
+
+    const application = await Application.findById(id).populate('course cohort student');
+    if (!application) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (_) {}
+      throw new AppError('Application not found.', 404);
+    }
+
+    const studentOwnerId = application.student?._id ? application.student._id.toString() : application.student?.toString();
+    if (studentOwnerId !== req.user._id.toString()) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (_) {}
+      throw new AppError("Forbidden: you cannot upload documents for another student's application.", 403);
+    }
+
+    if (['Cancelled', 'No Show', 'Rejected'].includes(application.status)) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (_) {}
+      throw new AppError(`Cannot upload documents to an application with status: ${application.status}.`, 400);
+    }
+
+    if (application.supportingDocument?.path && application.supportingDocument.path !== file.path) {
+      try {
+        if (fs.existsSync(application.supportingDocument.path)) {
+          fs.unlinkSync(application.supportingDocument.path);
+        }
+      } catch (_) {}
+    }
+
+    const docType = req.body?.documentType || 'Supporting_Document';
+    application.supportingDocument = {
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      path: file.path,
+      documentType: docType,
+      uploadedAt: new Date(),
+    };
+
+    application.statusHistory = application.statusHistory || [];
+    application.statusHistory.push({
+      status: application.status,
+      note: `Student uploaded supporting document: "${file.originalname}".`,
+      changedAt: new Date(),
+    });
+
+    await application.save();
+
+    res.json({
+      success: true,
+      message: 'Supporting document uploaded successfully.',
+      data: application,
+    });
+  } catch (err) {
+    if (req.file?.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (_) {}
+    }
+    next(err);
+  }
+}
+
+async function streamApplicationDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const application = await Application.findById(id);
+
+    if (!application) {
+      throw new AppError('Application not found.', 404);
+    }
+
+    const isOwner = (application.student?._id ? application.student._id.toString() : application.student?.toString()) === req.user._id.toString();
+    const isAdmin = ['admin', 'superadmin', 'SUPER_ADMIN'].includes(req.user.role);
+
+    if (!isOwner && !isAdmin) {
+      throw new AppError('Forbidden: you do not have permission to view this document.', 403);
+    }
+
+    const doc = application.supportingDocument;
+    if (!doc || !doc.path || !fs.existsSync(doc.path)) {
+      throw new AppError('No supporting document has been uploaded for this application.', 404);
+    }
+
+    const resolvedBase = path.resolve(privateDocsDir);
+    const resolvedTarget = path.resolve(doc.path);
+    if (!resolvedTarget.startsWith(resolvedBase)) {
+      throw new AppError('Forbidden: invalid storage path confinement.', 403);
+    }
+
+    res.setHeader('Content-Type', doc.mimetype || 'image/jpeg');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.originalName || doc.filename}"`);
+    fs.createReadStream(doc.path).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createApplication,
   myApplications,
   getApplication,
   cancelApplication,
   directEnrollApplication,
+  uploadApplicationDocument,
+  streamApplicationDocument,
 };

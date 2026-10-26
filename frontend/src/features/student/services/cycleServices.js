@@ -17,6 +17,15 @@ export const applicationService = {
   create: (payload) => api.post('/applications', payload).then((r) => r.data),
   my: () => api.get('/applications/my').then((r) => r.data),
   get: (id) => api.get(`/applications/${id}`).then((r) => r.data),
+  uploadDocument: (id, formData) =>
+    api
+      .post(`/applications/${id}/document`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data),
+  fetchDocumentBlob: (id) =>
+    api.get(`/applications/${id}/document`, { responseType: 'blob' }).then((r) => r.data),
+  getDocumentUrl: (id) => `/api/applications/${id}/document`,
   directEnroll: (id, payload = {}) => api.post(`/applications/${id}/direct-enroll`, payload).then((r) => r.data),
   cancel: (id) => api.patch(`/applications/${id}/cancel`).then((r) => r.data),
 };
@@ -57,6 +66,8 @@ export const paymentService = {
 export const adminService = {
   overview: () => api.get('/admin/overview').then((r) => r.data),
   applications: (params) => api.get('/admin/applications', { params }).then((r) => r.data),
+  fetchApplicationDocumentBlob: (id) =>
+    api.get(`/admin/applications/${id}/document`, { responseType: 'blob' }).then((r) => r.data),
   acceptApplication: (id, note) => api.patch(`/admin/applications/${id}/accept`, { note }).then((r) => r.data),
   reviewApplication: (id, note) => api.patch(`/admin/applications/${id}/review`, { note }).then((r) => r.data),
   waitlistApplication: (id, note) => api.patch(`/admin/applications/${id}/waitlist`, { note }).then((r) => r.data),

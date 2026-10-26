@@ -19,6 +19,40 @@ export default function AdminApplicationsPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
 
+  // Document preview state
+  const [previewDocApp, setPreviewDocApp] = useState(null);
+  const [previewDocBlobUrl, setPreviewDocBlobUrl] = useState(null);
+  const [previewDocLoading, setPreviewDocLoading] = useState(false);
+  const [previewDocError, setPreviewDocError] = useState('');
+
+  const handleCloseDocPreview = () => {
+    if (previewDocBlobUrl) {
+      URL.revokeObjectURL(previewDocBlobUrl);
+    }
+    setPreviewDocBlobUrl(null);
+    setPreviewDocApp(null);
+    setPreviewDocError('');
+  };
+
+  const handleViewDocument = async (app) => {
+    setPreviewDocApp(app);
+    setPreviewDocLoading(true);
+    setPreviewDocError('');
+    if (previewDocBlobUrl) {
+      URL.revokeObjectURL(previewDocBlobUrl);
+      setPreviewDocBlobUrl(null);
+    }
+    try {
+      const blob = await adminService.fetchApplicationDocumentBlob(app._id);
+      const url = URL.createObjectURL(blob);
+      setPreviewDocBlobUrl(url);
+    } catch (err) {
+      setPreviewDocError(err.response?.data?.message || 'Failed to load document.');
+    } finally {
+      setPreviewDocLoading(false);
+    }
+  };
+
   const load = () => {
     setLoading(true);
     setError('');
@@ -269,9 +303,27 @@ export default function AdminApplicationsPage() {
                       <td className="ps-4 py-3">
                         <div className="fw-bold text-dark">{student.fullName || 'Candidate'}</div>
                         <div className="text-muted small">{student.email}</div>
-                        <span className="badge bg-light text-secondary border small mt-1 font-monospace">
-                          {app.referenceNumber || student.registrationNumber || app._id.slice(-6).toUpperCase()}
-                        </span>
+                        <div className="d-flex align-items-center gap-1 flex-wrap mt-1">
+                          <span className="badge bg-light text-secondary border small font-monospace">
+                            {app.referenceNumber || student.registrationNumber || app._id.slice(-6).toUpperCase()}
+                          </span>
+                          {app.supportingDocument?.filename ? (
+                            <button
+                              type="button"
+                              className="btn btn-outline-info btn-xs py-0 px-2 d-inline-flex align-items-center gap-1"
+                              style={{ fontSize: '0.72rem', height: '22px' }}
+                              onClick={() => handleViewDocument(app)}
+                              title={`View ${app.supportingDocument.documentType || 'Document'} (${app.supportingDocument.originalName || 'file'})`}
+                            >
+                              <i className="fa-solid fa-file-shield text-info"></i>
+                              <span>View Doc</span>
+                            </button>
+                          ) : (
+                            <span className="badge bg-light text-muted border" style={{ fontSize: '0.68rem' }}>
+                              No Doc
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td>
@@ -564,6 +616,97 @@ export default function AdminApplicationsPage() {
                   ) : (
                     'Confirm Rejection'
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/* Document Preview Modal */}
+      {previewDocApp && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1070 }}
+          role="dialog"
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content shadow border-0" style={{ borderRadius: 'var(--radius-md)' }}>
+              <div className="modal-header bg-dark text-white">
+                <h5 className="modal-title fw-bold">
+                  <i className="fa-solid fa-file-shield text-info me-2"></i>
+                  Supporting Document: {previewDocApp.supportingDocument?.originalName || 'Document'}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={handleCloseDocPreview}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4 text-center">
+                <div className="d-flex justify-content-between align-items-center bg-light p-3 rounded border mb-3 text-start small">
+                  <div>
+                    <div><strong>Applicant:</strong> {previewDocApp.student?.fullName} ({previewDocApp.student?.email})</div>
+                    <div><strong>Document Type:</strong> {previewDocApp.supportingDocument?.documentType || 'Verification Screenshot'}</div>
+                  </div>
+                  <div className="text-end">
+                    <div><strong>Format:</strong> {previewDocApp.supportingDocument?.mimetype || 'Unknown'}</div>
+                    <div>
+                      <strong>Size:</strong>{' '}
+                      {previewDocApp.supportingDocument?.size
+                        ? `${Math.round(previewDocApp.supportingDocument.size / 1024)} KB`
+                        : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {previewDocLoading ? (
+                  <div className="py-5">
+                    <span className="spinner-border text-primary" role="status"></span>
+                    <p className="text-muted small mt-2">Loading document stream securely...</p>
+                  </div>
+                ) : previewDocError ? (
+                  <div className="alert alert-danger py-3">
+                    <i className="fa-solid fa-circle-exclamation me-2"></i>
+                    {previewDocError}
+                  </div>
+                ) : previewDocBlobUrl ? (
+                  <div className="text-center">
+                    {previewDocApp.supportingDocument?.mimetype?.startsWith('image/') ? (
+                      <img
+                        src={previewDocBlobUrl}
+                        alt="Applicant Supporting Document"
+                        className="img-fluid rounded border shadow-sm"
+                        style={{ maxHeight: '65vh', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <iframe
+                        src={previewDocBlobUrl}
+                        title="Applicant Supporting Document PDF"
+                        className="w-100 rounded border"
+                        style={{ height: '65vh' }}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="modal-footer bg-light d-flex justify-content-between">
+                {previewDocBlobUrl ? (
+                  <a
+                    href={previewDocBlobUrl}
+                    download={previewDocApp.supportingDocument?.originalName || 'application_document'}
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    <i className="fa-solid fa-download me-1"></i> Download File
+                  </a>
+                ) : <span />}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm px-4"
+                  onClick={handleCloseDocPreview}
+                >
+                  Close
                 </button>
               </div>
             </div>

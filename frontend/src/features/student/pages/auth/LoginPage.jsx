@@ -49,7 +49,9 @@ export default function LoginPage() {
       const user = await login(email, password);
 
       // Role-based redirection - ensure destination is never /login
+      const redirectParam = searchParams.get('redirect');
       const fromPath = location.state?.from?.pathname;
+      const validRedirect = redirectParam && !redirectParam.startsWith('/login') && !redirectParam.startsWith('/student/login') ? redirectParam : null;
       const validFrom = fromPath && !fromPath.startsWith('/login') && !fromPath.startsWith('/student/login') ? fromPath : null;
 
       if (user?.role === 'admin' || user?.role === 'SUPER_ADMIN') {
@@ -60,7 +62,7 @@ export default function LoginPage() {
         window.location.href = '/instructor/dashboard';
         return;
       }
-      const destination = validFrom || '/student/dashboard';
+      const destination = validRedirect || validFrom || '/student/dashboard';
       navigate(destination, { replace: true });
     } catch (err) {
       const responseData = err.response?.data;

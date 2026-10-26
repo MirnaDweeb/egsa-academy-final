@@ -8,7 +8,7 @@ export default function HomeRedirect() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) return <LoadingState fullPage />;
-  if (!user) return <Navigate to="/admin/login" replace />;
+  if (!user) return <Navigate to="/login?role=admin" replace />;
 
   if (user.role === ROLES.SUPER_ADMIN) return <Navigate to="/admin" replace />;
   if (user.role === ROLES.PRE_UNIVERSITY_ADMIN) return <Navigate to="/admin/PRE_UNIVERSITY" replace />;

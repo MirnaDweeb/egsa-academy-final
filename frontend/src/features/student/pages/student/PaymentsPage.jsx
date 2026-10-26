@@ -3,6 +3,40 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { paymentService, applicationService } from '../../services/cycleServices';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingState, StatusBadge, PageHeader } from '../../components/StateComponents.jsx';
+import styles from './PaymentsPage.module.css';
+
+/**
+ * Safely format numeric monetary amounts for UI presentation.
+ * Returns '—' if amount is null, undefined, or NaN.
+ */
+function formatAmount(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  const num = Number(val);
+  if (Number.isNaN(num)) return '—';
+  return num.toLocaleString();
+}
+
+/**
+ * Safely format date-time strings for UI presentation.
+ * Returns '—' if date is missing or invalid.
+ */
+function formatDateTime(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString();
+}
+
+/**
+ * Safely format date strings for UI presentation.
+ * Returns '—' if date is missing or invalid.
+ */
+function formatDate(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString();
+}
 
 /**
  * Egyptian Space Agency — National Space Technology Training Platform
@@ -71,6 +105,7 @@ export default function PaymentsPage() {
   const [proofSubmitting, setProofSubmitting] = useState(false);
   const [proofError, setProofError] = useState('');
   const [proofSuccess, setProofSuccess] = useState('');
+  const [forceResubmit, setForceResubmit] = useState(false);
   const [viewingProofFile, setViewingProofFile] = useState(null);
   const [viewingBlobUrl, setViewingBlobUrl] = useState('');
   const [viewingBlobLoading, setViewingBlobLoading] = useState(false);
@@ -711,6 +746,38 @@ export default function PaymentsPage() {
   const displayTotalDue = calculatedPricing?.totalAmount ?? (selectedPackage === 'WITH_TRANSPORTATION' ? displayBasePrice + displayTransPrice : displayBasePrice);
   const displayCurrency = calculatedPricing?.currency || activeInvoice?.currency || activeCourse?.currency || 'EGP';
 
+  // Authoritative financial summary metrics computed from live application state
+  const financialMetrics = useMemo(() => {
+    const totalInvoices = invoices.length;
+    const payableInvoicesList = invoices.filter(
+      (i) =>
+        ['Invoice Issued', 'Pending', 'Payment Initiated'].includes(i.status) &&
+        (!i.dueDate || new Date(i.dueDate) >= new Date())
+    );
+    const totalDueAmount = payableInvoicesList.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+
+    const paidInvoicesList = invoices.filter((i) => i.status === 'Paid');
+    const totalPaidAmount = paidInvoicesList.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+
+    const pendingProofs = myProofsList.filter((p) => p.status === 'Pending').length;
+    const activeRefunds = myRefunds.filter((r) => r.status === 'Pending' || r.status === 'Under Review').length;
+
+    return {
+      totalInvoices,
+      payableCount: payableInvoicesList.length,
+      outstandingCount: payableInvoicesList.length,
+      totalDueAmount,
+      outstandingAmount: totalDueAmount,
+      paidCount: paidInvoicesList.length,
+      totalPaidAmount,
+      paidAmount: totalPaidAmount,
+      pendingProofs,
+      pendingProofsCount: pendingProofs,
+      activeRefunds,
+      currency: invoices[0]?.currency || 'EGP',
+    };
+  }, [invoices, myProofsList, myRefunds]);
+
   if (loading) {
     return (
       <LoadingState
@@ -720,7 +787,7 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={styles.paymentsContainer} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* 1. Page Header with Title "Course Payments" */}
       <PageHeader
         title={isAr ? 'مدفوعات الدورات التدريبية' : 'Course Payments'}
@@ -737,7 +804,7 @@ export default function PaymentsPage() {
 
       {/* 2. Gateway Return Feedback & Verification States */}
       {paymentSessionFlow && (
-        <div className="card border-0 shadow-sm mb-5 overflow-hidden">
+        <div className="card border-0 shadow-sm mb-4 overflow-hidden">
           {paymentSessionFlow === 'processing' && (
             <div className="card-body p-4 p-md-5 text-center bg-white border-top border-4 border-info">
               <div className="spinner-border text-primary mb-3" style={{ width: '3.5rem', height: '3.5rem' }} role="status">
@@ -864,64 +931,118 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* 3. POLICY BANNER & REFUND DESTINATION SUMMARY */}
-      <div className="row g-3 mb-4">
-        <div className="col-lg-8">
-          <div className="alert alert-info border-0 shadow-sm d-flex align-items-center gap-3 p-3 rounded mb-0 h-100">
-            <i className="fa-solid fa-shield-halved fs-3 text-primary flex-shrink-0"></i>
-            <div className="flex-grow-1">
-              <h6 className="fw-bold text-dark mb-1">
-                {isAr ? 'سياسة الاسترداد الرسمية لوكالة الفضاء المصرية' : 'Official EGSA Academy Refund Policy'}
-              </h6>
-              <p className="small text-muted mb-1">
-                {isAr
-                  ? 'تخضع كافة طلبات الاسترداد لمراجعة الإدارة المالية. في حال إلغاء الدورة من قبل الوكالة، يحق للطالب استرداد كامل المصروفات. يرجى التحقق من بيانات حساب الاسترداد قبل السداد.'
-                  : 'Refunds are subject to administrative review. If a course is cancelled by the Academy, students receive a full refund. Please verify your refund account destination before paying.'}
-              </p>
-              <button
-                type="button"
-                className="btn btn-link btn-sm p-0 text-primary text-decoration-none fw-bold"
-                onClick={() => setShowPolicyModal(true)}
-              >
-                <i className="fa-solid fa-book-open me-1"></i>
-                {isAr ? 'قراءة السياسة المالية المعتمدة كاملاً' : 'Read Full Refund Policy & Guidelines'}
-              </button>
+      {/* 3. FINANCIAL SUMMARY METRICS GRID */}
+      <div className={styles.metricsGrid}>
+        {/* Metric 1: Outstanding Tuition */}
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricIcon} ${financialMetrics.outstandingCount > 0 ? styles.metricIconWarning : styles.metricIconNavy}`}>
+            <i className="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>
+              {isAr ? 'مصروفات مستحقة السداد' : 'Outstanding Tuition'}
+            </span>
+            <div className={styles.metricValue}>
+              {formatAmount(financialMetrics.outstandingAmount)} <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>EGP</span>
             </div>
+            <span className={styles.metricSubtext}>
+              {financialMetrics.outstandingCount === 0
+                ? (isAr ? 'لا توجد مستحقات معلقة' : 'No overdue tuition')
+                : (isAr ? `${financialMetrics.outstandingCount} فاتورة مستحقة` : `${financialMetrics.outstandingCount} invoice(s) due`)}
+            </span>
           </div>
         </div>
 
-        <div className="col-lg-4">
-          <div className="p-3 bg-white rounded border shadow-sm h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="small text-uppercase fw-bold text-muted">
-                  <i className="fa-solid fa-building-columns me-1 text-primary"></i>
-                  {isAr ? 'حساب الاسترداد المسجل' : 'Refund Account'}
-                </span>
-                <span className="badge bg-success-subtle text-success small">
-                  {isAr ? 'معتمد' : 'Verified'}
-                </span>
-              </div>
-              <p className="small text-dark mb-1 fw-semibold">
-                {refundAccount?.refundMethod === 'BANK_TRANSFER'
-                  ? `${refundAccount.bankName || 'Bank'} (${refundAccount.maskedIban || refundAccount.maskedAccount || 'N/A'})`
-                  : (isAr ? 'نفس بطاقة الدفع الأصلية' : 'Original Payment Card')}
-              </p>
-              <small className="text-muted d-block text-truncate">
-                {isAr ? 'المستفيد: ' : 'Holder: '}
-                {refundAccount?.accountHolderName || user?.fullName || 'EGSA Student'}
-              </small>
+        {/* Metric 2: Settled Tuition Receipts */}
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricIcon} ${styles.metricIconSuccess}`}>
+            <i className="fa-solid fa-circle-check"></i>
+          </div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>
+              {isAr ? 'إجمالي المسدد والمؤكد' : 'Settled Tuition'}
+            </span>
+            <div className={styles.metricValue}>
+              {formatAmount(financialMetrics.paidAmount)} <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>EGP</span>
             </div>
-            <button
-              type="button"
-              className="btn btn-outline-secondary btn-sm mt-2 w-100"
-              onClick={() => setShowAccountModal(true)}
-            >
-              <i className="fa-solid fa-pen-to-square me-1"></i>
-              {isAr ? 'تعديل تفاصيل حساب الاسترداد' : 'Update Refund Destination'}
-            </button>
+            <span className={styles.metricSubtext}>
+              {isAr ? `${financialMetrics.paidCount} إيصال رسمي معتمد` : `${financialMetrics.paidCount} official receipt(s)`}
+            </span>
           </div>
         </div>
+
+        {/* Metric 3: Manual Proofs in Queue */}
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricIcon} ${styles.metricIconGold}`}>
+            <i className="fa-solid fa-file-invoice-dollar"></i>
+          </div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>
+              {isAr ? 'إيصالات قيد المراجعة' : 'Verification Queue'}
+            </span>
+            <div className={styles.metricValue}>
+              {financialMetrics.pendingProofsCount ?? 0}
+            </div>
+            <span className={styles.metricSubtext}>
+              {isAr ? 'بانتظار تدقيق المالية' : 'Pending finance review'}
+            </span>
+          </div>
+        </div>
+
+        {/* Metric 4: Refund Account Destination */}
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricIcon} ${styles.metricIconNavy}`}>
+            <i className="fa-solid fa-building-columns"></i>
+          </div>
+          <div className={styles.metricContent} style={{ flexGrow: 1 }}>
+            <div className="d-flex justify-content-between align-items-center">
+              <span className={styles.metricLabel}>
+                {isAr ? 'حساب الاسترداد' : 'Refund Account'}
+              </span>
+              <button
+                type="button"
+                className="btn btn-link btn-sm p-0 text-decoration-none"
+                style={{ fontSize: '0.75rem', color: 'var(--egsa-cosmos-blue)' }}
+                onClick={() => setShowAccountModal(true)}
+              >
+                {isAr ? 'تعديل' : 'Edit'}
+              </button>
+            </div>
+            <div className={styles.metricValue} style={{ fontSize: '1rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {refundAccount?.refundMethod === 'BANK_TRANSFER'
+                ? (refundAccount.bankName || 'Bank Transfer')
+                : (isAr ? 'نفس البطاقة' : 'Original Card')}
+            </div>
+            <span className={styles.metricSubtext} style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {refundAccount?.accountHolderName || user?.fullName || 'EGSA Trainee'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Official EGSA Refund Policy Banner */}
+      <div className="alert alert-info border-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 mb-4 rounded">
+        <div className="d-flex align-items-center gap-3">
+          <i className="fa-solid fa-shield-halved fs-4 text-primary flex-shrink-0"></i>
+          <div>
+            <strong className="text-dark d-block">
+              {isAr ? 'سياسة الاسترداد الرسمية لوكالة الفضاء المصرية' : 'Official EGSA Space Academy Refund Policy'}
+            </strong>
+            <small className="text-muted">
+              {isAr
+                ? 'تخضع جميع المعاملات لرقابة الإدارة المالية وفقاً للوائح البنك المركزي والضوابط الأكاديمية.'
+                : 'All transactions adhere to Central Bank regulations and official EGSA Academy financial policies.'}
+            </small>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn btn-outline-primary btn-sm px-3"
+          onClick={() => setShowPolicyModal(true)}
+        >
+          <i className="fa-solid fa-book-open me-1"></i>
+          {isAr ? 'قراءة السياسة المالية المعتمدة' : 'Read Refund Policy'}
+        </button>
       </div>
 
       {error && <div className="alert alert-danger mb-4">{error}</div>}
@@ -1088,11 +1209,11 @@ export default function PaymentsPage() {
               </div>
             ) : (
               /* Course Details, Package Options & Review */
-              <div className="row g-4">
+              <div className={styles.workspaceGrid}>
                 {/* Left Column: Course & Package Selection */}
-                <div className="col-lg-7">
+                <div className={styles.workspaceMain}>
                   {/* Course Details Card */}
-                  <div className="p-3 bg-light rounded border mb-4">
+                  <div className="p-3 bg-light rounded border mb-1">
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <span className="badge bg-light text-primary border">
                         {activeInvoice?.invoiceNumber || 'EGSA-TUITION-INVOICE'}
@@ -1111,23 +1232,21 @@ export default function PaymentsPage() {
                       <div className="text-muted small">
                         <i className="fa-regular fa-clock me-1 text-warning"></i>
                         <span>{isAr ? 'آخر موعد للسداد: ' : 'Payment Deadline: '}</span>
-                        <strong className="text-dark">{new Date(activeInvoice.dueDate).toLocaleString()}</strong>
+                        <strong className="text-dark">{formatDateTime(activeInvoice.dueDate)}</strong>
                       </div>
                     )}
                   </div>
 
                   {/* Package Options Selection */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <label className="form-label fw-bold text-dark small text-uppercase mb-2">
                       {isAr ? '١. اختيار باقة التدريب والخدمات اللوجستية:' : '1. Select Training & Logistics Package:'}
                     </label>
-                    <div className="d-flex flex-column gap-2">
+                    <div className={styles.packageSelector}>
                       {/* Option 1: Course Tuition Only */}
                       <label
-                        className={`p-3 border rounded d-flex justify-content-between align-items-center cursor-pointer transition-all ${
-                          selectedPackage === 'WITHOUT_TRANSPORTATION'
-                            ? 'border-primary bg-primary-subtle'
-                            : 'bg-white hover-bg-light'
+                        className={`${styles.packageOption} ${
+                          selectedPackage === 'WITHOUT_TRANSPORTATION' ? styles.packageOptionActive : ''
                         }`}
                       >
                         <div className="d-flex align-items-center gap-3">
@@ -1138,31 +1257,29 @@ export default function PaymentsPage() {
                             checked={selectedPackage === 'WITHOUT_TRANSPORTATION'}
                             onChange={() => handlePackageChange('WITHOUT_TRANSPORTATION')}
                             disabled={checkoutStep === 'initiating' || checkoutStep === 'processing'}
-                            className="form-check-input"
+                            className="form-check-input mt-0"
                           />
                           <div>
-                            <strong className="d-block text-dark">
+                            <div className={styles.packageTitle}>
                               {isAr ? 'الدورة التدريبية فقط (بدون انتقالات)' : 'Standard Package: Course Tuition Only'}
-                            </strong>
-                            <small className="text-muted">
+                            </div>
+                            <div className={styles.packageDescription}>
                               {isAr
                                 ? 'حضور كافة المحاضرات، التدريب العملي في المعامل، والمواد التدريبية الرسمية.'
                                 : 'Full access to academic lectures, specialized labs, materials, and accreditation.'}
-                            </small>
+                            </div>
                           </div>
                         </div>
-                        <span className="fw-bold text-dark">
-                          {displayBasePrice.toLocaleString()} {displayCurrency}
+                        <span className={styles.packagePrice}>
+                          {formatAmount(displayBasePrice)} {displayCurrency}
                         </span>
                       </label>
 
                       {/* Option 2: Course Tuition + Transportation (if available) */}
                       {hasTransportationSupport ? (
                         <label
-                          className={`p-3 border rounded d-flex justify-content-between align-items-center cursor-pointer transition-all ${
-                            selectedPackage === 'WITH_TRANSPORTATION'
-                              ? 'border-primary bg-primary-subtle'
-                              : 'bg-white hover-bg-light'
+                          className={`${styles.packageOption} ${
+                            selectedPackage === 'WITH_TRANSPORTATION' ? styles.packageOptionActive : ''
                           }`}
                         >
                           <div className="d-flex align-items-center gap-3">
@@ -1173,21 +1290,21 @@ export default function PaymentsPage() {
                               checked={selectedPackage === 'WITH_TRANSPORTATION'}
                               onChange={() => handlePackageChange('WITH_TRANSPORTATION')}
                               disabled={checkoutStep === 'initiating' || checkoutStep === 'processing'}
-                              className="form-check-input"
+                              className="form-check-input mt-0"
                             />
                             <div>
-                              <strong className="d-block text-dark">
+                              <div className={styles.packageTitle}>
                                 {isAr ? 'الدورة التدريبية + حافلات الانتقال اليومية' : 'Full Package: Course + Transportation'}
-                              </strong>
-                              <small className="text-muted">
+                              </div>
+                              <div className={styles.packageDescription}>
                                 {isAr
                                   ? 'يشمل الانتقال اليومي بحافلات وكالة الفضاء من نقاط التجمع المعتمدة إلى مقر الوكالة.'
                                   : 'Includes scheduled daily EGSA shuttle service from designated assembly points in Cairo.'}
-                              </small>
+                              </div>
                             </div>
                           </div>
-                          <span className="fw-bold text-dark">
-                            {(displayBasePrice + displayTransPrice).toLocaleString()} {displayCurrency}
+                          <span className={styles.packagePrice}>
+                            {formatAmount(displayBasePrice + displayTransPrice)} {displayCurrency}
                           </span>
                         </label>
                       ) : null}
@@ -1195,70 +1312,58 @@ export default function PaymentsPage() {
                   </div>
 
                   {/* 2. Payment Method Selection */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <label className="form-label fw-bold text-dark small text-uppercase mb-2">
                       {isAr ? '٢. طريقة السداد المعتمدة:' : '2. Select Payment Method:'}
                     </label>
-                    <div className="row g-2">
-                      <div className="col-sm-4">
-                        <button
-                          type="button"
-                          className={`btn w-100 p-3 text-start border rounded d-flex flex-column gap-1 ${
-                            paymentMethod === 'CARD' ? 'btn-primary border-primary' : 'btn-outline-light text-dark bg-white border'
-                          }`}
-                          onClick={() => {
-                            setPaymentMethod('CARD');
-                            setForceResubmit(false);
-                          }}
-                        >
-                          <div className="d-flex align-items-center justify-content-between w-100">
-                            <i className="fa-solid fa-credit-card fs-5"></i>
-                            {paymentMethod === 'CARD' && <i className="fa-solid fa-circle-check"></i>}
-                          </div>
-                          <strong className="small mt-1">{isAr ? 'بطاقة بنكية' : 'Credit / Debit Card'}</strong>
-                          <span className="text-muted" style={{ fontSize: '0.7rem' }}>
-                            {isAr ? 'بوابة إلكترونية فورية' : 'Paymob Online Gateway'}
-                          </span>
-                        </button>
-                      </div>
+                    <div className={styles.methodGrid}>
+                      <button
+                        type="button"
+                        className={`${styles.methodBtn} ${paymentMethod === 'CARD' ? styles.methodBtnActiveCard : ''}`}
+                        onClick={() => {
+                          setPaymentMethod('CARD');
+                          setForceResubmit(false);
+                        }}
+                      >
+                        <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                          <i className="fa-solid fa-credit-card fs-5 text-primary"></i>
+                          {paymentMethod === 'CARD' && <i className="fa-solid fa-circle-check text-primary"></i>}
+                        </div>
+                        <strong className="small">{isAr ? 'بطاقة بنكية' : 'Credit / Debit Card'}</strong>
+                        <span className="text-muted" style={{ fontSize: '0.72rem' }}>
+                          {isAr ? 'بوابة إلكترونية فورية' : 'Paymob Online Gateway'}
+                        </span>
+                      </button>
 
-                      <div className="col-sm-4">
-                        <button
-                          type="button"
-                          className={`btn w-100 p-3 text-start border rounded d-flex flex-column gap-1 ${
-                            paymentMethod === 'VODAFONE_CASH' ? 'btn-danger text-white border-danger' : 'btn-outline-light text-dark bg-white border'
-                          }`}
-                          onClick={() => setPaymentMethod('VODAFONE_CASH')}
-                        >
-                          <div className="d-flex align-items-center justify-content-between w-100">
-                            <i className="fa-solid fa-mobile-screen fs-5"></i>
-                            {paymentMethod === 'VODAFONE_CASH' && <i className="fa-solid fa-circle-check"></i>}
-                          </div>
-                          <strong className="small mt-1">{isAr ? 'فودافون كاش' : 'Vodafone Cash'}</strong>
-                          <span className={paymentMethod === 'VODAFONE_CASH' ? 'text-white-50' : 'text-muted'} style={{ fontSize: '0.7rem' }}>
-                            {isAr ? 'تحويل محفظة ومراجعة' : 'Wallet Transfer + Proof'}
-                          </span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.methodBtn} ${paymentMethod === 'VODAFONE_CASH' ? styles.methodBtnActiveVodafone : ''}`}
+                        onClick={() => setPaymentMethod('VODAFONE_CASH')}
+                      >
+                        <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                          <i className="fa-solid fa-mobile-screen fs-5 text-danger"></i>
+                          {paymentMethod === 'VODAFONE_CASH' && <i className="fa-solid fa-circle-check text-danger"></i>}
+                        </div>
+                        <strong className="small">{isAr ? 'فودافون كاش' : 'Vodafone Cash'}</strong>
+                        <span className="text-muted" style={{ fontSize: '0.72rem' }}>
+                          {isAr ? 'تحويل محفظة ومراجعة' : 'Wallet Transfer + Proof'}
+                        </span>
+                      </button>
 
-                      <div className="col-sm-4">
-                        <button
-                          type="button"
-                          className={`btn w-100 p-3 text-start border rounded d-flex flex-column gap-1 ${
-                            paymentMethod === 'INSTAPAY' ? 'btn-success text-white border-success' : 'btn-outline-light text-dark bg-white border'
-                          }`}
-                          onClick={() => setPaymentMethod('INSTAPAY')}
-                        >
-                          <div className="d-flex align-items-center justify-content-between w-100">
-                            <i className="fa-solid fa-bolt fs-5"></i>
-                            {paymentMethod === 'INSTAPAY' && <i className="fa-solid fa-circle-check"></i>}
-                          </div>
-                          <strong className="small mt-1">{isAr ? 'إنستاباي' : 'InstaPay'}</strong>
-                          <span className={paymentMethod === 'INSTAPAY' ? 'text-white-50' : 'text-muted'} style={{ fontSize: '0.7rem' }}>
-                            {isAr ? 'تحويل لحظي ومراجعة' : 'Instant IPA + Proof'}
-                          </span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.methodBtn} ${paymentMethod === 'INSTAPAY' ? styles.methodBtnActiveInstapay : ''}`}
+                        onClick={() => setPaymentMethod('INSTAPAY')}
+                      >
+                        <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                          <i className="fa-solid fa-bolt fs-5 text-success"></i>
+                          {paymentMethod === 'INSTAPAY' && <i className="fa-solid fa-circle-check text-success"></i>}
+                        </div>
+                        <strong className="small">{isAr ? 'إنستاباي' : 'InstaPay'}</strong>
+                        <span className="text-muted" style={{ fontSize: '0.72rem' }}>
+                          {isAr ? 'تحويل لحظي ومراجعة' : 'Instant IPA + Proof'}
+                        </span>
+                      </button>
                     </div>
                   </div>
 
@@ -1379,7 +1484,7 @@ export default function PaymentsPage() {
                             )}
                             <div className="d-flex justify-content-between">
                               <span className="text-muted">{isAr ? 'تاريخ الرفع:' : 'Submitted At:'}</span>
-                              <span className="text-dark">{new Date(activeProof.createdAt).toLocaleString()}</span>
+                              <span className="text-dark">{formatDateTime(activeProof.createdAt)}</span>
                             </div>
                           </div>
 
@@ -1565,30 +1670,36 @@ export default function PaymentsPage() {
                 </div>
 
                 {/* Right Column: Authoritative Financial Summary & Pay Action */}
-                <div className="col-lg-5">
-                  <div className="p-4 bg-light rounded border h-100 d-flex flex-column justify-content-between">
-                    <div>
-                      <h6 className="fw-bold text-dark border-bottom pb-2 mb-3">
-                        {isAr ? 'ملخص الفاتورة والسداد' : 'Payment Summary'}
+                <div className={styles.workspaceSide}>
+                  <div className={styles.portalCard}>
+                    <div className={styles.portalCardHeader}>
+                      <h6 className={styles.portalCardTitle}>
+                        <i className="fa-solid fa-file-invoice-dollar text-primary"></i>
+                        <span>{isAr ? 'ملخص الفاتورة والسداد' : 'Payment Summary'}</span>
                       </h6>
+                      <span className="badge bg-light text-primary border" style={{ fontSize: '0.72rem' }}>
+                        {activeInvoice?.invoiceNumber || 'INVOICE'}
+                      </span>
+                    </div>
 
-                      <div className="d-flex justify-content-between small text-muted mb-2">
+                    <div className={styles.portalCardBody}>
+                      <div className={styles.summaryRow}>
                         <span>{isAr ? 'المصروفات الأساسية:' : 'Base Course Tuition:'}</span>
                         <strong className="text-dark">
-                          {displayBasePrice.toLocaleString()} {displayCurrency}
+                          {formatAmount(displayBasePrice)} {displayCurrency}
                         </strong>
                       </div>
 
                       {selectedPackage === 'WITH_TRANSPORTATION' && (
-                        <div className="d-flex justify-content-between small text-muted mb-2">
+                        <div className={styles.summaryRow}>
                           <span>{isAr ? 'رسوم الانتقالات المعتمدة:' : 'Transportation Option:'}</span>
                           <strong className="text-dark">
-                            +{displayTransPrice.toLocaleString()} {displayCurrency}
+                            +{formatAmount(displayTransPrice)} {displayCurrency}
                           </strong>
                         </div>
                       )}
 
-                      <div className="d-flex justify-content-between small text-muted mb-2">
+                      <div className={styles.summaryRow}>
                         <span>{isAr ? 'الباقة المختارة:' : 'Selected Package:'}</span>
                         <span className="text-primary fw-medium">
                           {selectedPackage === 'WITH_TRANSPORTATION'
@@ -1597,7 +1708,7 @@ export default function PaymentsPage() {
                         </span>
                       </div>
 
-                      <div className="d-flex justify-content-between small text-muted mb-2">
+                      <div className={styles.summaryRow}>
                         <span>{isAr ? 'طريقة السداد:' : 'Payment Method:'}</span>
                         <span className="badge bg-light text-dark border">
                           {paymentMethod === 'CARD'
@@ -1608,39 +1719,35 @@ export default function PaymentsPage() {
                         </span>
                       </div>
 
-                      <div className="d-flex justify-content-between small text-muted mb-3">
+                      <div className={styles.summaryRow}>
                         <span>{isAr ? 'العملة المعتمدة:' : 'Settlement Currency:'}</span>
                         <span className="badge bg-light text-dark border">{displayCurrency}</span>
                       </div>
 
-                      <hr className="my-3" />
-
-                      <div className="d-flex justify-content-between align-items-center mb-4">
+                      <div className={styles.summaryTotalBox}>
                         <div>
-                          <span className="fw-bold text-dark fs-6 d-block">
-                            {isAr ? 'الإجمالي النهائي المطلوب:' : 'Total Amount Due:'}
+                          <span className={styles.summaryTotalLabel}>
+                            {isAr ? 'الإجمالي المطلوب:' : 'Total Amount Due:'}
                           </span>
-                          <small className="text-muted">
-                            {isAr ? 'شامل كافة الرسوم الدراسية' : 'Authoritative Total Amount'}
+                          <small className="text-muted d-block" style={{ fontSize: '0.72rem' }}>
+                            {isAr ? 'شامل الرسوم والخدمات المختارة' : 'Authoritative Total Amount'}
                           </small>
                         </div>
-                        <span className="fs-3 fw-bold text-primary">
-                          {priceLoading ? '…' : displayTotalDue.toLocaleString()} {displayCurrency}
+                        <span className={styles.summaryTotalAmount}>
+                          {priceLoading ? '…' : formatAmount(displayTotalDue)} <span style={{ fontSize: '1rem', fontWeight: 600 }}>{displayCurrency}</span>
                         </span>
                       </div>
 
                       {/* Refund Destination Notice */}
-                      <div className="p-2 px-3 bg-white border rounded small text-muted mb-3">
+                      <div className="p-2 px-3 bg-light border rounded small text-muted my-3" style={{ fontSize: '0.75rem' }}>
                         <i className="fa-solid fa-circle-info text-info me-1"></i>
                         <span>
                           {isAr
-                            ? `وجهة الاسترداد المسجلة: ${refundAccount?.accountHolderName || user?.fullName} (${refundAccount?.refundMethod === 'BANK_TRANSFER' ? refundAccount.bankName : 'البطاقة الأصلية'}).`
+                            ? `وجهة الاسترداد: ${refundAccount?.accountHolderName || user?.fullName} (${refundAccount?.refundMethod === 'BANK_TRANSFER' ? refundAccount.bankName : 'البطاقة الأصلية'}).`
                             : `Refund destination: ${refundAccount?.accountHolderName || user?.fullName} (${refundAccount?.refundMethod === 'BANK_TRANSFER' ? refundAccount.bankName : 'Original Card'}).`}
                         </span>
                       </div>
-                    </div>
 
-                    <div>
                       {/* Action Button: Gateway Card OR Manual Proof submission */}
                       {paymentMethod === 'CARD' ? (
                         <button
@@ -1659,8 +1766,8 @@ export default function PaymentsPage() {
                               <i className="fa-solid fa-lock"></i>
                               <span className="fw-bold">
                                 {isAr
-                                  ? `سداد الآن بالبطاقة (${displayTotalDue.toLocaleString()} ج.م)`
-                                  : `Pay Online (${displayTotalDue.toLocaleString()} ${displayCurrency})`}
+                                  ? `سداد الآن بالبطاقة (${formatAmount(displayTotalDue)} ج.م)`
+                                  : `Pay Online (${formatAmount(displayTotalDue)} ${displayCurrency})`}
                               </span>
                               <i className={`fa-solid ${isRTL ? 'fa-arrow-left' : 'fa-arrow-right'} ms-1`}></i>
                             </>
@@ -1675,7 +1782,7 @@ export default function PaymentsPage() {
                           <span className="fw-bold">{isAr ? 'الانتقال إلى تدريبي' : 'Access Enrolled Course'}</span>
                         </Link>
                       ) : activeProof?.status === 'Pending' && !forceResubmit ? (
-                        <div className="p-3 bg-white border rounded text-center">
+                        <div className="p-3 bg-light border rounded text-center">
                           <span className="badge bg-warning text-dark p-2 px-3 mb-2 d-inline-block">
                             <i className="fa-solid fa-hourglass-half me-1"></i>
                             {isAr ? 'إيصال السداد قيد التدقيق المالي' : 'Proof Under Financial Review'}
@@ -1709,7 +1816,7 @@ export default function PaymentsPage() {
                         </button>
                       )}
 
-                      <p className="text-muted text-center small mt-2 mb-0" style={{ fontSize: '0.75rem' }}>
+                      <p className="text-muted text-center small mt-3 mb-0" style={{ fontSize: '0.72rem' }}>
                         <i className="fa-solid fa-shield-halved me-1 text-success"></i>
                         {isAr
                           ? 'تخضع كافة المعاملات المالية لرقابة وتدقيق الإدارة المالية لوكالة الفضاء المصرية.'
@@ -1746,53 +1853,71 @@ export default function PaymentsPage() {
       ) : null}
 
       {/* 5. TABS FILTER & ACTIONS */}
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <ul className="nav nav-pills">
-          <li className="nav-item">
+      <div className={styles.ledgerHeader}>
+        <ul className={styles.tabList}>
+          <li>
             <button
-              className={`nav-link btn-sm ${activeTab === 'all' ? 'active bg-primary text-white' : 'text-muted'}`}
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('all')}
             >
-              {isAr ? 'كافة الفواتير' : 'All Invoices'} ({invoices.length})
+              <i className="fa-solid fa-receipt"></i>
+              <span>{isAr ? 'كافة الفواتير' : 'All Invoices'}</span>
+              <span className={styles.tabCountBadge}>{invoices.length}</span>
             </button>
           </li>
-          <li className="nav-item">
+          <li>
             <button
-              className={`nav-link btn-sm ${activeTab === 'pending' ? 'active bg-primary text-white' : 'text-muted'}`}
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'pending' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('pending')}
             >
-              {isAr ? 'بانتظار السداد' : 'Pending Payment'} (
-              {invoices.filter((i) => ['Invoice Issued', 'Pending', 'Payment Initiated'].includes(i.status)).length})
+              <i className="fa-solid fa-clock"></i>
+              <span>{isAr ? 'بانتظار السداد' : 'Pending Payment'}</span>
+              <span className={styles.tabCountBadge}>
+                {invoices.filter((i) => ['Invoice Issued', 'Pending', 'Payment Initiated'].includes(i.status)).length}
+              </span>
             </button>
           </li>
-          <li className="nav-item">
+          <li>
             <button
-              className={`nav-link btn-sm ${activeTab === 'paid' ? 'active bg-primary text-white' : 'text-muted'}`}
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'paid' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('paid')}
             >
-              {isAr ? 'الإيصالات المسددة' : 'Paid Receipts'} ({invoices.filter((i) => i.status === 'Paid').length})
+              <i className="fa-solid fa-circle-check"></i>
+              <span>{isAr ? 'الإيصالات المسددة' : 'Paid Receipts'}</span>
+              <span className={styles.tabCountBadge}>
+                {invoices.filter((i) => i.status === 'Paid').length}
+              </span>
             </button>
           </li>
-          <li className="nav-item">
+          <li>
             <button
-              className={`nav-link btn-sm ${activeTab === 'refunds' ? 'active bg-primary text-white' : 'text-muted'}`}
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'refunds' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('refunds')}
             >
-              {isAr ? 'طلبات الاسترداد' : 'Refund Requests'} ({myRefunds.length})
+              <i className="fa-solid fa-rotate-left"></i>
+              <span>{isAr ? 'طلبات الاسترداد' : 'Refund Requests'}</span>
+              <span className={styles.tabCountBadge}>{myRefunds.length}</span>
             </button>
           </li>
-          <li className="nav-item">
+          <li>
             <button
-              className={`nav-link btn-sm ${activeTab === 'proofs' ? 'active bg-primary text-white' : 'text-muted'}`}
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'proofs' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('proofs')}
             >
-              {isAr ? 'إيصالات السداد المرفوعة' : 'Manual Proofs'} ({myProofsList.length})
+              <i className="fa-solid fa-file-invoice"></i>
+              <span>{isAr ? 'إيصالات السداد المرفوعة' : 'Manual Proofs'}</span>
+              <span className={styles.tabCountBadge}>{myProofsList.length}</span>
             </button>
           </li>
         </ul>
 
         <button className="btn btn-outline-secondary btn-sm" onClick={loadData}>
-          <i className="fa-solid fa-arrows-rotate me-1"></i> {isAr ? 'تحديث' : 'Refresh'}
+          <i className="fa-solid fa-arrows-rotate me-1"></i> {isAr ? 'تحديث السجلات' : 'Refresh Ledger'}
         </button>
       </div>
 
@@ -1839,7 +1964,7 @@ export default function PaymentsPage() {
                       <td className="fw-bold text-primary">{rf.refundNumber}</td>
                       <td>{rf.course?.title || 'Course'}</td>
                       <td className="fw-bold text-dark">
-                        {rf.amount?.toLocaleString()} {rf.currency || 'EGP'}
+                        {formatAmount(rf.amount)} {rf.currency || 'EGP'}
                       </td>
                       <td>
                         {rf.refundDestination?.refundMethod === 'BANK_TRANSFER'
@@ -1861,7 +1986,7 @@ export default function PaymentsPage() {
                           {rf.status}
                         </span>
                       </td>
-                      <td>{new Date(rf.createdAt).toLocaleDateString()}</td>
+                      <td>{formatDate(rf.createdAt)}</td>
                       <td className="text-muted">
                         {rf.adminDecision?.decisionNote || (rf.status === 'Pending Review' ? (isAr ? 'قيد المراجعة المالية' : 'Under Review') : '—')}
                       </td>
@@ -1913,7 +2038,7 @@ export default function PaymentsPage() {
                         </span>
                       </td>
                       <td className="fw-bold text-primary">
-                        {prf.amount?.toLocaleString()} {prf.currency || 'EGP'}
+                        {formatAmount(prf.amount)} {prf.currency || 'EGP'}
                       </td>
                       <td>
                         <div>
@@ -1942,7 +2067,7 @@ export default function PaymentsPage() {
                             : (isAr ? 'قيد المراجعة' : 'Pending')}
                         </span>
                       </td>
-                      <td>{new Date(prf.createdAt).toLocaleDateString()}</td>
+                      <td>{formatDate(prf.createdAt)}</td>
                       <td>
                         <div className="d-flex align-items-center gap-2">
                           <button
@@ -1993,7 +2118,7 @@ export default function PaymentsPage() {
           </div>
         </div>
       ) : (
-        <div className="row g-4 mb-5">
+        <div className={styles.invoiceGrid}>
           {filteredInvoices.map((inv) => {
             const course = inv.course || {};
             const isPaid = inv.status === 'Paid';
@@ -2009,156 +2134,165 @@ export default function PaymentsPage() {
             const isSelected = checkoutTarget?.invoice?._id === inv._id;
 
             return (
-              <div className="col-lg-6" key={inv._id}>
-                <div
-                  className={`card h-100 p-4 d-flex flex-column justify-content-between position-relative shadow-sm border ${
-                    isSelected ? 'border-primary ring-2' : 'border-0'
-                  }`}
-                  style={{ borderRadius: 'var(--radius-md, 8px)' }}
-                >
-                  <div>
-                    {/* Header */}
-                    <div className="d-flex justify-content-between align-items-start gap-2 mb-3">
-                      <div>
-                        <span className="badge bg-light text-primary border mb-1">
-                          {inv.invoiceNumber || `INV-${inv._id.slice(-6).toUpperCase()}`}
-                        </span>
-                        <h5 className="fw-bold text-dark mb-0">{course.title || (isAr ? 'مصروفات دورة تدريبية' : 'Course Tuition')}</h5>
-                        {inv.cohort?.name && (
-                          <small className="text-muted d-block mt-1">
-                            <i className="fa-solid fa-users me-1 text-primary"></i>
-                            {inv.cohort.name}
-                          </small>
-                        )}
-                      </div>
-                      <StatusBadge status={isOverdue && !isPaid ? 'Overdue' : inv.status} />
-                    </div>
-
-                    {/* Financial details table */}
-                    <div className="p-3 bg-light rounded mb-3">
-                      <div className="d-flex justify-content-between small text-muted mb-1">
-                        <span>{isAr ? 'مصروفات الدورة التدريبية:' : 'Course Tuition:'}</span>
-                        <span className="text-dark fw-medium">
-                          {baseAmount.toLocaleString()} {inv.currency || 'EGP'}
-                        </span>
-                      </div>
-                      {transportationAmount > 0 && (
-                        <div className="d-flex justify-content-between small text-muted mb-1">
-                          <span>{isAr ? 'باقة الانتقالات المعتمدة:' : 'Transportation Option:'}</span>
-                          <span className="text-dark fw-medium">
-                            +{transportationAmount.toLocaleString()} {inv.currency || 'EGP'}
-                          </span>
-                        </div>
-                      )}
-                      <div className="d-flex justify-content-between small text-muted mb-2">
-                        <span>{isAr ? 'الباقة المختارة:' : 'Package:'}</span>
-                        <span className="text-dark fw-semibold">
-                          {inv.packageType === 'WITH_TRANSPORTATION'
-                            ? (isAr ? 'الدورة + الانتقالات' : 'Course + Transportation')
-                            : (isAr ? 'الدورة فقط' : 'Course Only')}
-                        </span>
-                      </div>
-                      <hr className="my-2" />
-                      <div className="d-flex justify-content-between fw-bold text-dark">
-                        <span>{isAr ? 'الإجمالي المطلوب:' : 'Total Amount:'}</span>
-                        <span className="text-primary fs-5">
-                          {totalAmount.toLocaleString()} {inv.currency || 'EGP'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Important dates */}
-                    <ul className="list-unstyled small text-muted mb-4 d-flex flex-column gap-1">
-                      <li className="d-flex align-items-center gap-2">
-                        <i className="fa-regular fa-calendar-check text-primary" style={{ width: '16px' }}></i>
-                        <span>
-                          {isAr ? 'تاريخ الإصدار: ' : 'Issued Date: '}
-                          {new Date(inv.issuedAt || inv.createdAt).toLocaleDateString()}
-                        </span>
-                      </li>
-                      <li className="d-flex align-items-center gap-2">
-                        <i className="fa-solid fa-hourglass-end text-danger" style={{ width: '16px' }}></i>
-                        <span className={isOverdue ? 'text-danger fw-bold' : ''}>
-                          {isAr ? 'مهلة السداد (قاعدة ٧٢ ساعة): ' : 'Payment Deadline (72h Rule): '}
-                          {inv.dueAt || inv.dueDate
-                            ? new Date(inv.dueAt || inv.dueDate).toLocaleString()
-                            : isAr
-                            ? 'محددة لاحقاً'
-                            : 'TBA'}
-                        </span>
-                      </li>
-                      {inv.paidAt && (
-                        <li className="d-flex align-items-center gap-2">
-                          <i className="fa-solid fa-circle-check text-success" style={{ width: '16px' }}></i>
-                          <span className="text-success fw-medium">
-                            {isAr ? 'تاريخ السداد: ' : 'Paid Date: '}
-                            {new Date(inv.paidAt).toLocaleString()}
-                          </span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="pt-3 border-top mt-auto d-flex gap-2 flex-wrap">
-                    {isPaid ? (
-                      <>
-                        <button
-                          className="btn btn-outline-secondary btn-sm flex-grow-1"
-                          onClick={() =>
-                            setReceiptData({
-                              invoice: inv,
-                              course: inv.course,
-                              cohort: inv.cohort,
-                              packageType: inv.packageType,
-                              amount: inv.amount,
-                              currency: inv.currency || 'EGP',
-                              paidAt: inv.paidAt || inv.updatedAt,
-                              transaction: (inv.transactions && inv.transactions[0]) || null,
-                            })
-                          }
-                        >
-                          <i className="fa-solid fa-receipt me-1 text-secondary"></i>
-                          {isAr ? 'عرض الإيصال الرسمي' : 'View Official Receipt'}
-                        </button>
-
-                        <button
-                          className="btn btn-outline-warning btn-sm"
-                          onClick={() => handleOpenRefundModal(inv)}
-                          title={isAr ? 'طلب استرداد المصروفات' : 'Request Tuition Refund'}
-                        >
-                          <i className="fa-solid fa-rotate-left me-1"></i>
-                          {isAr ? 'طلب استرداد' : 'Request Refund'}
-                        </button>
-                      </>
-                    ) : isOverdue ? (
-                      <div className="alert alert-danger p-2 small mb-0 w-100 text-center">
-                        <i className="fa-solid fa-circle-exclamation me-1"></i>
-                        {isAr ? 'انتهت مهلة الحجز (٧٢ ساعة)' : 'Reservation Expired (72h Deadline Passed)'}
-                      </div>
-                    ) : isPayable ? (
-                      <button
-                        className={`btn btn-sm w-100 ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
-                        onClick={() => {
-                          openCheckout({ invoice: inv, course: inv.course, cohort: inv.cohort, application: inv.application });
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <i className="fa-solid fa-credit-card me-1"></i>
-                        {isSelected
-                          ? isAr
-                            ? 'محدد حالياً في نموذج السداد'
-                            : 'Selected in Payment Form'
-                          : isAr
-                          ? 'تحديد وسداد الفاتورة'
-                          : 'Select & Pay Invoice'}
-                      </button>
-                    ) : (
-                      <span className="text-muted small text-center w-100">
-                        {isAr ? 'الحالة: ' : 'Status: '} {inv.status}
+              <div
+                className={`${styles.invoiceCard} ${isSelected ? styles.invoiceCardActive : ''}`}
+                key={inv._id}
+              >
+                <div>
+                  {/* Card Header */}
+                  <div className={styles.invoiceCardHeader}>
+                    <div style={{ minWidth: 0 }}>
+                      <span className="badge bg-light text-primary border mb-1" style={{ fontSize: '0.72rem' }}>
+                        {inv.invoiceNumber || `INV-${inv._id.slice(-6).toUpperCase()}`}
                       </span>
-                    )}
+                      <h5 className="fw-bold text-dark mb-0 text-truncate" title={course.title}>
+                        {course.title || (isAr ? 'مصروفات دورة تدريبية' : 'Course Tuition')}
+                      </h5>
+                      {inv.cohort?.name && (
+                        <small className="text-muted d-block mt-1 text-truncate">
+                          <i className="fa-solid fa-users me-1 text-primary"></i>
+                          {inv.cohort.name}
+                        </small>
+                      )}
+                    </div>
+                    <StatusBadge status={isOverdue && !isPaid ? 'Overdue' : inv.status} />
                   </div>
+
+                  {/* Financial Metrics 2x2 Grid */}
+                  <div className={styles.invoiceMetaGrid}>
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
+                        {isAr ? 'المصروفات الأساسية:' : 'Base Tuition:'}
+                      </span>
+                      <strong className="text-dark" style={{ fontSize: '0.9rem' }}>
+                        {formatAmount(baseAmount)} {inv.currency || 'EGP'}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
+                        {isAr ? 'الانتقالات:' : 'Transportation:'}
+                      </span>
+                      <strong className="text-dark" style={{ fontSize: '0.9rem' }}>
+                        {Number(transportationAmount) > 0 ? `+${formatAmount(transportationAmount)} ${inv.currency || 'EGP'}` : (isAr ? 'غير مشمولة' : 'None')}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
+                        {isAr ? 'نوع الباقة:' : 'Package:'}
+                      </span>
+                      <span className="text-dark fw-medium" style={{ fontSize: '0.82rem' }}>
+                        {inv.packageType === 'WITH_TRANSPORTATION'
+                          ? (isAr ? 'الدورة + الانتقالات' : 'Course + Transport')
+                          : (isAr ? 'الدورة فقط' : 'Course Only')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
+                        {isAr ? 'المطلوب نهائياً:' : 'Total Due:'}
+                      </span>
+                      <span className="fw-bold text-primary" style={{ fontSize: '1.05rem' }}>
+                        {formatAmount(totalAmount)} {inv.currency || 'EGP'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Important Dates */}
+                  <ul className="list-unstyled small text-muted mb-3 d-flex flex-column gap-1" style={{ fontSize: '0.78rem' }}>
+                    <li className="d-flex align-items-center gap-2">
+                      <i className="fa-regular fa-calendar-check text-primary" style={{ width: '16px' }}></i>
+                      <span>
+                        {isAr ? 'تاريخ الإصدار: ' : 'Issued Date: '}
+                        {formatDate(inv.issuedAt || inv.createdAt)}
+                      </span>
+                    </li>
+                    <li className="d-flex align-items-center gap-2">
+                      <i className="fa-solid fa-hourglass-end text-danger" style={{ width: '16px' }}></i>
+                      <span className={isOverdue ? 'text-danger fw-bold' : ''}>
+                        {isAr ? 'مهلة السداد (قاعدة ٧٢ ساعة): ' : 'Payment Deadline (72h Rule): '}
+                        {inv.dueAt || inv.dueDate
+                          ? formatDateTime(inv.dueAt || inv.dueDate)
+                          : isAr
+                          ? 'محددة لاحقاً'
+                          : 'TBA'}
+                      </span>
+                    </li>
+                    {inv.paidAt && (
+                      <li className="d-flex align-items-center gap-2">
+                        <i className="fa-solid fa-circle-check text-success" style={{ width: '16px' }}></i>
+                        <span className="text-success fw-medium">
+                          {isAr ? 'تاريخ السداد: ' : 'Paid Date: '}
+                          {formatDateTime(inv.paidAt)}
+                        </span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Card Actions Footer */}
+                <div className="pt-3 border-top mt-auto d-flex gap-2 flex-wrap">
+                  {isPaid ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm flex-grow-1"
+                        onClick={() =>
+                          setReceiptData({
+                            invoice: inv,
+                            course: inv.course,
+                            cohort: inv.cohort,
+                            packageType: inv.packageType,
+                            amount: inv.amount,
+                            currency: inv.currency || 'EGP',
+                            paidAt: inv.paidAt || inv.updatedAt,
+                            transaction: (inv.transactions && inv.transactions[0]) || null,
+                          })
+                        }
+                      >
+                        <i className="fa-solid fa-receipt me-1 text-secondary"></i>
+                        {isAr ? 'عرض الإيصال الرسمي' : 'View Official Receipt'}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-outline-warning btn-sm"
+                        onClick={() => handleOpenRefundModal(inv)}
+                        title={isAr ? 'طلب استرداد المصروفات' : 'Request Tuition Refund'}
+                      >
+                        <i className="fa-solid fa-rotate-left me-1"></i>
+                        {isAr ? 'طلب استرداد' : 'Request Refund'}
+                      </button>
+                    </>
+                  ) : isOverdue ? (
+                    <div className="alert alert-danger p-2 small mb-0 w-100 text-center">
+                      <i className="fa-solid fa-circle-exclamation me-1"></i>
+                      {isAr ? 'انتهت مهلة الحجز (٧٢ ساعة)' : 'Reservation Expired (72h Deadline Passed)'}
+                    </div>
+                  ) : isPayable ? (
+                    <button
+                      type="button"
+                      className={`btn btn-sm w-100 ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => {
+                        openCheckout({ invoice: inv, course: inv.course, cohort: inv.cohort, application: inv.application });
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      <i className="fa-solid fa-credit-card me-1"></i>
+                      {isSelected
+                        ? isAr
+                          ? 'محدد حالياً في نموذج السداد'
+                          : 'Selected in Payment Form'
+                        : isAr
+                        ? 'تحديد وسداد الفاتورة'
+                        : 'Select & Pay Invoice'}
+                    </button>
+                  ) : (
+                    <span className="text-muted small text-center w-100">
+                      {isAr ? 'الحالة: ' : 'Status: '} {inv.status}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -2241,12 +2375,12 @@ export default function PaymentsPage() {
                   <div className="d-flex justify-content-between mb-1">
                     <span className="text-muted">{isAr ? 'المبلغ المسدد:' : 'Amount Paid:'}</span>
                     <strong className="text-secondary fs-6">
-                      {(receiptData.amount || 0).toLocaleString()} {receiptData.currency || 'EGP'}
+                      {formatAmount(receiptData.amount)} {receiptData.currency || 'EGP'}
                     </strong>
                   </div>
                   <div className="d-flex justify-content-between mb-1">
                     <span className="text-muted">{isAr ? 'تاريخ السداد:' : 'Payment Date:'}</span>
-                    <strong className="text-dark">{new Date(receiptData.paidAt).toLocaleString()}</strong>
+                    <strong className="text-dark">{formatDateTime(receiptData.paidAt)}</strong>
                   </div>
                   <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
                     <span className="text-muted">{isAr ? 'الحالة المالية والأكاديمية:' : 'Status:'}</span>
@@ -2535,7 +2669,7 @@ export default function PaymentsPage() {
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">{isAr ? 'المبلغ المسدد:' : 'Amount Paid:'}</span>
                       <strong className="text-primary fs-6">
-                        {refundTargetInvoice.amount?.toLocaleString()} {refundTargetInvoice.currency || 'EGP'}
+                        {formatAmount(refundTargetInvoice.amount)} {refundTargetInvoice.currency || 'EGP'}
                       </strong>
                     </div>
                   </div>
@@ -2633,7 +2767,7 @@ export default function PaymentsPage() {
                   </div>
                   <div>
                     <span className="text-muted me-1">{isAr ? 'المبلغ:' : 'Amount:'}</span>
-                    <strong className="text-primary">{viewingProofFile.amount?.toLocaleString()} EGP</strong>
+                    <strong className="text-primary">{formatAmount(viewingProofFile.amount)} EGP</strong>
                   </div>
                   <div>
                     <span

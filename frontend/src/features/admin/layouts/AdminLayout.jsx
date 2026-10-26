@@ -122,7 +122,7 @@ export default function AdminLayout() {
       defaultOpen: false,
       icon: 'fa-file-invoice-dollar',
       items: [
-        { to: `/admin/${activeDivision}/invoices`, icon: 'fa-receipt', label: 'Invoices & Payments' },
+        { to: `/admin/${activeDivision}/payments`, icon: 'fa-receipt', label: 'Manual Payment Reviews' },
         { to: `/admin/${activeDivision}/certificates`, icon: 'fa-certificate', label: 'Issued Certificates' },
         { to: `/admin/${activeDivision}/feedback`, icon: 'fa-comment-dots', label: 'Student Feedback' },
       ],
@@ -133,6 +133,7 @@ export default function AdminLayout() {
       defaultOpen: false,
       icon: 'fa-sliders',
       items: [
+        { to: `/admin/${activeDivision}/messages`, icon: 'fa-comments', label: 'Support & Messaging' },
         { to: `/admin/${activeDivision}/notifications`, icon: 'fa-bell', label: 'Broadcast Notifications' },
         { to: `/admin/${activeDivision}/reports`, icon: 'fa-chart-pie', label: 'Reports & Analytics' },
         { to: `/admin/${activeDivision}/audit-logs`, icon: 'fa-shield-halved', label: 'Security Audit Logs' },
@@ -188,7 +189,7 @@ export default function AdminLayout() {
       defaultOpen: false,
       icon: 'fa-file-invoice-dollar',
       items: [
-        { to: `/admin/${activeDivision}/invoices`, icon: 'fa-receipt', label: 'Invoices & Payments' },
+        { to: `/admin/${activeDivision}/payments`, icon: 'fa-receipt', label: 'Manual Payment Reviews' },
         { to: `/admin/${activeDivision}/certificates`, icon: 'fa-certificate', label: 'Issued Certificates' },
         { to: `/admin/${activeDivision}/feedback`, icon: 'fa-comment-dots', label: 'Student Feedback' },
       ],
@@ -199,6 +200,7 @@ export default function AdminLayout() {
       defaultOpen: false,
       icon: 'fa-sliders',
       items: [
+        { to: `/admin/${activeDivision}/messages`, icon: 'fa-comments', label: 'Support & Messaging' },
         { to: `/admin/${activeDivision}/notifications`, icon: 'fa-bell', label: 'Broadcast Notifications' },
         { to: `/admin/${activeDivision}/reports`, icon: 'fa-chart-pie', label: 'Reports & Analytics' },
         { to: `/admin/${activeDivision}/audit-logs`, icon: 'fa-shield-halved', label: 'Security Audit Logs' },

@@ -9,7 +9,6 @@ import { ErrorState } from '../../components/StateComponents.jsx';
 import DashboardHero from '../../components/student/dashboard/DashboardHero.jsx';
 import DashboardStats from '../../components/student/dashboard/DashboardStats.jsx';
 import CurrentTrainingCard from '../../components/student/dashboard/CurrentTrainingCard.jsx';
-import AdmissionsJourney from '../../components/student/dashboard/AdmissionsJourney.jsx';
 import QuickActions from '../../components/student/dashboard/QuickActions.jsx';
 import UpcomingItems from '../../components/student/dashboard/UpcomingItems.jsx';
 import NotificationsPreview from '../../components/student/dashboard/NotificationsPreview.jsx';
@@ -61,7 +60,6 @@ export default function DashboardPage() {
     recommendations = [],
     notifications = [],
     unreadNotificationsCount = 0,
-    certificates = [],
     certificatesCount = 0,
     upcomingSessions = [],
     upcomingAssessments = [],
@@ -139,44 +137,66 @@ export default function DashboardPage() {
         certificatesCount={certificatesCount}
       />
 
-      {/* 3. Main Dashboard 2-Column Grid */}
-      <div className="egsa-grid-split-2-1 mb-4">
-        {/* Left Column: Core Training & Admissions */}
-        <div className="dashboard-main-col">
-          {/* Current Enrolled Program Card (or Polite Empty State) */}
+      {/* 3. Quick Operational Actions Grid (Compact, evenly distributed) */}
+      <div className="mb-4">
+        <QuickActions
+          hasActiveEnrollment={upcomingEnrollments.length > 0}
+          hasActiveApplication={applications.length > 0}
+          hasPendingPayment={hasPendingPayment}
+          hasPendingReadiness={hasPendingReadiness}
+          currentApplicationId={currentApplication?._id}
+          readinessCourseId={currentApplication?.course?._id}
+        />
+      </div>
+
+      {/* 4. Main Operational Area: Current Training & Upcoming Schedule Side by Side */}
+      <div className="row g-4 mb-4 align-items-stretch">
+        {/* Active Enrolled Training Program / Unified Training Overview */}
+        <div className="col-12 col-lg-7 col-xl-8">
           <CurrentTrainingCard
             enrollments={upcomingEnrollments}
+            applications={applications}
             attendanceData={attendanceData}
             upcomingSessions={upcomingSessions}
             upcomingAssessments={upcomingAssessments}
           />
+        </div>
 
-          {/* Admissions Pipeline Journey Status */}
-          <AdmissionsJourney application={currentApplication} />
+        {/* Real Upcoming Items, Sessions & Urgent Deadlines */}
+        <div className="col-12 col-lg-5 col-xl-4">
+          <UpcomingItems
+            upcomingSessions={upcomingSessions}
+            upcomingAssessments={upcomingAssessments}
+            urgentGate={urgentGate}
+          />
+        </div>
+      </div>
 
-          {/* Curriculum Specialization Roadmap */}
-          {learningPath && (
-            <div className="egsa-institutional-card mb-4" aria-labelledby="roadmap-heading">
-              <div className="card-header-clean">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="card-header-icon-pill">
-                    <i className="fa-solid fa-route text-secondary-egsa"></i>
-                  </span>
-                  <div>
-                    <span className="card-overline">Specialization Trajectory</span>
-                    <h2 id="roadmap-heading" className="card-heading-title">
-                      Curriculum Track — {learningPath.title}
-                    </h2>
-                  </div>
+      {/* 5. Specialization Trajectory / Learning Roadmap */}
+      {learningPath && (
+        <div className="mb-4">
+          <div className="egsa-institutional-card" aria-labelledby="roadmap-heading">
+            <div className="card-header-clean">
+              <div className="d-flex align-items-center gap-2">
+                <span className="card-header-icon-pill">
+                  <i className="fa-solid fa-route text-secondary-egsa"></i>
+                </span>
+                <div>
+                  <span className="card-overline">Specialization Trajectory</span>
+                  <h2 id="roadmap-heading" className="card-heading-title">
+                    Curriculum Track — {learningPath.title}
+                  </h2>
                 </div>
-                <Link to="/student/learning-path" className="clean-action-link">
-                  View Full Roadmap <i className="fa-solid fa-arrow-right ms-1"></i>
-                </Link>
               </div>
+              <Link to="/student/learning-path" className="clean-action-link">
+                Full Roadmap <i className="fa-solid fa-arrow-right ms-1"></i>
+              </Link>
+            </div>
 
-              <div className="d-flex flex-wrap justify-content-between align-items-center text-muted small mb-2">
+            <div className="p-3 p-md-4">
+              <div className="d-flex flex-wrap justify-content-between align-items-center text-muted small mb-2 gap-2">
                 <span>
-                  {learningPath.completedCount} of {learningPath.totalCourses} courses completed in this specialization
+                  {learningPath.completedCount} of {learningPath.totalCourses} courses completed
                 </span>
                 <span className="fw-bold text-dark">{progressPct}% Complete</span>
               </div>
@@ -188,97 +208,94 @@ export default function DashboardPage() {
                 />
               </div>
             </div>
-          )}
-
-          {/* Recommended Programs Based on Goal */}
-          {recommendations?.length > 0 && (
-            <div className="egsa-institutional-card" aria-labelledby="recommendations-heading">
-              <div className="card-header-clean">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="card-header-icon-pill">
-                    <i className="fa-solid fa-wand-magic-sparkles text-accent-egsa"></i>
-                  </span>
-                  <div>
-                    <span className="card-overline">Specialization Recommendations</span>
-                    <h2 id="recommendations-heading" className="card-heading-title">
-                      Courses Recommended for Your Trajectory
-                    </h2>
-                  </div>
-                </div>
-                <Link to="/student/programs" className="clean-action-link">
-                  Full Catalog <i className="fa-solid fa-arrow-right ms-1"></i>
-                </Link>
-              </div>
-
-              <div className="row g-3">
-                {recommendations.slice(0, 4).map((c) => (
-                  <div key={c._id} className="col-md-6">
-                    <div className="p-3 border rounded h-100 d-flex flex-column justify-content-between bg-surface-subtle">
-                      <div>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <span className="code-pill">{c.level || 'Accredited'}</span>
-                          <span className="fw-bold small text-accent-egsa">
-                            {c.price != null ? `${c.price} EGP` : 'Tuition TBA'}
-                          </span>
-                        </div>
-                        <h3 className="h6 fw-bold text-dark mb-1">{c.title}</h3>
-                        <p className="text-muted small mb-3 text-truncate-2">
-                          {c.shortDescription || c.overview || 'Comprehensive space technology training.'}
-                        </p>
-                      </div>
-                      <div className="d-flex gap-2 mt-auto">
-                        <Link
-                          to={`/student/courses/${c._id}`}
-                          className="btn btn-outline-primary btn-sm flex-grow-1"
-                        >
-                          Details
-                        </Link>
-                        {c.price != null && (
-                          <Link
-                            to={`/student/courses/${c._id}/fit`}
-                            className="btn btn-primary btn-sm flex-grow-1"
-                          >
-                            Check Fit
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
+      )}
 
-        {/* Right Column: Actions, Upcoming Schedule, Communications & Audit Trail */}
-        <div className="dashboard-side-col">
-          {/* Quick Operational Actions Grid */}
-          <QuickActions
-            hasActiveEnrollment={upcomingEnrollments.length > 0}
-            hasActiveApplication={applications.length > 0}
-            hasPendingPayment={hasPendingPayment}
-            hasPendingReadiness={hasPendingReadiness}
-            currentApplicationId={currentApplication?._id}
-            readinessCourseId={currentApplication?.course?._id}
-          />
-
-          {/* Real Upcoming Items & Deadlines */}
-          <UpcomingItems
-            upcomingSessions={upcomingSessions}
-            upcomingAssessments={upcomingAssessments}
-            urgentGate={urgentGate}
-          />
-
-          {/* Official Academy Notifications Preview */}
+      {/* 6. Secondary Content: Notifications Preview & Activity Timeline Side by Side */}
+      <div className="row g-4 mb-4 align-items-stretch">
+        <div className="col-12 col-lg-6">
           <NotificationsPreview
             notifications={notifications}
             unreadCount={unreadNotificationsCount}
           />
+        </div>
 
-          {/* Chronological Activity & Audit Trail */}
+        <div className="col-12 col-lg-6">
           <ActivityTimeline timeline={timeline} />
         </div>
       </div>
+
+      {/* 7. Recommended Programs Based on Goal */}
+      {recommendations?.length > 0 && (
+        <div className="egsa-institutional-card mb-4" aria-labelledby="recommendations-heading">
+          <div className="card-header-clean">
+            <div className="d-flex align-items-center gap-2">
+              <span className="card-header-icon-pill">
+                <i className="fa-solid fa-wand-magic-sparkles text-accent-egsa"></i>
+              </span>
+              <div>
+                <span className="card-overline">Specialization Recommendations</span>
+                <h2 id="recommendations-heading" className="card-heading-title">
+                  Courses Recommended for Your Trajectory
+                </h2>
+              </div>
+            </div>
+            <Link to="/student/programs" className="clean-action-link">
+              Full Catalog <i className="fa-solid fa-arrow-right ms-1"></i>
+            </Link>
+          </div>
+
+          <div className="row g-3">
+            {recommendations.slice(0, 4).map((c) => (
+              <div key={c._id} className="col-12 col-sm-6 col-lg-3">
+                <div className="p-3 border rounded h-100 d-flex flex-column justify-content-between bg-surface-subtle recommendation-subcard">
+                  <div>
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="code-pill">{c.level || 'Accredited'}</span>
+                      <span className="fw-bold small text-accent-egsa">
+                        {c.price != null ? `${c.price} EGP` : 'Tuition TBA'}
+                      </span>
+                    </div>
+                    <h3 className="h6 fw-bold text-dark mb-1">{c.title}</h3>
+                    <p className="text-muted small mb-3 text-truncate-2">
+                      {c.shortDescription || c.overview || 'Comprehensive space technology training.'}
+                    </p>
+                  </div>
+                  <div className="d-flex gap-2 mt-auto pt-2">
+                    <Link
+                      to={`/student/courses/${c._id}`}
+                      className="btn btn-outline-primary btn-sm flex-grow-1"
+                    >
+                      Details
+                    </Link>
+                    {c.price != null && (
+                      <Link
+                        to={`/student/courses/${c._id}/fit`}
+                        className="btn btn-primary btn-sm flex-grow-1"
+                      >
+                        Check Fit
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {recommendations.length > 4 && (
+            <div className="card-bottom-action pt-3 mt-3 border-top text-center">
+              <Link
+                to="/student/programs"
+                className="btn btn-light btn-sm w-100 fw-semibold text-primary d-inline-flex align-items-center justify-content-center gap-2"
+              >
+                <span>Explore All Recommended Courses ({recommendations.length})</span>
+                <i className="fa-solid fa-arrow-right small"></i>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

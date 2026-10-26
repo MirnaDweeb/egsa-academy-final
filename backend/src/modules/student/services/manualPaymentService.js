@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const User = require('../models/User');
+const Cohort = require('../models/Cohort');
 const PaymentProof = require('../models/PaymentProof');
 const PaymentSettings = require('../models/PaymentSettings');
 const Invoice = require('../models/Invoice');
@@ -714,6 +716,18 @@ async function adminApprovePaymentProof({ proofId, adminUser }) {
   } catch (notifyErr) {
     console.error('[ManualPaymentService] Notification error (non-fatal):', notifyErr.message);
   }
+
+  // Unified cross-role sync: ensure student is in Instructor and Admin rosters
+  try {
+    const { syncEnrollment } = require('../../integration/unifiedSyncService');
+    syncEnrollment({
+      student: approvedProof.student,
+      course: approvedProof.course,
+      cohort: approvedProof.cohort || (enrollment ? enrollment.cohort : null),
+      enrollmentId: enrollment?._id,
+      status: 'Confirmed',
+    }).catch(err => console.warn('[ManualPaymentService] Unified sync notice:', err.message));
+  } catch (_) {}
 
   return {
     success: true,

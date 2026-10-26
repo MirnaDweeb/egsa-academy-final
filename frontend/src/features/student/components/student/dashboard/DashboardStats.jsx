@@ -41,7 +41,7 @@ export default function DashboardStats({
           : 'None Submitted',
       statusClass: activeApplicationsCount > 0 ? 'status-active' : 'status-neutral',
       icon: 'fa-file-lines',
-      link: '/student/applications',
+      link: '/student/training?tab=applications',
     },
     {
       id: 'attendance',

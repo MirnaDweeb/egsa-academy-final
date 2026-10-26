@@ -163,7 +163,7 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
       setApprovingProof(null);
       await fetchProofs();
     } catch (err) {
-      setApproveError(err.message || 'Failed to approve payment proof.');
+      setApproveError(err.response?.data?.message || err.message || 'Failed to approve payment proof.');
     } finally {
       setApproveLoading(false);
     }
@@ -187,7 +187,7 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
       setRejectionReason('');
       await fetchProofs();
     } catch (err) {
-      setRejectError(err.message || 'Failed to reject payment proof.');
+      setRejectError(err.response?.data?.message || err.message || 'Failed to reject payment proof.');
     } finally {
       setRejectLoading(false);
     }
@@ -526,6 +526,7 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
       {/* VIEW EVIDENCE & AUDIT MODAL */}
       {viewingProof && (
         <Modal
+          isOpen={!!viewingProof}
           title={`Payment Evidence: ${viewingProof.student?.fullName || 'Student'}`}
           onClose={() => setViewingProof(null)}
           size="lg"
@@ -641,6 +642,36 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
                   </div>
                 </div>
               )}
+
+              {canManageFinance && viewingProof.status === 'Pending' && (
+                <div className="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => {
+                      const p = viewingProof;
+                      setViewingProof(null);
+                      setRejectingProof(p);
+                      setRejectionReason('');
+                      setRejectError('');
+                    }}
+                  >
+                    <i className="fa-solid fa-xmark me-1"></i> Reject Proof
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm"
+                    onClick={() => {
+                      const p = viewingProof;
+                      setViewingProof(null);
+                      setApprovingProof(p);
+                      setApproveError('');
+                    }}
+                  >
+                    <i className="fa-solid fa-check me-1"></i> Approve Payment
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </Modal>
@@ -649,22 +680,31 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
       {/* APPROVE CONFIRMATION MODAL */}
       {approvingProof && (
         <ConfirmModal
+          isOpen={!!approvingProof}
           title="Approve Manual Payment & Confirm Enrollment"
           message={`Are you sure you want to approve the ${approvingProof.paymentMethod?.replace('_', ' ')} payment of ${approvingProof.amount} EGP for ${approvingProof.student?.fullName || 'this student'}? This will officially settle the invoice and activate course enrollment.`}
-          confirmLabel={approveLoading ? 'Approving…' : 'Confirm & Activate Enrollment'}
-          confirmVariant="success"
-          isLoading={approveLoading}
+          confirmText={approveLoading ? 'Approving…' : 'Confirm & Activate Enrollment'}
+          confirmTone="success"
+          loading={approveLoading}
           error={approveError}
           onConfirm={handleConfirmApprove}
-          onCancel={() => setApprovingProof(null)}
+          onClose={() => {
+            setApprovingProof(null);
+            setApproveError('');
+          }}
         />
       )}
 
       {/* REJECT MODAL WITH MANDATORY REASON */}
       {rejectingProof && (
         <Modal
+          isOpen={!!rejectingProof}
           title={`Reject Payment Proof: ${rejectingProof.student?.fullName || 'Student'}`}
-          onClose={() => setRejectingProof(null)}
+          onClose={() => {
+            setRejectingProof(null);
+            setRejectError('');
+            setRejectionReason('');
+          }}
         >
           <form onSubmit={handleConfirmReject}>
             {rejectError && <div className="alert alert-danger small p-2 mb-3">{rejectError}</div>}
@@ -719,6 +759,7 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
       {/* MESSAGE STUDENT MODAL */}
       {messagingProof && (
         <Modal
+          isOpen={!!messagingProof}
           title={`Message Student: ${messagingProof.student?.fullName || 'Student'}`}
           onClose={() => setMessagingProof(null)}
         >
@@ -786,6 +827,7 @@ export default function ManualPaymentReviewsTab({ canManageFinance = true }) {
       {/* RECEIVING SETTINGS CONFIG MODAL */}
       {showSettingsModal && (
         <Modal
+          isOpen={showSettingsModal}
           title="Manual Payment Receiving Accounts Configuration"
           onClose={() => setShowSettingsModal(false)}
           size="lg"

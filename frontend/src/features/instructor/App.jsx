@@ -18,6 +18,7 @@ import ProgressPage from './pages/Progress.jsx';
 import NotificationsPage from './pages/Notifications.jsx';
 import ProfilePage from './pages/Profile.jsx';
 import MessagesPage from './pages/Messages.jsx';
+import ContactPage from './pages/Contact.jsx';
 
 function Protected({ children }) {
   const { user, booting } = useAuth();
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="cohorts" element={<CohortsPage />} /><Route path="cohorts/:id" element={<CohortDetail />} />
         <Route path="sessions" element={<SessionsPage />} /><Route path="sessions/:id" element={<SessionDetail />} />
         <Route path="students" element={<StudentsPage />} /><Route path="students/:id" element={<StudentProfile />} />
+        <Route path="contact" element={<ContactPage />} /><Route path="contact/:conversationId" element={<ContactPage />} />
         <Route path="messages" element={<MessagesPage />} /><Route path="messages/:conversationId" element={<MessagesPage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="assessments" element={<AssessmentsPage />} /><Route path="assessments/new" element={<AssessmentForm />} />

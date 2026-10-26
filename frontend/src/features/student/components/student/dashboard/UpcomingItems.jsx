@@ -104,34 +104,48 @@ export default function UpcomingItems({
           </p>
         </div>
       ) : (
-        <div className="upcoming-items-list">
-          {items.map((item) => (
-            <div key={item.id} className="upcoming-item-row">
-              <div className="item-icon-box">
-                <i className={`fa-solid ${item.icon}`}></i>
-              </div>
-
-              <div className="item-main-content">
-                <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                  <span className={`item-type-badge ${item.typeClass}`}>{item.type}</span>
-                  <span className="item-date-text">
-                    <i className="fa-regular fa-clock me-1"></i>
-                    {item.dateLabel}
-                    {item.timeLabel && ` · ${item.timeLabel}`}
-                  </span>
+        <>
+          <div className="upcoming-items-list">
+            {items.slice(0, 3).map((item) => (
+              <div key={item.id} className="upcoming-item-row">
+                <div className="item-icon-box">
+                  <i className={`fa-solid ${item.icon}`}></i>
                 </div>
-                <h3 className="item-title mb-0">{item.title}</h3>
-                {item.subtitle && <p className="item-subtitle text-muted mb-0">{item.subtitle}</p>}
-              </div>
 
-              <div className="item-action-area">
-                <Link to={item.actionLink} className="btn btn-outline-primary btn-sm px-3">
-                  {item.actionLabel} <i className="fa-solid fa-chevron-right ms-1 small"></i>
-                </Link>
+                <div className="item-main-content">
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <span className={`item-type-badge ${item.typeClass}`}>{item.type}</span>
+                    <span className="item-date-text">
+                      <i className="fa-regular fa-clock me-1"></i>
+                      {item.dateLabel}
+                      {item.timeLabel && ` · ${item.timeLabel}`}
+                    </span>
+                  </div>
+                  <h3 className="item-title mb-0">{item.title}</h3>
+                  {item.subtitle && <p className="item-subtitle text-muted mb-0">{item.subtitle}</p>}
+                </div>
+
+                <div className="item-action-area">
+                  <Link to={item.actionLink} className="btn btn-outline-primary btn-sm px-3">
+                    {item.actionLabel} <i className="fa-solid fa-chevron-right ms-1 small"></i>
+                  </Link>
+                </div>
               </div>
+            ))}
+          </div>
+
+          {items.length > 3 && (
+            <div className="card-bottom-action pt-3 mt-3 border-top text-center">
+              <Link
+                to="/student/training"
+                className="btn btn-light btn-sm w-100 fw-semibold text-primary d-inline-flex align-items-center justify-content-center gap-2"
+              >
+                <span>View All Sessions & Deadlines ({items.length})</span>
+                <i className="fa-solid fa-arrow-right small"></i>
+              </Link>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

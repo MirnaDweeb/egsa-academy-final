@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { courseService } from '../../services/courseService';
 import { applicationService } from '../../services/cycleServices';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingState, ErrorState, EmptyState, PageHeader } from '../../components/StateComponents.jsx';
+import ApplyModal from '../../components/student/ApplyModal.jsx';
+import './ExploreProgramsPage.css';
 
 const TRACK_CATEGORIES = [
   'All Tracks',
@@ -20,6 +22,7 @@ const TRACK_CATEGORIES = [
 ];
 
 export default function ExploreProgramsPage() {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [courses, setCourses] = useState([]);
   const [myApplications, setMyApplications] = useState([]);
@@ -87,30 +90,14 @@ export default function ExploreProgramsPage() {
     return map;
   }, [myApplications]);
 
-  const [enrollingCourseId, setEnrollingCourseId] = useState(null);
+  const [applyModalCourse, setApplyModalCourse] = useState(null);
 
-  const handleDirectEnroll = async (courseId) => {
+  const handleOpenApplyModal = (course) => {
     if (!isAuthenticated) {
-      navigate('/login?redirect=/student/programs');
+      navigate('/student/login?redirect=/student/programs');
       return;
     }
-    setEnrollingCourseId(courseId);
-    try {
-      const res = await applicationService.create({ courseId, directEnroll: true });
-      const app = res.data;
-      const invId = res.invoice?._id || app.invoice?._id || '';
-      if (app.status === 'Waitlisted') {
-        navigate(`/student/applications/${app._id}?waitlisted=true`);
-      } else if (app.status === 'Accepted' || invId) {
-        navigate(`/student/payments?invoiceId=${invId}&applicationId=${app._id}`);
-      } else {
-        navigate(`/student/applications/${app._id}`);
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to initiate direct enrollment. Please review prerequisites.');
-    } finally {
-      setEnrollingCourseId(null);
-    }
+    setApplyModalCourse(course);
   };
 
   const renderActionForCourse = (course, isFullBtn = false) => {
@@ -122,9 +109,9 @@ export default function ExploreProgramsPage() {
           return (
             <Link
               to={`/student/applications/${app._id}`}
-              className={`btn btn-success btn-sm ${isFullBtn ? 'w-100' : 'flex-grow-1'}`}
+              className="egsa-btn-enrolled"
             >
-              <i className="fa-solid fa-circle-check me-1"></i> Enrolled
+              <i className="fa-solid fa-circle-check egsa-btn-enrolled-icon"></i> Enrolled
             </Link>
           );
         }
@@ -132,9 +119,9 @@ export default function ExploreProgramsPage() {
           return (
             <Link
               to={`/student/applications/${app._id}`}
-              className={`btn btn-secondary btn-sm ${isFullBtn ? 'w-100' : 'flex-grow-1'}`}
+              className="egsa-btn-status-info"
             >
-              <i className="fa-solid fa-clock me-1"></i> Waitlisted (#{app.waitlistPosition || 1})
+              <i className="fa-solid fa-clock me-1 text-muted"></i> Waitlisted (#{app.waitlistPosition || 1})
             </Link>
           );
         }
@@ -145,7 +132,7 @@ export default function ExploreProgramsPage() {
           return (
             <Link
               to={`/student/payments?invoiceId=${invId}&applicationId=${app._id}`}
-              className={`btn btn-accent btn-sm ${isFullBtn ? 'w-100' : 'flex-grow-1'} fw-bold`}
+              className="egsa-btn-status-pending"
             >
               <i className={`fa-solid ${isContinue ? 'fa-spinner fa-spin' : 'fa-credit-card'} me-1`}></i>{' '}
               {isContinue ? 'Continue Payment' : 'Pay Now'}
@@ -156,17 +143,27 @@ export default function ExploreProgramsPage() {
           return (
             <Link
               to={`/student/applications/${app._id}`}
-              className={`btn btn-outline-info btn-sm text-dark ${isFullBtn ? 'w-100' : 'flex-grow-1'}`}
+              className="egsa-btn-status-info"
             >
               <i className="fa-solid fa-clipboard-user me-1"></i> Manual Review Required
             </Link>
           );
         }
-        if (app.status === 'Foundation Recommended') {
+        if (app.status === 'Under Review' || app.status === 'Submitted') {
+          return (
+            <Link
+              to={`/student/applications/${app._id}`}
+              className="egsa-btn-status-info"
+            >
+              <i className="fa-solid fa-clock-rotate-left me-1"></i> Under Review
+            </Link>
+          );
+        }
+        if (app.status === 'Foundation Recommended' || app.status === 'Foundation Required') {
           return (
             <Link
               to={`/student/applications/${app._id}/foundation`}
-              className={`btn btn-outline-warning btn-sm text-dark ${isFullBtn ? 'w-100' : 'flex-grow-1'}`}
+              className="egsa-btn-status-pending"
             >
               <i className="fa-solid fa-graduation-cap me-1"></i> Review Foundation Request
             </Link>
@@ -175,7 +172,7 @@ export default function ExploreProgramsPage() {
         return (
           <Link
             to={`/student/applications/${app._id}`}
-            className={`btn btn-outline-primary btn-sm ${isFullBtn ? 'w-100' : 'flex-grow-1'}`}
+            className="egsa-btn-status-info"
           >
             View Application
           </Link>
@@ -185,124 +182,138 @@ export default function ExploreProgramsPage() {
       if (isFullBtn) return renderAppBtn();
 
       return (
-        <div className="d-flex flex-column gap-2 w-100">
-          <div className="d-flex gap-2">
+        <div className="egsa-actions-container">
+          <div className="w-100">
             {renderAppBtn()}
           </div>
-          <div className="d-flex justify-content-between align-items-center pt-1 border-top">
-            <span className="text-muted" style={{ fontSize: '0.72rem' }}>
-              <i className="fa-regular fa-id-card me-1 text-primary-egsa"></i>App registered
+          <div className="egsa-subtle-links-row">
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="egsa-subtle-link"
+              title="Evaluate prerequisite alignment"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart egsa-subtle-icon"></i> Course Fit
+            </Link>
+            <span className="egsa-subtle-divider">·</span>
+            <Link
+              to={`/student/readiness/start?courseId=${course._id}`}
+              className="egsa-subtle-link"
+              title="Diagnostic foundational assessment (optional)"
+            >
+              <i className="fa-solid fa-clipboard-check egsa-subtle-icon"></i> Readiness
+            </Link>
+          </div>
+          <div className="egsa-card-footer">
+            <span className="egsa-footer-accreditation">
+              <i className="fa-regular fa-circle-check text-success me-1"></i>Accredited EGSA Program
             </span>
-            <div className="d-flex gap-2">
-              <button
-                type="button"
-                className="btn btn-link btn-sm text-secondary p-0 text-decoration-none"
-                onClick={() => setSelectedCourse(course)}
-              >
-                <i className="fa-solid fa-circle-info"></i> Quick View
-              </button>
-              <span className="text-muted">·</span>
-              <Link
-                to={`/student/courses/${course._id}`}
-                className="btn btn-link btn-sm text-secondary p-0 text-decoration-none"
-              >
-                Details <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-              </Link>
-            </div>
+            <Link
+              to={`/student/courses/${course._id}`}
+              className="egsa-footer-details-link"
+            >
+              View Details <i className="fa-solid fa-arrow-right egsa-footer-arrow"></i>
+            </Link>
           </div>
         </div>
       );
     }
 
-    if (course.price == null) {
-      return (
-        <button
-          className={`btn btn-secondary btn-sm ${isFullBtn ? 'w-100' : 'flex-grow-1'}`}
-          disabled
-          title="Applications open once pricing is officially published."
-        >
-          Pricing TBA
-        </button>
-      );
-    }
+    const isDirectAvailable = course.price != null && course.directEnrollmentPermitted !== false;
 
-    // Path A (Enroll & Pay Now) + Path B (Check My Readiness)
     if (isFullBtn) {
       return (
-        <div className="d-flex flex-column gap-2 w-100">
-          <button
-            type="button"
-            className="btn btn-primary fw-bold w-100"
-            onClick={() => handleDirectEnroll(course._id)}
-            disabled={enrollingCourseId === course._id}
-          >
-            {enrollingCourseId === course._id ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                Processing Direct Enrollment…
-              </>
+        <div className="egsa-actions-container">
+          <div className="w-100">
+            {isDirectAvailable ? (
+              <button
+                type="button"
+                className="btn egsa-btn-pay-primary w-100"
+                onClick={() => handleOpenApplyModal(course, true)}
+              >
+                <i className="fa-solid fa-bolt me-1.5"></i> Pay & Enroll Now ({course.price.toLocaleString()} {course.currency || 'EGP'})
+              </button>
             ) : (
-              <>
-                <i className="fa-solid fa-credit-card me-2"></i> Enroll & Pay Now
-              </>
+              <button
+                type="button"
+                className="btn egsa-btn-primary w-100"
+                onClick={() => handleOpenApplyModal(course, false)}
+              >
+                <i className="fa-solid fa-paper-plane me-1.5"></i> Apply Now
+              </button>
             )}
-          </button>
-          <Link
-            to={`/student/readiness/start?courseId=${course._id}`}
-            className="btn btn-outline-primary w-100"
-          >
-            <i className="fa-solid fa-clipboard-check me-2"></i> Check My Readiness (Optional)
-          </Link>
+          </div>
+          <div className="egsa-subtle-links-row">
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="egsa-subtle-link"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart egsa-subtle-icon"></i> Course Fit
+            </Link>
+            <span className="egsa-subtle-divider">·</span>
+            <Link
+              to={`/student/readiness/start?courseId=${course._id}`}
+              className="egsa-subtle-link"
+            >
+              <i className="fa-solid fa-clipboard-check egsa-subtle-icon"></i> Readiness
+            </Link>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="d-flex flex-column gap-2 w-100">
-        <button
-          type="button"
-          className="btn btn-primary btn-sm w-100 fw-bold shadow-sm"
-          onClick={() => handleDirectEnroll(course._id)}
-          disabled={enrollingCourseId === course._id}
-        >
-          {enrollingCourseId === course._id ? (
-            <>
-              <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-              Reserving…
-            </>
-          ) : (
-            <>
-              <i className="fa-solid fa-credit-card me-1"></i> Enroll & Pay Now
-            </>
-          )}
-        </button>
-        <Link
-          to={`/student/readiness/start?courseId=${course._id}`}
-          className="btn btn-outline-primary btn-sm w-100 fw-semibold"
-          title="Evaluate suitability before enrolling"
-        >
-          <i className="fa-solid fa-clipboard-check me-1"></i> Check Readiness (Optional)
-        </Link>
-        <div className="d-flex justify-content-between align-items-center pt-1 border-top">
-          <small className="text-muted" style={{ fontSize: '0.72rem' }}>
-            <i className="fa-regular fa-circle-check text-success me-1"></i>Accredited EGSA Program
-          </small>
-          <div className="d-flex gap-2">
+      <div className="egsa-actions-container">
+        <div className="w-100">
+          {isDirectAvailable ? (
             <button
               type="button"
-              className="btn btn-link btn-sm text-secondary p-0 text-decoration-none"
-              onClick={() => setSelectedCourse(course)}
+              className="btn egsa-btn-pay-primary w-100"
+              onClick={() => handleOpenApplyModal(course, true)}
+              title="Direct Enrollment & Instant Payment"
             >
-              <i className="fa-solid fa-circle-info"></i> Quick View
+              <i className="fa-solid fa-bolt me-1.5"></i> Pay Now ({course.price.toLocaleString()} {course.currency || 'EGP'})
             </button>
-            <span className="text-muted">·</span>
-            <Link
-              to={`/student/courses/${course._id}`}
-              className="btn btn-link btn-sm text-secondary p-0 text-decoration-none"
+          ) : (
+            <button
+              type="button"
+              className="btn egsa-btn-primary w-100"
+              onClick={() => handleOpenApplyModal(course, false)}
             >
-              Details <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-            </Link>
-          </div>
+              <i className="fa-solid fa-paper-plane me-1.5"></i> Apply Now
+            </button>
+          )}
+        </div>
+        <div className="egsa-subtle-links-row">
+          <Link
+            to={`/student/courses/${course._id}/fit`}
+            className="egsa-subtle-link"
+            title="Evaluate prerequisite alignment"
+          >
+            <i className="fa-solid fa-magnifying-glass-chart egsa-subtle-icon"></i> Course Fit
+          </Link>
+          <span className="egsa-subtle-divider">·</span>
+          <Link
+            to={`/student/readiness/start?courseId=${course._id}`}
+            className="egsa-subtle-link"
+            title="Diagnostic foundational assessment (optional)"
+          >
+            <i className="fa-solid fa-clipboard-check egsa-subtle-icon"></i> Readiness
+          </Link>
+        </div>
+        <div className="egsa-card-footer">
+          <span className="egsa-footer-accreditation">
+            {course.price == null ? (
+              <span className="text-secondary"><i className="fa-solid fa-circle-info me-1"></i>Tuition TBA</span>
+            ) : (
+              <><i className="fa-regular fa-circle-check text-success me-1"></i>Accredited EGSA Program</>
+            )}
+          </span>
+          <Link
+            to={`/student/courses/${course._id}`}
+            className="egsa-footer-details-link"
+          >
+            View Details <i className="fa-solid fa-arrow-right egsa-footer-arrow"></i>
+          </Link>
         </div>
       </div>
     );
@@ -439,54 +450,54 @@ export default function ExploreProgramsPage() {
         <div className="egsa-grid-cards mb-4">
           {courses.map((course) => (
             <div key={course._id} className="h-100">
-              <div className="egsa-card h-100 d-flex flex-column justify-content-between p-3 position-relative">
+              <div className="egsa-program-card h-100 d-flex flex-column justify-content-between position-relative">
                 {/* Header: Track & Level */}
                 <div>
-                  <div className="d-flex justify-content-between align-items-start gap-2 mb-2 flex-wrap">
+                  <div className="egsa-badges-row">
                     <div className="d-flex align-items-center gap-1 flex-wrap">
-                      <span className="badge bg-light text-primary-egsa border border-primary-subtle fw-semibold">
+                      <span className="egsa-badge-category">
                         {course.category}
                       </span>
-                      <span className="badge bg-secondary-egsa small">{course.level}</span>
+                      <span className="egsa-badge-level">{course.level}</span>
                     </div>
                     {appMap[course._id] && (
                       <span
-                        className={`badge ${
+                        className={`egsa-badge-status ${
                           appMap[course._id].enrollment || appMap[course._id].status === 'Confirmed'
-                            ? 'bg-success'
+                            ? 'bg-success-subtle text-success-emphasis border border-success-subtle'
                             : ['Accepted', 'Eligible - Payment Pending'].includes(appMap[course._id].status)
-                            ? 'bg-warning text-dark fw-bold'
+                            ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
                             : appMap[course._id].status === 'Waitlisted'
-                            ? 'bg-secondary'
+                            ? 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle'
                             : ['Under Review', 'Manual Review'].includes(appMap[course._id].status)
-                            ? 'bg-info text-dark'
-                            : 'bg-light text-dark border'
-                        } small`}
+                            ? 'bg-info-subtle text-info-emphasis border border-info-subtle'
+                            : 'bg-light text-secondary border'
+                        }`}
                       >
                         {appMap[course._id].enrollment ? 'Enrolled' : appMap[course._id].status}
                       </span>
                     )}
                   </div>
 
-                  <h5 className="fw-bold text-dark mb-1 text-truncate-2 egsa-course-card-title" title={course.title}>
+                  <h5 className="egsa-program-title" title={course.title}>
                     {course.title}
                   </h5>
                   {course.tagline && (
-                    <p className="text-secondary-egsa small fw-semibold mb-2 text-truncate" title={course.tagline}>
+                    <p className="egsa-program-tagline" title={course.tagline}>
                       {course.tagline}
                     </p>
                   )}
 
-                  <p className="text-muted small mb-3 text-truncate-3" style={{ minHeight: '3.6em' }}>
+                  <p className="egsa-program-desc">
                     {course.shortDescription ||
                       course.overview ||
                       'Comprehensive practical curriculum designed by Egyptian Space Agency engineers.'}
                   </p>
 
                   {/* Attributes List */}
-                  <ul className="list-unstyled small text-muted mb-3 d-flex flex-column gap-1">
-                    <li className="d-flex align-items-center gap-2">
-                      <i className="fa-regular fa-clock text-primary-egsa" style={{ width: '16px' }}></i>
+                  <ul className="egsa-program-meta">
+                    <li className="egsa-program-meta-item">
+                      <i className="fa-regular fa-clock egsa-meta-icon"></i>
                       <span>
                         {course.duration != null
                           ? `${course.duration} ${course.durationUnit || 'Days'}`
@@ -494,18 +505,18 @@ export default function ExploreProgramsPage() {
                         {course.hoursPerDay ? ` · ${course.hoursPerDay}` : ''}
                       </span>
                     </li>
-                    <li className="d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-location-dot text-primary-egsa" style={{ width: '16px' }}></i>
+                    <li className="egsa-program-meta-item">
+                      <i className="fa-solid fa-location-dot egsa-meta-icon"></i>
                       <span>{course.deliveryMode} — {course.location || 'EGSA Cairo'}</span>
                     </li>
                     {course.startDate && (
-                      <li className="d-flex align-items-center gap-2">
-                        <i className="fa-regular fa-calendar text-primary-egsa" style={{ width: '16px' }}></i>
+                      <li className="egsa-program-meta-item">
+                        <i className="fa-regular fa-calendar egsa-meta-icon"></i>
                         <span>Starts {new Date(course.startDate).toLocaleDateString()}</span>
                       </li>
                     )}
-                    <li className="d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-users text-primary-egsa" style={{ width: '16px' }}></i>
+                    <li className="egsa-program-meta-item">
+                      <i className="fa-solid fa-users egsa-meta-icon"></i>
                       <span>
                         {course.capacity != null
                           ? `${course.availableSeats ?? course.capacity} seats available`
@@ -516,12 +527,16 @@ export default function ExploreProgramsPage() {
                 </div>
 
                 {/* Bottom Actions and Pricing */}
-                <div className="pt-3 border-top mt-2">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <span className="text-muted small">Tuition</span>
-                    <span className="fw-bold text-accent-egsa fs-5">
-                      {course.price != null ? `${course.price} ${course.currency || 'EGP'}` : 'Pricing TBA'}
-                    </span>
+                <div className="egsa-card-actions-wrapper">
+                  <div className="egsa-program-pricing-block">
+                    <span className="egsa-tuition-label">Tuition</span>
+                    <div className="egsa-price-value">
+                      {course.price != null ? (
+                        <>{course.price.toLocaleString()} <span className="egsa-currency">{course.currency || 'EGP'}</span></>
+                      ) : (
+                        'Pricing TBA'
+                      )}
+                    </div>
                   </div>
 
                   <div className="w-100">
@@ -703,6 +718,14 @@ export default function ExploreProgramsPage() {
           </div>
         </div>
       )}
+
+      {/* Apply Modal */}
+      <ApplyModal
+        isOpen={!!applyModalCourse}
+        course={applyModalCourse}
+        onClose={() => setApplyModalCourse(null)}
+        onSuccess={() => loadCourses()}
+      />
     </div>
   );
 }

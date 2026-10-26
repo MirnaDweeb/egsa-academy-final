@@ -147,6 +147,29 @@ const sendMessagePaymentProofAdmin = asyncHandler(async (req, res) => {
   res.status(result.statusCode).json(result.data);
 });
 
+/**
+ * GET /api/admin/applications/:id/document
+ * Securely streams the student's supporting document / screenshot.
+ */
+const getApplicationDocumentFileAdmin = asyncHandler(async (req, res) => {
+  const upstreamRes = await studentApiRequest({
+    method: 'GET',
+    path: `/api/admin/applications/${req.params.id}/document`,
+    token: createInternalAdminToken(req.user),
+    responseType: 'stream',
+  });
+
+  if (upstreamRes.statusCode >= 400) {
+    return res.status(upstreamRes.statusCode).json({ success: false, message: 'Supporting document not accessible.' });
+  }
+
+  res.setHeader('Content-Type', upstreamRes.headers['content-type'] || 'image/jpeg');
+  if (upstreamRes.headers['content-disposition']) {
+    res.setHeader('Content-Disposition', upstreamRes.headers['content-disposition']);
+  }
+  upstreamRes.pipe(res);
+});
+
 module.exports = {
   listPaymentProofsAdmin,
   getPaymentProofAdmin,
@@ -156,4 +179,5 @@ module.exports = {
   sendMessagePaymentProofAdmin,
   getPaymentSettingsAdmin,
   updatePaymentSettingsAdmin,
+  getApplicationDocumentFileAdmin,
 };

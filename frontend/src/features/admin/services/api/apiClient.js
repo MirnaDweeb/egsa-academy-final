@@ -21,8 +21,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('esa_token');
       localStorage.removeItem('esa_user');
-      if (!window.location.pathname.startsWith('/admin/login')) {
-        window.location.href = '/admin/login';
+      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login')) {
+        window.location.href = '/login?role=admin';
       }
     }
     // Normalize into a single shape every caller can rely on.

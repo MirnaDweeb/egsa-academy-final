@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
 import { Avatar, PageHeader } from '../components/ui.jsx';
 import { instructorApi } from '../services/instructor.js';
 import { useI18n } from '../i18n/index.jsx';
+import { useRealTimeSocket } from '../../../shared/socket/socketClient';
 import s from './messages.module.css';
 
 export default function MessagesPage() {
@@ -32,11 +33,22 @@ export default function MessagesPage() {
   const textareaRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
 
+  // Real-time Socket.IO Hook
+  const {
+    socket,
+    connected,
+    connectionState,
+    joinConversation,
+    leaveConversation,
+    sendMessage: socketSendMessage,
+    markRead: socketMarkRead,
+  } = useRealTimeSocket();
+
   // Load conversations list
-  const fetchConversations = async (silent = false) => {
+  const fetchConversations = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoadingConversations(true);
-      const res = await instructorApi.conversations();
+      const res = await instructorApi.conversations({ type: 'direct' });
       const list = Array.isArray(res) ? res : (res?.data || []);
       setConversations(list);
       return list;
@@ -46,12 +58,12 @@ export default function MessagesPage() {
     } finally {
       if (!silent) setLoadingConversations(false);
     }
-  };
+  }, []);
 
   // Initial load
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [fetchConversations]);
 
   // Handle direct message initiation via ?studentId=...&cohortId=...
   useEffect(() => {
@@ -81,7 +93,7 @@ export default function MessagesPage() {
     return () => {
       active = false;
     };
-  }, [queryStudentId, queryCohortId]);
+  }, [queryStudentId, queryCohortId, fetchConversations, navigate]);
 
   // Load active conversation & messages when conversationId changes
   useEffect(() => {
@@ -97,7 +109,6 @@ export default function MessagesPage() {
       setLoadingMessages(true);
       setSendError(null);
       try {
-        // Fetch conversation details and messages
         const [convoRes, msgsRes] = await Promise.all([
           instructorApi.conversation(conversationId),
           instructorApi.messages(conversationId, { limit: 100 }),
@@ -115,6 +126,7 @@ export default function MessagesPage() {
         // Mark as read
         if (convo?.unreadCountInstructor > 0) {
           instructorApi.markMessagesRead(conversationId).catch(() => {});
+          socketMarkRead(conversationId);
           setConversations((prev) =>
             prev.map((c) =>
               c._id === conversationId ? { ...c, unreadCountInstructor: 0 } : c
@@ -136,42 +148,57 @@ export default function MessagesPage() {
     return () => {
       active = false;
     };
-  }, [conversationId]);
+  }, [conversationId, socketMarkRead]);
 
-  // Real-time polling for messages & conversation updates
+  // Real-Time Socket.IO Subscription for active conversation
   useEffect(() => {
-    if (!conversationId) return;
+    if (!socket || !conversationId) return;
 
-    const pollInterval = setInterval(async () => {
-      try {
-        const msgsRes = await instructorApi.messages(conversationId, { limit: 100 });
-        const newMsgs = Array.isArray(msgsRes) ? msgsRes : (msgsRes?.data || []);
-
-        setMessages((prev) => {
-          // If count or last message ID changed
-          if (newMsgs.length !== prev.length || (newMsgs.length && prev.length && newMsgs[newMsgs.length - 1]?._id !== prev[prev.length - 1]?._id)) {
-            // Check if user was scrolled near bottom to autoscroll
-            if (feedContainerRef.current) {
-              const { scrollTop, scrollHeight, clientHeight } = feedContainerRef.current;
-              shouldAutoScrollRef.current = scrollHeight - scrollTop - clientHeight < 120;
-            }
-            return newMsgs;
-          }
-          return prev;
-        });
-
-        // Mark read quietly during active view
-        instructorApi.markMessagesRead(conversationId).catch(() => {});
-
-        // Quietly refresh conversation list metadata
-        fetchConversations(true);
-      } catch (err) {
-        // Silent failure on polling
+    joinConversation(conversationId, (ack) => {
+      if (!ack?.success) {
+        console.warn('[Socket.IO] Join conversation rejected:', ack?.error);
       }
-    }, 4000);
+    });
 
-    return () => clearInterval(pollInterval);
-  }, [conversationId]);
+    const handleNewMessage = (payload) => {
+      const { conversationId: msgConvId, message } = payload || {};
+      if (msgConvId === conversationId && message) {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === message._id)) return prev;
+          if (feedContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = feedContainerRef.current;
+            shouldAutoScrollRef.current = scrollHeight - scrollTop - clientHeight < 150;
+          }
+          return [...prev, message];
+        });
+        socketMarkRead(conversationId);
+      }
+      fetchConversations(true);
+    };
+
+    const handleMessageRead = (payload) => {
+      if (payload?.conversationId === conversationId) {
+        setMessages((prev) =>
+          prev.map((m) => (m.read ? m : { ...m, read: true, readAt: payload.readAt }))
+        );
+      }
+    };
+
+    const handleConversationUpdate = () => {
+      fetchConversations(true);
+    };
+
+    socket.on('message:new', handleNewMessage);
+    socket.on('message:read', handleMessageRead);
+    socket.on('conversation:update', handleConversationUpdate);
+
+    return () => {
+      leaveConversation(conversationId);
+      socket.off('message:new', handleNewMessage);
+      socket.off('message:read', handleMessageRead);
+      socket.off('conversation:update', handleConversationUpdate);
+    };
+  }, [socket, conversationId, joinConversation, leaveConversation, socketMarkRead, fetchConversations]);
 
   // Autoscroll logic
   useEffect(() => {
@@ -180,7 +207,7 @@ export default function MessagesPage() {
     }
   }, [messages]);
 
-  // Send message
+  // Send message via real-time Socket with REST fallback
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     const content = draft.trim();
@@ -189,42 +216,58 @@ export default function MessagesPage() {
     setSending(true);
     setSendError(null);
 
-    try {
-      const res = await instructorApi.sendMessage(conversationId, { body: content });
-      const createdMessage = res?.data || res;
+    if (socket && connected) {
+      socketSendMessage({ conversationId, body: content }, (ack) => {
+        setSending(false);
+        if (ack?.success && ack?.data) {
+          const createdMessage = ack.data;
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === createdMessage._id)) return prev;
+            return [...prev, createdMessage];
+          });
+          setDraft('');
+          shouldAutoScrollRef.current = true;
+          fetchConversations(true);
+          if (textareaRef.current) textareaRef.current.focus();
+        } else {
+          setSendError(ack?.error || t('messages.failedToSend'));
+        }
+      });
+    } else {
+      try {
+        const res = await instructorApi.sendMessage(conversationId, { body: content });
+        const createdMessage = res?.data || res;
 
-      if (createdMessage && createdMessage._id) {
-        setMessages((prev) => [...prev, createdMessage]);
+        if (createdMessage && createdMessage._id) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === createdMessage._id)) return prev;
+            return [...prev, createdMessage];
+          });
+        }
+        setDraft('');
+        shouldAutoScrollRef.current = true;
+        fetchConversations(true);
+        if (textareaRef.current) textareaRef.current.focus();
+      } catch (err) {
+        console.error('Failed to send message:', err);
+        setSendError(err.message || t('messages.failedToSend'));
+      } finally {
+        setSending(false);
       }
-      setDraft('');
-      shouldAutoScrollRef.current = true;
+    }
+  };
 
-      // Update conversation in list
-      setConversations((prev) =>
-        prev.map((c) =>
-          c._id === conversationId
-            ? {
-                ...c,
-                lastMessage: {
-                  body: content,
-                  senderRole: 'instructor',
-                  createdAt: new Date().toISOString(),
-                },
-                lastMessageAt: new Date().toISOString(),
-              }
-            : c
-        )
-      );
-
-      // Focus back on textarea
-      if (textareaRef.current) {
-        textareaRef.current.focus();
+  // Contact Admin Support
+  const handleContactAdmin = async () => {
+    try {
+      const res = await instructorApi.contactAdmin({ subject: 'Faculty Administration Support' });
+      const convo = res?.data || res;
+      if (convo?._id) {
+        await fetchConversations(true);
+        navigate(`/instructor/messages/${convo._id}`);
       }
     } catch (err) {
-      console.error('Failed to send message:', err);
-      setSendError(err.message || t('messages.failedToSend'));
-    } finally {
-      setSending(false);
+      console.error('Failed to contact admin support:', err);
     }
   };
 
@@ -240,10 +283,10 @@ export default function MessagesPage() {
   const filteredConversations = conversations.filter((c) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    const name = c.student?.name?.toLowerCase() || '';
-    const cohort = c.cohort?.name?.toLowerCase() || '';
-    const course = c.course?.code?.toLowerCase() || '';
-    return name.includes(q) || cohort.includes(q) || course.includes(q);
+    const name = (c.student?.name || c.subject || '').toLowerCase();
+    const email = (c.student?.email || '').toLowerCase();
+    const cohort = (c.cohort?.name || '').toLowerCase();
+    return name.includes(q) || email.includes(q) || cohort.includes(q);
   });
 
   // Group messages by date
@@ -251,20 +294,20 @@ export default function MessagesPage() {
     const groups = [];
     let currentDate = null;
 
-    (msgs || []).forEach((msg) => {
-      if (!msg || !msg.createdAt) return;
-      const msgDate = new Date(msg.createdAt).toLocaleDateString();
+    msgs.forEach((msg) => {
+      const msgDate = new Date(msg.createdAt).toDateString();
       if (msgDate !== currentDate) {
         currentDate = msgDate;
         groups.push({ type: 'date', date: msg.createdAt });
       }
-      groups.push({ type: 'msg', data: msg });
+      groups.push({ type: 'message', data: msg });
     });
 
     return groups;
   };
 
   const hasActiveChat = Boolean(conversationId && activeConversation);
+  const isAdminSupport = activeConversation?.type === 'instructor_admin';
 
   return (
     <>
@@ -278,14 +321,36 @@ export default function MessagesPage() {
         {/* Sidebar: Conversation List */}
         <aside className={s.sidebar} aria-label="Cadet Conversations">
           <div className={s.sidebarHeader}>
-            <div className="d-flex align-items-center justify-content-between">
-              <span className="fw-bold small text-uppercase text-muted" style={{ letterSpacing: '0.04em' }}>
-                {t('messages.title')}
-              </span>
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <div className="d-flex align-items-center gap-2">
+                <span className="fw-bold small text-uppercase text-muted" style={{ letterSpacing: '0.04em' }}>
+                  {t('messages.title')}
+                </span>
+                {connected ? (
+                  <span className="badge bg-success-subtle text-success border border-success-subtle small px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                    <i className="fa-solid fa-bolt me-1"></i>Real-Time
+                  </span>
+                ) : (
+                  <span className="badge bg-warning-subtle text-warning border border-warning-subtle small px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                    Connecting...
+                  </span>
+                )}
+              </div>
               <span className="badge bg-light text-dark border mono small">
                 {conversations.length}
               </span>
             </div>
+
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary w-100 mb-2 d-flex align-items-center justify-content-center gap-2 py-1"
+              style={{ fontSize: '0.8rem', borderRadius: '6px' }}
+              onClick={handleContactAdmin}
+            >
+              <i className="fa-solid fa-headset text-primary"></i>
+              <span>Contact Academy Support</span>
+            </button>
+
             <div className={s.searchWrap}>
               <i className={`fa-solid fa-magnifying-glass ${s.searchIcon}`} />
               <input
@@ -320,6 +385,7 @@ export default function MessagesPage() {
                 const snippet = typeof c.lastMessage === 'string'
                   ? c.lastMessage
                   : (c.lastMessage?.body || '');
+                const isSupportConvo = c.type === 'instructor_admin';
 
                 return (
                   <div
@@ -334,32 +400,42 @@ export default function MessagesPage() {
                         navigate(`/instructor/messages/${c._id}`);
                       }
                     }}
+                    aria-label={`Conversation with ${isSupportConvo ? 'Academy Support' : (c.student?.name || 'Cadet')}`}
                   >
-                    <Avatar user={c.student} size={42} showOnline />
-                    <div className={s.convoDetails}>
-                      <div className={s.convoTop}>
-                        <span className={s.studentName}>{c.student?.name || t('common.student')}</span>
-                        {c.lastMessageAt && (
-                          <span className={s.convoTime}>
-                            {fmtDate(c.lastMessageAt)}
-                          </span>
-                        )}
-                      </div>
-                      <div className={s.convoBottom}>
-                        <span className={s.lastSnippet}>
-                          {snippet || <span className="fst-italic">{t('messages.noMessagesYet')}</span>}
-                        </span>
-                        {unread > 0 && (
-                          <span className={s.unreadCount} aria-label={`${unread} ${t('messages.unreadCount')}`}>
-                            {unread}
-                          </span>
-                        )}
-                      </div>
-                      {c.cohort?.name && (
-                        <span className={s.cohortTag}>
-                          {c.cohort.name} {c.course?.code ? `· ${c.course.code}` : ''}
-                        </span>
+                    <div className="position-relative">
+                      {isSupportConvo ? (
+                        <div
+                          className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle"
+                          style={{ width: '40px', height: '40px' }}
+                        >
+                          <i className="fa-solid fa-shield-halved" />
+                        </div>
+                      ) : (
+                        <Avatar name={c.student?.name || 'C'} size={40} />
                       )}
+                      {unread > 0 && <span className={s.unreadDot} />}
+                    </div>
+
+                    <div className={s.itemContent}>
+                      <div className={s.itemHeader}>
+                        <span className={`${s.itemName} ${unread > 0 ? s.unread : ''}`}>
+                          {isSupportConvo ? (c.subject || 'Academy Administration') : (c.student?.name || t('common.unknown'))}
+                        </span>
+                        <span className={s.itemTime}>
+                          {c.lastMessageAt ? fmtDateTime(c.lastMessageAt) : ''}
+                        </span>
+                      </div>
+
+                      <div className={s.itemSub}>
+                        {isSupportConvo ? (
+                          <span className="badge bg-secondary-subtle text-secondary small py-0 px-1 me-1">Support</span>
+                        ) : c.cohort?.name ? (
+                          <span className={s.cohortBadge}>{c.cohort.name}</span>
+                        ) : null}
+                        <span className={`${s.snippet} ${unread > 0 ? s.unread : ''}`}>
+                          {snippet || t('messages.noMessagesYet')}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -368,31 +444,45 @@ export default function MessagesPage() {
           </div>
         </aside>
 
-        {/* Main Conversation Panel */}
-        <section className={s.chatArea} aria-label="Active Message Thread">
+        {/* Main: Chat Thread View */}
+        <section className={s.chatPanel} aria-label="Conversation Thread">
           {hasActiveChat ? (
             <>
-              {/* Header */}
-              <div className={s.chatHeader}>
-                <div className={s.headerInfo}>
+              {/* Thread Header */}
+              <div className={s.threadHeader}>
+                <div className="d-flex align-items-center gap-3">
                   <button
                     type="button"
-                    className={s.backBtn}
+                    className={s.backButton}
                     onClick={() => navigate('/instructor/messages')}
-                    title={t('messages.backToList')}
-                    aria-label={t('messages.backToList')}
+                    aria-label={t('common.back')}
                   >
-                    <i className={`fa-solid ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`} />
+                    <i className="fa-solid fa-arrow-left" />
                   </button>
-                  <Avatar user={activeConversation.student} size={42} showOnline />
-                  <div className={s.headerMeta}>
-                    <div className={s.headerName}>
-                      <span>{activeConversation.student?.name}</span>
-                      <span className={s.cadetBadge}>{t('messages.cadet')}</span>
+
+                  {isAdminSupport ? (
+                    <div
+                      className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle"
+                      style={{ width: '42px', height: '42px' }}
+                    >
+                      <i className="fa-solid fa-shield-halved" />
+                    </div>
+                  ) : (
+                    <Avatar name={activeConversation.student?.name || 'Cadet'} size={42} />
+                  )}
+
+                  <div>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="fw-bold text-dark">
+                        {isAdminSupport ? 'EGSA Academy Administration & Support' : activeConversation.student?.name}
+                      </span>
+                      <span className={s.cadetBadge}>
+                        {isAdminSupport ? 'Admin Support' : t('messages.cadet')}
+                      </span>
                     </div>
                     <div className={s.headerSubtitle}>
                       <span className={s.onlinePulse} />
-                      <span>{activeConversation.student?.email}</span>
+                      <span>{isAdminSupport ? 'support@egsa.gov.eg' : activeConversation.student?.email}</span>
                       {activeConversation.cohort?.name && (
                         <span>· {activeConversation.cohort.name}</span>
                       )}
@@ -401,7 +491,15 @@ export default function MessagesPage() {
                 </div>
 
                 <div className="d-flex align-items-center gap-2">
-                  <span className={s.pollingDot} title={t('messages.refreshing')} />
+                  {connected ? (
+                    <span className="badge bg-success-subtle text-success border border-success-subtle small px-2 py-1">
+                      <i className="fa-solid fa-bolt me-1"></i>Live
+                    </span>
+                  ) : (
+                    <span className="badge bg-warning-subtle text-warning border border-warning-subtle small px-2 py-1">
+                      Connecting
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -440,27 +538,19 @@ export default function MessagesPage() {
                     return (
                       <div
                         key={m._id || `msg-${idx}`}
-                        className={`${s.messageRow} ${isInstructor ? s.instructor : s.student}`}
+                        className={`${s.messageRow} ${isInstructor ? s.sent : s.received}`}
                       >
-                        {!isInstructor && (
-                          <div className={s.messageAvatar}>
-                            <Avatar user={activeConversation.student} size={28} />
+                        <div className={s.messageBubble}>
+                          <div className={s.messageSenderRole}>
+                            {m.senderName || (isInstructor ? 'You (Instructor)' : (m.senderRole === 'admin' ? 'Academy Admin' : 'Cadet'))}
                           </div>
-                        )}
-                        <div className={s.bubble}>
-                          <div>{m.body}</div>
-                          <div className={s.bubbleMeta}>
-                            <span>
-                              {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }) : ''}
-                            </span>
+                          <div className={s.messageText}>{m.body}</div>
+                          <div className={s.messageMeta}>
+                            <span>{fmtDateTime(m.createdAt)}</span>
                             {isInstructor && (
-                              <i
-                                className={`fa-solid fa-check-double ${s.readTick}`}
-                                title={m.read ? 'Read' : 'Sent'}
-                              />
+                              <span className={s.readIndicator} title={m.read ? t('messages.read') : t('messages.sent')}>
+                                <i className={`fa-solid ${m.read ? 'fa-check-double text-info' : 'fa-check text-muted'}`} />
+                              </span>
                             )}
                           </div>
                         </div>
@@ -471,43 +561,35 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Composer */}
+              {/* Input Area */}
               <div className={s.composer}>
                 {sendError && (
-                  <div className={s.errorBanner}>
+                  <div className="alert alert-danger py-1 px-2 mb-2 small d-flex align-items-center justify-content-between">
                     <span>{sendError}</span>
                     <button
                       type="button"
-                      className="btn btn-sm btn-link text-danger p-0 fw-bold"
-                      onClick={handleSendMessage}
-                    >
-                      {t('messages.retry')}
-                    </button>
+                      className="btn-close small"
+                      onClick={() => setSendError(null)}
+                      aria-label="Dismiss error"
+                    />
                   </div>
                 )}
-                <form className={s.composerForm} onSubmit={handleSendMessage}>
-                  <div className={s.textareaWrap}>
-                    <textarea
-                      ref={textareaRef}
-                      className={s.composerTextarea}
-                      placeholder={t('messages.typePlaceholder')}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      rows={2}
-                      disabled={sending}
-                      aria-label={t('messages.typePlaceholder')}
-                    />
-                    <div className={s.composerHint}>
-                      <span>{t('messages.typePlaceholder')}</span>
-                      <span className="mono">{draft.length}/2000</span>
-                    </div>
-                  </div>
+                <form onSubmit={handleSendMessage} className={s.composerForm}>
+                  <textarea
+                    ref={textareaRef}
+                    className={s.textarea}
+                    placeholder={t('messages.typePlaceholder')}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={sending}
+                    rows={1}
+                    aria-label="Message draft"
+                  />
                   <button
                     type="submit"
-                    className={s.sendBtn}
+                    className={s.sendButton}
                     disabled={!draft.trim() || sending}
-                    title={t('messages.send')}
                     aria-label={t('messages.send')}
                   >
                     {sending ? (
@@ -520,12 +602,25 @@ export default function MessagesPage() {
               </div>
             </>
           ) : (
-            <div className={s.noSelection}>
-              <i className={`fa-solid fa-comment-nodes ${s.noSelectionIcon}`} />
-              <h5 className="fw-bold text-dark mb-2">{t('messages.conversationWith')} EGSA Cadets</h5>
-              <p className="small text-muted mb-0" style={{ maxWidth: 360 }}>
-                {t('messages.selectToRead')}
-              </p>
+            <div className={s.noActiveChat}>
+              <div className={s.noActiveCard}>
+                <div className={s.noActiveIconWrap}>
+                  <i className="fa-solid fa-satellite-dish" />
+                </div>
+                <h4 className="fw-bold text-dark mb-2">{t('messages.title')}</h4>
+                <p className="text-muted small mb-3">
+                  {t('messages.subtitle')}
+                </p>
+                <div className="d-flex flex-wrap gap-2 justify-content-center">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary d-flex align-items-center gap-2"
+                    onClick={handleContactAdmin}
+                  >
+                    <i className="fa-solid fa-headset"></i> Contact Academy Administration
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </section>

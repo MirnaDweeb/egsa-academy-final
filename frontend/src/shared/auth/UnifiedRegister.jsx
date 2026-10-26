@@ -35,25 +35,54 @@ export default function UnifiedRegister() {
   const [busy, setBusy] = useState(false);
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Success summary payload
   const [successInfo, setSuccessInfo] = useState(null);
 
-  // National ID validation: exactly 14 digits
+  // Field change handler that clears specific field error on user edit
+  const handleFieldChange = (field, value) => {
+    setStudentForm((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[field];
+        return copy;
+      });
+    }
+    if (error) setError(null);
+  };
+
+  // National ID validation: exactly 14 digits string
   const isNationalIdValid = useMemo(() => {
     if (!studentForm.nationalId) return true;
     return /^\d{14}$/.test(studentForm.nationalId.trim());
   }, [studentForm.nationalId]);
+
+  // Egyptian mobile phone format: 01[0125]xxxxxxxx or +201... / 00201...
+  const isPhoneValid = useMemo(() => {
+    if (!studentForm.phone) return true;
+    return /^(\+?20|0020|0)?1[0125]\d{8}$/.test(studentForm.phone.trim());
+  }, [studentForm.phone]);
 
   const passwordsMatch = useMemo(() => {
     if (!studentForm.confirmPassword) return true;
     return studentForm.password === studentForm.confirmPassword;
   }, [studentForm.password, studentForm.confirmPassword]);
 
+  // Map academic status dropdown to authoritative backend schema ('student' | 'graduate')
+  const mapStatusToBackend = (val) => {
+    if (val === 'graduate' || val === 'graduated' || val === 'working' || val === 'engineer') {
+      return 'graduate';
+    }
+    return 'student';
+  };
+
   // Handle role card selection
   const handleSelectRole = (role) => {
     setSelectedRole(role);
     setError(null);
+    setFieldErrors({});
     setTouched(false);
     if (role === 'student') {
       setStep('student-form');
@@ -67,34 +96,57 @@ export default function UnifiedRegister() {
     e.preventDefault();
     setTouched(true);
     setError(null);
+    setFieldErrors({});
 
     const trimmedEmail = (studentForm.email || '').trim().toLowerCase();
     const trimmedFullName = (studentForm.fullName || '').trim();
     const trimmedPhone = (studentForm.phone || '').trim();
     const trimmedNationalId = (studentForm.nationalId || '').trim();
 
-    if (!trimmedFullName || !trimmedEmail || !trimmedPhone || !trimmedNationalId || !studentForm.password) {
-      setError(isAr ? 'يرجى استكمال جميع الحقول الشخصية الأساسية.' : 'Please fill in all required personal registration fields.');
-      return;
+    const localErrors = {};
+
+    if (!trimmedFullName) {
+      localErrors.fullName = isAr ? 'الاسم بالكامل مطلوب.' : 'Full legal name is required.';
+    } else if (trimmedFullName.length < 3) {
+      localErrors.fullName = isAr ? 'يجب ألا يقل الاسم عن ٣ أحرف.' : 'Full name must be at least 3 characters.';
     }
 
-    if (!/^\d{14}$/.test(trimmedNationalId)) {
-      setError(isAr ? 'يجب أن يتكون الرقم القومي من ١٤ رقماً بالضبط.' : 'National ID must be exactly 14 digits.');
-      return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail) {
+      localErrors.email = isAr ? 'البريد الإلكتروني مطلوب.' : 'Email address is required.';
+    } else if (!emailRegex.test(trimmedEmail)) {
+      localErrors.email = isAr ? 'صيغة البريد الإلكتروني غير صحيحة.' : 'Please enter a valid working email address.';
     }
 
-    if (studentForm.password.length < 6) {
-      setError(isAr ? 'يجب ألا تقل كلمة المرور عن ٦ أحرف.' : 'Password must be at least 6 characters long.');
-      return;
+    if (!trimmedPhone) {
+      localErrors.phone = isAr ? 'رقم الهاتف المحمول مطلوب.' : 'Mobile phone number is required.';
+    } else if (!/^(\+?20|0020|0)?1[0125]\d{8}$/.test(trimmedPhone)) {
+      localErrors.phone = isAr ? 'يرجى إدخال رقم هاتف محمول مصري صحيح (مثال: 01012345678).' : 'Please enter a valid Egyptian mobile number (e.g., 01012345678).';
+    }
+
+    if (!trimmedNationalId) {
+      localErrors.nationalId = isAr ? 'الرقم القومي مطلوب.' : 'Egyptian National ID is required.';
+    } else if (!/^\d{14}$/.test(trimmedNationalId)) {
+      localErrors.nationalId = isAr ? 'يجب أن يتكون الرقم القومي من ١٤ رقماً بالضبط.' : 'National ID must be exactly 14 digits.';
+    }
+
+    if (!studentForm.password) {
+      localErrors.password = isAr ? 'كلمة المرور مطلوبة.' : 'Password is required.';
+    } else if (studentForm.password.length < 6) {
+      localErrors.password = isAr ? 'يجب ألا تقل كلمة المرور عن ٦ أحرف.' : 'Password must be at least 6 characters long.';
     }
 
     if (studentForm.password !== studentForm.confirmPassword) {
-      setError(isAr ? 'كلمات المرور غير متطابقة.' : 'Password and confirmation password do not match.');
-      return;
+      localErrors.confirmPassword = isAr ? 'كلمات المرور غير متطابقة.' : 'Password and confirmation password do not match.';
     }
 
     if (!studentForm.agreeToTerms) {
-      setError(isAr ? 'يجب الموافقة على شروط وقواعد الأكاديمية للمتابعة.' : 'You must accept the academy terms and conditions.');
+      localErrors.agreeToTerms = isAr ? 'يجب الموافقة على شروط وقواعد الأكاديمية للمتابعة.' : 'You must accept the academy terms and conditions.';
+    }
+
+    if (Object.keys(localErrors).length > 0) {
+      setFieldErrors(localErrors);
+      setError(Object.values(localErrors)[0]);
       return;
     }
 
@@ -109,9 +161,9 @@ export default function UnifiedRegister() {
         confirmPassword: studentForm.confirmPassword,
         phone: trimmedPhone,
         nationalId: trimmedNationalId,
-        status: studentForm.status,
+        status: mapStatusToBackend(studentForm.status),
         university: studentForm.university.trim() || undefined,
-        faculty: studentForm.faculty.trim() || undefined,
+        faculty: (studentForm.faculty || studentForm.university || '').trim() || undefined,
         department: studentForm.department.trim() || undefined,
         graduationYear: studentForm.graduationYear ? Number(studentForm.graduationYear) : undefined,
         agreeToTerms: true,
@@ -135,7 +187,30 @@ export default function UnifiedRegister() {
       if (!res) {
         setError(isAr ? 'تعذر الاتصال بخادم التسجيل. يرجى التأكد من تشغيل الخدمة.' : 'Unable to connect to the backend server. Please verify the system is running.');
       } else if (res.status === 409) {
+        const rawMsg = res.data?.message || '';
+        const newFieldErrors = {};
+        if (rawMsg.toLowerCase().includes('email') || rawMsg.includes('البريد')) {
+          newFieldErrors.email = isAr ? 'هذا البريد الإلكتروني مسجل بالفعل.' : 'An account with this email address already exists.';
+        }
+        if (rawMsg.toLowerCase().includes('national id') || rawMsg.includes('الرقم القومي')) {
+          newFieldErrors.nationalId = isAr ? 'هذا الرقم القومي مسجل بالفعل.' : 'An account with this National ID already exists.';
+        }
+        setFieldErrors(newFieldErrors);
         setError(res.data?.message || (isAr ? 'يوجد حساب مسجل بالفعل بهذا البريد الإلكتروني أو الرقم القومي.' : 'An account with this email address or National ID already exists.'));
+      } else if (res.status === 400 && Array.isArray(res.data?.errors) && res.data.errors.length > 0) {
+        const newFieldErrors = {};
+        const safeErrorMessages = [];
+        res.data.errors.forEach((e) => {
+          if (e.field && e.message) {
+            newFieldErrors[e.field] = e.message;
+            safeErrorMessages.push(e.message);
+          }
+        });
+        setFieldErrors(newFieldErrors);
+        setError(isAr
+          ? `يرجى مراجعة وتصحيح الحقول التالية: ${safeErrorMessages.join(' • ')}`
+          : `Please correct the following: ${safeErrorMessages.join(' • ')}`
+        );
       } else {
         setError(res.data?.message || (isAr ? 'فشل إنشاء الحساب. يرجى مراجعة البيانات.' : 'Registration failed. Please check your data.'));
       }
@@ -252,12 +327,18 @@ export default function UnifiedRegister() {
                 type="text"
                 placeholder={isAr ? 'أحمد محمد علي حسن' : 'Ahmed Mohamed Ali'}
                 value={studentForm.fullName}
-                onChange={(e) => setStudentForm({ ...studentForm, fullName: e.target.value })}
-                isInvalid={touched && !studentForm.fullName.trim()}
+                onChange={(e) => handleFieldChange('fullName', e.target.value)}
+                isInvalid={!!fieldErrors.fullName || (touched && !studentForm.fullName.trim())}
                 className={s.controlWithIcon}
                 required
               />
             </div>
+            {fieldErrors.fullName && (
+              <Form.Text className="text-danger small d-block mt-1">
+                <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                {fieldErrors.fullName}
+              </Form.Text>
+            )}
           </Form.Group>
 
           {/* Email & Phone Grid */}
@@ -273,12 +354,18 @@ export default function UnifiedRegister() {
                     type="email"
                     placeholder="student@example.com"
                     value={studentForm.email}
-                    onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
-                    isInvalid={touched && (!studentForm.email || !studentForm.email.includes('@'))}
+                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    isInvalid={!!fieldErrors.email || (touched && (!studentForm.email || !studentForm.email.includes('@')))}
                     className={s.controlWithIcon}
                     required
                   />
                 </div>
+                {fieldErrors.email && (
+                  <Form.Text className="text-danger small d-block mt-1">
+                    <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                    {fieldErrors.email}
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
 
@@ -293,12 +380,22 @@ export default function UnifiedRegister() {
                     type="tel"
                     placeholder="01012345678"
                     value={studentForm.phone}
-                    onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })}
-                    isInvalid={touched && !studentForm.phone.trim()}
+                    onChange={(e) => handleFieldChange('phone', e.target.value)}
+                    isInvalid={!!fieldErrors.phone || (touched && (!studentForm.phone.trim() || !isPhoneValid))}
                     className={s.controlWithIcon}
                     required
                   />
                 </div>
+                {fieldErrors.phone ? (
+                  <Form.Text className="text-danger small d-block mt-1">
+                    <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                    {fieldErrors.phone}
+                  </Form.Text>
+                ) : (
+                  <Form.Text className="text-muted small">
+                    {isAr ? 'رقم مصري محمول يبدأ بـ 01 (مثل: 01012345678).' : 'Egyptian mobile starting with 01 (e.g., 01012345678).'}
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
           </div>
@@ -315,15 +412,22 @@ export default function UnifiedRegister() {
                 maxLength={14}
                 placeholder="29901011234567"
                 value={studentForm.nationalId}
-                onChange={(e) => setStudentForm({ ...studentForm, nationalId: e.target.value.replace(/\D/g, '') })}
-                isInvalid={touched && (!studentForm.nationalId || !isNationalIdValid)}
+                onChange={(e) => handleFieldChange('nationalId', e.target.value.replace(/\D/g, ''))}
+                isInvalid={!!fieldErrors.nationalId || (touched && (!studentForm.nationalId || !isNationalIdValid))}
                 className={s.controlWithIcon}
                 required
               />
             </div>
-            <Form.Text className="text-muted small">
-              {isAr ? 'مطلوب للتحقق وإصدار الشهادات المعتمدة من وكالة الفضاء.' : 'Required for official EGSA credential verification.'}
-            </Form.Text>
+            {fieldErrors.nationalId ? (
+              <Form.Text className="text-danger small d-block mt-1">
+                <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                {fieldErrors.nationalId}
+              </Form.Text>
+            ) : (
+              <Form.Text className="text-muted small">
+                {isAr ? 'مطلوب للتحقق وإصدار الشهادات المعتمدة من وكالة الفضاء.' : 'Required for official EGSA credential verification.'}
+              </Form.Text>
+            )}
           </Form.Group>
 
           {/* Academic Background */}
@@ -339,10 +443,17 @@ export default function UnifiedRegister() {
                     type="text"
                     placeholder={isAr ? 'جامعة القاهرة - كلية الهندسة' : 'Cairo University - Engineering'}
                     value={studentForm.university}
-                    onChange={(e) => setStudentForm({ ...studentForm, university: e.target.value })}
+                    onChange={(e) => handleFieldChange('university', e.target.value)}
+                    isInvalid={!!fieldErrors.university}
                     className={s.controlWithIcon}
                   />
                 </div>
+                {fieldErrors.university && (
+                  <Form.Text className="text-danger small d-block mt-1">
+                    <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                    {fieldErrors.university}
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
 
@@ -353,14 +464,21 @@ export default function UnifiedRegister() {
                 </Form.Label>
                 <Form.Select
                   value={studentForm.status}
-                  onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })}
+                  onChange={(e) => handleFieldChange('status', e.target.value)}
+                  isInvalid={!!fieldErrors.status}
                   className={s.controlWithIcon}
                   style={{ paddingInlineStart: '1rem' }}
                 >
                   <option value="student">{isAr ? 'طالب جامعي' : 'Undergraduate Student'}</option>
-                  <option value="graduated">{isAr ? 'خريج' : 'Graduate'}</option>
-                  <option value="working">{isAr ? 'مهندس / ممارس مهني' : 'Practicing Engineer'}</option>
+                  <option value="graduate">{isAr ? 'خريج' : 'Graduate'}</option>
+                  <option value="engineer">{isAr ? 'مهندس / ممارس مهني' : 'Practicing Engineer'}</option>
                 </Form.Select>
+                {fieldErrors.status && (
+                  <Form.Text className="text-danger small d-block mt-1">
+                    <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                    {fieldErrors.status}
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
           </div>
@@ -378,8 +496,8 @@ export default function UnifiedRegister() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••••••"
                     value={studentForm.password}
-                    onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
-                    isInvalid={touched && (!studentForm.password || studentForm.password.length < 6)}
+                    onChange={(e) => handleFieldChange('password', e.target.value)}
+                    isInvalid={!!fieldErrors.password || (touched && (!studentForm.password || studentForm.password.length < 6))}
                     className={s.controlWithIcon}
                     required
                   />
@@ -392,6 +510,12 @@ export default function UnifiedRegister() {
                     <i className={showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'} aria-hidden="true" />
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <Form.Text className="text-danger small d-block mt-1">
+                    <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                    {fieldErrors.password}
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
 
@@ -406,8 +530,8 @@ export default function UnifiedRegister() {
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="••••••••••••"
                     value={studentForm.confirmPassword}
-                    onChange={(e) => setStudentForm({ ...studentForm, confirmPassword: e.target.value })}
-                    isInvalid={touched && (!studentForm.confirmPassword || !passwordsMatch)}
+                    onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
+                    isInvalid={!!fieldErrors.confirmPassword || (touched && (!studentForm.confirmPassword || !passwordsMatch))}
                     className={s.controlWithIcon}
                     required
                   />
@@ -420,6 +544,12 @@ export default function UnifiedRegister() {
                     <i className={showConfirmPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'} aria-hidden="true" />
                   </button>
                 </div>
+                {fieldErrors.confirmPassword && (
+                  <Form.Text className="text-danger small d-block mt-1">
+                    <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                    {fieldErrors.confirmPassword}
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
           </div>
@@ -430,15 +560,21 @@ export default function UnifiedRegister() {
               type="checkbox"
               id="agreeToTerms"
               checked={studentForm.agreeToTerms}
-              onChange={(e) => setStudentForm({ ...studentForm, agreeToTerms: e.target.checked })}
+              onChange={(e) => handleFieldChange('agreeToTerms', e.target.checked)}
               label={
                 <span className="small text-secondary">
                   {isAr ? 'أوافق على اللوائح التنظيمية وشروط الأكاديمية وصحة البيانات المدخلة.' : 'I accept EGSA Academy terms, guidelines, and confirm the accuracy of my data.'}
                 </span>
               }
-              isInvalid={touched && !studentForm.agreeToTerms}
+              isInvalid={!!fieldErrors.agreeToTerms || (touched && !studentForm.agreeToTerms)}
               required
             />
+            {fieldErrors.agreeToTerms && (
+              <Form.Text className="text-danger small d-block mt-1">
+                <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
+                {fieldErrors.agreeToTerms}
+              </Form.Text>
+            )}
           </Form.Group>
 
           <Button type="submit" className={`btn-egsa ${s.submitBtn}`} disabled={busy}>

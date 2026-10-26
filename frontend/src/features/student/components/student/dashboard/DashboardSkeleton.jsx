@@ -31,27 +31,32 @@ export default function DashboardSkeleton() {
         ))}
       </div>
 
-      {/* Main Grid Skeleton */}
-      <div className="row g-4">
-        <div className="col-lg-8">
-          <div className="egsa-institutional-card mb-4 p-4">
+      {/* Quick Actions Skeleton */}
+      <div className="egsa-institutional-card mb-4 p-4">
+        <div className="skeleton-bar mb-3" style={{ width: '180px', height: '18px' }} />
+        <div className="quick-actions-grid">
+          {[1, 2, 3, 4, 5, 6].map((q) => (
+            <div key={q} className="skeleton-bar" style={{ width: '100%', height: '60px', borderRadius: '6px' }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Main Operational Area: Current Training & Upcoming Schedule Side by Side */}
+      <div className="row g-4 mb-4">
+        <div className="col-12 col-lg-7 col-xl-8">
+          <div className="egsa-institutional-card h-100 p-4">
             <div className="d-flex justify-content-between mb-4">
               <div className="skeleton-bar" style={{ width: '180px', height: '20px' }} />
               <div className="skeleton-bar" style={{ width: '100px', height: '20px' }} />
             </div>
             <div className="skeleton-bar mb-2" style={{ width: '75%', height: '24px' }} />
             <div className="skeleton-bar mb-3" style={{ width: '50%', height: '14px' }} />
-            <div className="skeleton-bar" style={{ width: '100%', height: '60px', borderRadius: '8px' }} />
-          </div>
-
-          <div className="egsa-institutional-card mb-4 p-4">
-            <div className="skeleton-bar mb-3" style={{ width: '200px', height: '20px' }} />
-            <div className="skeleton-bar" style={{ width: '100%', height: '80px', borderRadius: '8px' }} />
+            <div className="skeleton-bar" style={{ width: '100%', height: '90px', borderRadius: '8px' }} />
           </div>
         </div>
 
-        <div className="col-lg-4">
-          <div className="egsa-institutional-card mb-4 p-4">
+        <div className="col-12 col-lg-5 col-xl-4">
+          <div className="egsa-institutional-card h-100 p-4">
             <div className="skeleton-bar mb-3" style={{ width: '160px', height: '20px' }} />
             <div className="d-flex flex-column gap-2">
               {[1, 2, 3].map((j) => (
@@ -59,12 +64,28 @@ export default function DashboardSkeleton() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
 
+      {/* Secondary Content: Notifications & Activity Timeline Side by Side */}
+      <div className="row g-4 mb-4">
+        <div className="col-12 col-lg-6">
           <div className="egsa-institutional-card p-4">
-            <div className="skeleton-bar mb-3" style={{ width: '150px', height: '20px' }} />
+            <div className="skeleton-bar mb-3" style={{ width: '180px', height: '20px' }} />
             <div className="d-flex flex-column gap-2">
               {[1, 2, 3].map((k) => (
                 <div key={k} className="skeleton-bar" style={{ width: '100%', height: '52px', borderRadius: '6px' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-lg-6">
+          <div className="egsa-institutional-card p-4">
+            <div className="skeleton-bar mb-3" style={{ width: '160px', height: '20px' }} />
+            <div className="d-flex flex-column gap-2">
+              {[1, 2, 3, 4].map((m) => (
+                <div key={m} className="skeleton-bar" style={{ width: '100%', height: '44px', borderRadius: '6px' }} />
               ))}
             </div>
           </div>

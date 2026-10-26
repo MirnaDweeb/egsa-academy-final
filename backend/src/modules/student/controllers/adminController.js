@@ -12,6 +12,10 @@ const {
   sendApplicationRejectedEmail,
 } = require('../utils/email');
 const { AppError } = require('../middleware/error');
+const PaymentProof = require('../models/PaymentProof');
+const fs = require('fs');
+const path = require('path');
+const { privateDocsDir } = require('../middleware/applicationDocumentUpload');
 
 async function overview(req, res, next) {
   try {
@@ -44,18 +48,26 @@ async function listApplications(req, res, next) {
       .sort({ createdAt: -1 });
 
     const appIds = applications.map((a) => a._id);
-    const [invoices, enrollments] = await Promise.all([
+    const [invoices, enrollments, proofs] = await Promise.all([
       Invoice.find({ application: { $in: appIds } }),
       Enrollment.find({ application: { $in: appIds } }).populate('paymentReference'),
+      PaymentProof.find({ application: { $in: appIds } }).sort({ createdAt: -1 }),
     ]);
 
     const invoiceMap = new Map(invoices.map((inv) => [inv.application.toString(), inv]));
     const enrollmentMap = new Map(enrollments.map((enr) => [enr.application.toString(), enr]));
+    const proofMap = new Map();
+    for (const p of proofs) {
+      if (p.application && !proofMap.has(p.application.toString())) {
+        proofMap.set(p.application.toString(), p);
+      }
+    }
 
     const enriched = applications.map((app) => {
       const plain = app.toObject();
       plain.invoice = invoiceMap.get(app._id.toString()) || null;
       plain.enrollment = enrollmentMap.get(app._id.toString()) || null;
+      plain.paymentProof = proofMap.get(app._id.toString()) || null;
       return plain;
     });
 
@@ -93,6 +105,44 @@ async function acceptApplication(req, res, next) {
 
     if (!application) {
       throw new AppError('Application not found.', 404);
+    }
+
+    // Idempotency: if already Accepted or Confirmed, return existing status safely without re-incrementing seats
+    if (application.status === 'Accepted') {
+      let invoice = await Invoice.findOne({ application: application._id, status: { $nin: ['Cancelled', 'Waived'] } });
+      if (!invoice && application.course?.price > 0) {
+        const existingInactive = await Invoice.findOne({ application: application._id });
+        if (existingInactive && ['Waived', 'Cancelled'].includes(existingInactive.status)) {
+          existingInactive.status = 'Invoice Issued';
+          existingInactive.issuedAt = new Date();
+          const days = 3;
+          existingInactive.dueDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+          existingInactive.dueAt = existingInactive.dueDate;
+          await existingInactive.save();
+          invoice = existingInactive;
+        } else {
+          invoice = await issueInvoice({
+            student: application.student._id,
+            application: application._id,
+            course: application.course,
+            cohort: application.cohort,
+            transportationAmount: 0,
+          });
+        }
+      }
+      return res.json({
+        success: true,
+        message: 'Application is already accepted.',
+        data: { application, invoice },
+      });
+    }
+    if (['Confirmed', 'In Progress', 'Completed'].includes(application.status)) {
+      const enrollment = await Enrollment.findOne({ application: application._id });
+      return res.json({
+        success: true,
+        message: 'Application is already confirmed and enrolled.',
+        data: { application, enrollment },
+      });
     }
 
     // Business rule: student must be eligible
@@ -183,16 +233,52 @@ async function acceptApplication(req, res, next) {
     application.statusHistory.push({ status: 'Accepted', note, changedAt: new Date() });
     await application.save();
 
-    // Ensure invoice exists for this application
-    let invoice = await Invoice.findOne({ application: application._id });
-    if (!invoice && application.course) {
-      invoice = await issueInvoice({
-        student: application.student._id,
-        application: application._id,
-        course: application.course,
-        cohort: application.cohort,
-        transportationAmount: 0,
-      });
+    // If course is free (price === 0), activate enrollment immediately without payment
+    let invoice = await Invoice.findOne({ application: application._id, status: { $nin: ['Cancelled', 'Waived'] } });
+    let enrollment = null;
+
+    if (application.course?.price === 0) {
+      application.status = 'Confirmed';
+      enrollment = await Enrollment.findOneAndUpdate(
+        { student: application.student._id, course: application.course._id },
+        {
+          $set: {
+            student: application.student._id,
+            course: application.course._id,
+            cohort: application.cohort,
+            application: application._id,
+            status: 'Confirmed',
+            paidAmount: 0,
+            packageType: application.selectedPackage || 'WITHOUT_TRANSPORTATION',
+            transportationRequired: application.selectedPackage === 'WITH_TRANSPORTATION',
+          },
+          $setOnInsert: { enrolledAt: new Date() },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      application.enrollment = enrollment._id;
+      await application.save();
+    } else if (application.course?.price > 0) {
+      if (!invoice) {
+        const existingInactive = await Invoice.findOne({ application: application._id });
+        if (existingInactive && ['Waived', 'Cancelled'].includes(existingInactive.status)) {
+          existingInactive.status = 'Invoice Issued';
+          existingInactive.issuedAt = new Date();
+          const days = 3;
+          existingInactive.dueDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+          existingInactive.dueAt = existingInactive.dueDate;
+          await existingInactive.save();
+          invoice = existingInactive;
+        } else {
+          invoice = await issueInvoice({
+            student: application.student._id,
+            application: application._id,
+            course: application.course,
+            cohort: application.cohort,
+            transportationAmount: 0,
+          });
+        }
+      }
     }
 
     const basePrice = application.course?.price || 0;
@@ -237,6 +323,7 @@ async function acceptApplication(req, res, next) {
       data: {
         application,
         invoice,
+        enrollment,
       },
     });
   } catch (err) {
@@ -606,6 +693,34 @@ async function createSession(req, res, next) {
   }
 }
 
+async function streamApplicationDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const application = await Application.findById(id);
+
+    if (!application) {
+      throw new AppError('Application not found.', 404);
+    }
+
+    const doc = application.supportingDocument;
+    if (!doc || !doc.path || !fs.existsSync(doc.path)) {
+      throw new AppError('No supporting document has been uploaded for this application.', 404);
+    }
+
+    const resolvedBase = path.resolve(privateDocsDir);
+    const resolvedTarget = path.resolve(doc.path);
+    if (!resolvedTarget.startsWith(resolvedBase)) {
+      throw new AppError('Forbidden: invalid storage path confinement.', 403);
+    }
+
+    res.setHeader('Content-Type', doc.mimetype || 'image/jpeg');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.originalName || doc.filename}"`);
+    fs.createReadStream(doc.path).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   overview,
   listApplications,
@@ -620,4 +735,5 @@ module.exports = {
   updateCohort,
   listSessions,
   createSession,
+  streamApplicationDocument,
 };

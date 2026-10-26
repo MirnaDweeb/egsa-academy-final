@@ -18,6 +18,7 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
 const assessmentRoutes = require('./routes/assessmentRoutes');
 const evaluationRoutes = require('./routes/evaluationRoutes');
+const messagingRoutes = require('./routes/messagingRoutes');
 const dashboardController = require('./controllers/dashboardController');
 const { getStudentConn } = require('../../config/database');
 
@@ -57,6 +58,7 @@ router.use('/attendance', attendanceRoutes);
 router.use('/media', mediaRoutes);
 router.use('/assessments', assessmentRoutes);
 router.use('/evaluations', evaluationRoutes);
+router.use('/messages', messagingRoutes);
 router.get('/dashboard', protect, dashboardController.getDashboard);
 
 module.exports = router;

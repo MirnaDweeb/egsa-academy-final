@@ -485,6 +485,17 @@ async function verifyAndFinalizePayment({ transactionId, providerPayload = {}, s
 
     application.enrollment = enrollment._id;
     await application.save();
+
+    try {
+      const { syncEnrollment } = require('../../integration/unifiedSyncService');
+      syncEnrollment({
+        student: transaction.student,
+        course: invoiceDoc.course,
+        cohort: application.cohort,
+        enrollmentId: enrollment._id,
+        status: 'Confirmed',
+      }).catch(err => console.warn('[PaymentService] Unified sync notice:', err.message));
+    } catch (_) {}
   }
 
   // Non-blocking email dispatch (failure will never rollback successful payment)

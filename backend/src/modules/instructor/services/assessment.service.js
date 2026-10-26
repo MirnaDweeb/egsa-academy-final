@@ -4,6 +4,10 @@ const ApiError = require('../utils/ApiError');
 const { pick, isId } = require('../utils/helpers');
 const { ownedCohort, ownedCohortIds, ownedAssessment, ownedSubmission } = require('./ownership.service');
 const activity = require('./activity.service');
+let unifiedSyncService;
+try {
+  unifiedSyncService = require('../../integration/unifiedSyncService');
+} catch (_) {}
 
 const A_FIELDS = ['title', 'description', 'instructions', 'startDate', 'dueDate', 'attachments', 'gradingConfig'];
 function checkDates(a) { if (a.startDate && a.dueDate && new Date(a.dueDate) < new Date(a.startDate)) throw ApiError.badRequest('Due date must be after start date'); }
@@ -118,6 +122,10 @@ async function grade(instructorId, id, body) {
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true });
   s.status = SUBMISSION_STATUS.EVALUATED; await s.save();
   await activity.log(instructorId, 'submission.graded', 'AssessmentSubmission', s._id, `Saved evaluation for "${assessment.title}"`);
+  if (unifiedSyncService?.syncGradeFromInstructor) {
+    unifiedSyncService.syncGradeFromInstructor({ submissionId: s._id, resultDoc: doc })
+      .catch((err) => console.warn('[INSTRUCTOR ASSESS] Failed to sync grade to student portal:', err.message));
+  }
   return doc;
 }
 
@@ -129,6 +137,10 @@ async function publishResult(instructorId, id) {
   r.status = RESULT_STATUS.PUBLISHED; r.publishedAt = new Date(); await r.save();
   s.status = SUBMISSION_STATUS.RESULT_PUBLISHED; await s.save();
   await activity.log(instructorId, 'result.published', 'AssessmentSubmission', s._id, 'Published an assessment result');
+  if (unifiedSyncService?.syncGradeFromInstructor) {
+    unifiedSyncService.syncGradeFromInstructor({ submissionId: s._id, resultDoc: r })
+      .catch((err) => console.warn('[INSTRUCTOR ASSESS] Failed to sync published result to student portal:', err.message));
+  }
   return r;
 }
 

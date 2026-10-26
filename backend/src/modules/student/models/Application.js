@@ -30,7 +30,7 @@ const ApplicationSchema = new mongoose.Schema(
     status: { type: String, enum: APPLICATION_STATUSES, default: 'Draft' },
     eligibilityStatus: {
       type: String,
-      enum: ['Not Started', 'In Progress', 'Eligible', 'Not Eligible'],
+      enum: ['Not Started', 'In Progress', 'Eligible', 'Not Eligible', 'Draft'],
       default: 'Not Started',
     },
     enrollment: { type: mongoose.Schema.Types.ObjectId, ref: 'Enrollment' },
@@ -39,7 +39,18 @@ const ApplicationSchema = new mongoose.Schema(
       enum: ['WITHOUT_TRANSPORTATION', 'WITH_TRANSPORTATION'],
       default: 'WITHOUT_TRANSPORTATION',
     },
+    notes: { type: String },
+    statementOfInterest: { type: String },
     rejectionReason: { type: String },
+    supportingDocument: {
+      filename: { type: String },
+      originalName: { type: String },
+      mimetype: { type: String },
+      size: { type: Number },
+      path: { type: String },
+      documentType: { type: String, default: 'Supporting_Document' },
+      uploadedAt: { type: Date },
+    },
     statusHistory: [
       {
         status: { type: String, enum: APPLICATION_STATUSES },

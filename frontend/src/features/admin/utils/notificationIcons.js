@@ -145,7 +145,7 @@ export function getNotificationTargetRoute(item, user, currentDivision) {
       return `${prefix}/applications`;
     case 'PAYMENT_CONFIRMED':
     case 'PAYMENT_EXPIRED':
-      return `${prefix}/invoices`;
+      return `${prefix}/payments`;
     case 'ENROLLMENT_PROMOTED':
     case 'ENROLLMENT_WAITLISTED':
       return `${prefix}/cohorts`;
@@ -158,8 +158,8 @@ export function getNotificationTargetRoute(item, user, currentDivision) {
       if (item.relatedResource?.resourceType === 'Certificate') {
         return `${prefix}/certificates`;
       }
-      if (item.relatedResource?.resourceType === 'Invoice') {
-        return `${prefix}/invoices`;
+      if (item.relatedResource?.resourceType === 'Invoice' || item.relatedResource?.resourceType === 'PaymentProof') {
+        return `${prefix}/payments`;
       }
       if (item.relatedResource?.resourceType === 'Cohort') {
         return `${prefix}/cohorts`;

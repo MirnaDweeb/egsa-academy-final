@@ -107,6 +107,7 @@ export default function App() {
                   <Route path="/admin/assessments" element={<Navigate to="/admin" replace />} />
                   <Route path="/admin/applications" element={<Navigate to="/admin" replace />} />
                   <Route path="/admin/invoices" element={<Navigate to="/admin" replace />} />
+                  <Route path="/admin/payments" element={<Navigate to="/admin" replace />} />
                   <Route path="/admin/certificates" element={<Navigate to="/admin" replace />} />
                   <Route path="/admin/feedback" element={<Navigate to="/admin" replace />} />
                   <Route path="/admin/notifications" element={<Navigate to="/admin" replace />} />
@@ -125,7 +126,8 @@ export default function App() {
                   <Route path="sessions" element={<SessionMonitoringPage />} />
                   <Route path="assessments" element={<AssessmentsPage />} />
                   <Route path="applications" element={<ApplicationsPage />} />
-                  <Route path="invoices" element={<FinancePage />} />
+                  <Route path="payments" element={<FinancePage />} />
+                  <Route path="invoices" element={<Navigate to="../payments" relative="path" replace />} />
                   <Route path="certificates" element={<CertificatesPage />} />
                   <Route path="feedback" element={<FeedbackPage />} />
                   <Route path="notifications" element={<AdminNotificationsPage />} />

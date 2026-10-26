@@ -29,6 +29,7 @@ import ReportsPage from './pages/admin/ReportsPage';
 import AssessmentsPage from './pages/admin/AssessmentsPage';
 import FeedbackPage from './pages/admin/FeedbackPage';
 import SessionMonitoringPage from './pages/admin/SessionMonitoringPage';
+import AdminMessagesPage from './pages/admin/AdminMessagesPage';
 
 import PublicVerifyPage from './pages/public/PublicVerifyPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -48,7 +49,7 @@ function AdminIndexRoute() {
   if (user?.role === ROLES.UNIVERSITY_ADMIN) {
     return <Navigate to="/admin/UNIVERSITY" replace />;
   }
-  return <Navigate to="/admin/login" replace />;
+  return <Navigate to="/login?role=admin" replace />;
 }
 
 /**
@@ -103,6 +104,7 @@ export default function AdminApp() {
             <Route path="assessments" element={<Navigate to="/admin" replace />} />
             <Route path="applications" element={<Navigate to="/admin" replace />} />
             <Route path="invoices" element={<Navigate to="/admin" replace />} />
+            <Route path="payments" element={<Navigate to="/admin" replace />} />
             <Route path="certificates" element={<Navigate to="/admin" replace />} />
             <Route path="feedback" element={<Navigate to="/admin" replace />} />
             <Route path="notifications" element={<Navigate to="/admin" replace />} />
@@ -120,13 +122,18 @@ export default function AdminApp() {
               <Route path="sessions" element={<SessionMonitoringPage />} />
               <Route path="assessments" element={<AssessmentsPage />} />
               <Route path="applications" element={<ApplicationsPage />} />
-              <Route path="invoices" element={<FinancePage />} />
+              <Route path="payments" element={<FinancePage />} />
+              <Route path="invoices" element={<Navigate to="../payments" relative="path" replace />} />
               <Route path="certificates" element={<CertificatesPage />} />
               <Route path="feedback" element={<FeedbackPage />} />
               <Route path="notifications" element={<AdminNotificationsPage />} />
+              <Route path="messages" element={<AdminMessagesPage />} />
+              <Route path="messages/:conversationId" element={<AdminMessagesPage />} />
               <Route path="audit-logs" element={<AuditLogsPage />} />
               <Route path="reports" element={<ReportsPage />} />
             </Route>
+            <Route path="messages" element={<AdminMessagesPage />} />
+            <Route path="messages/:conversationId" element={<AdminMessagesPage />} />
           </Route>
         </Route>
       </Route>

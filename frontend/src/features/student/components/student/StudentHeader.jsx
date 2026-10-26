@@ -6,10 +6,12 @@ const ROUTE_INFO_MAP = {
   '/student/programs': { title: 'Explore Space Programs', breadcrumb: 'Explore Programs' },
   '/student/courses': { title: 'Course Catalog', breadcrumb: 'Courses' },
   '/student/applications': { title: 'My Applications', breadcrumb: 'Applications' },
-  '/student/training': { title: 'My Enrolled Training', breadcrumb: 'Training' },
-  '/student/enrollments': { title: 'My Enrollments', breadcrumb: 'Enrollments' },
+  '/student/training': { title: 'My Training Hub', breadcrumb: 'My Training' },
+  '/student/my-training': { title: 'My Training Hub', breadcrumb: 'My Training' },
+  '/student/enrollments': { title: 'My Training Hub', breadcrumb: 'My Training' },
   '/student/attendance': { title: 'Attendance Records', breadcrumb: 'Attendance' },
   '/student/assessments': { title: 'Assessments & Evaluations', breadcrumb: 'Assessments' },
+  '/student/readiness/start': { title: 'Student Readiness Diagnostic', breadcrumb: 'Readiness' },
   '/student/progress': { title: 'My Academic Progress', breadcrumb: 'Progress' },
   '/student/goal': { title: 'Select Learning Goal', breadcrumb: 'Goal' },
   '/student/learning-path': { title: 'Recommended Learning Path', breadcrumb: 'Learning Path' },
@@ -35,7 +37,7 @@ export default function StudentHeader({
   // Derive route title and breadcrumb
   let routeMeta = ROUTE_INFO_MAP[currentPath];
   if (!routeMeta) {
-    if (currentPath.startsWith('/student/courses/')) {
+    if (currentPath.startsWith('/student/courses/') || currentPath.startsWith('/student/programs/')) {
       if (currentPath.endsWith('/fit')) {
         routeMeta = { title: 'Course Fit Assessment', breadcrumb: 'Course Fit' };
       } else {

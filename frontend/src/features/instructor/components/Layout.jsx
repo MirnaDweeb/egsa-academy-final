@@ -12,7 +12,7 @@ const NAV = [
   ['mission', [['dashboard', 'fa-gauge-high'], ['courses', 'fa-book-open'], ['cohorts', 'fa-users-rectangle'], ['sessions', 'fa-calendar-days']]],
   ['learners', [['students', 'fa-user-graduate'], ['messages', 'fa-comments'], ['attendance', 'fa-clipboard-user'], ['progress', 'fa-chart-line']]],
   ['assessment', [['assessments', 'fa-file-pen'], ['submissions', 'fa-inbox']]],
-  ['account', [['notifications', 'fa-bell'], ['profile', 'fa-id-badge']]],
+  ['account', [['notifications', 'fa-bell'], ['contact', 'fa-headset'], ['profile', 'fa-id-badge']]],
 ];
 
 function Brand({ size = 56 }) {
@@ -51,7 +51,7 @@ function NavList({ notifUnread = 0, msgUnread = 0, onNavigate }) {
                   {key === 'notifications' && notifUnread > 0 && (
                     <span className={s.badgeDot} aria-label={`${notifUnread} unread notifications`}>{notifUnread}</span>
                   )}
-                  {key === 'messages' && msgUnread > 0 && (
+                  {(key === 'messages' || key === 'contact') && msgUnread > 0 && (
                     <span className={s.badgeDot} aria-label={`${msgUnread} unread messages`}>{msgUnread}</span>
                   )}
                 </NavLink>

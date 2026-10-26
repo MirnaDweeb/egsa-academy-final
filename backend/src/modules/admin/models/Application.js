@@ -39,6 +39,15 @@ const applicationSchema = new mongoose.Schema(
       decidedAt: { type: Date },
       outcome: { type: String },
     },
+    supportingDocument: {
+      filename: { type: String },
+      originalName: { type: String },
+      mimetype: { type: String },
+      size: { type: Number },
+      path: { type: String },
+      documentType: { type: String, default: 'Supporting_Document' },
+      uploadedAt: { type: Date },
+    },
     reviewNotes: [reviewNoteSchema],
   },
   { timestamps: true }

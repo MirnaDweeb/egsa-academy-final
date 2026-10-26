@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   // Success state for post-registration verification notice
@@ -41,6 +42,13 @@ export default function RegisterPage() {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setForm((f) => ({ ...f, [field]: value }));
     if (error) setError('');
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
   // Password rules validation
@@ -92,44 +100,80 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
 
+    const clientErrors = {};
+    const trimmedFullName = (form.fullName || '').trim();
     const trimmedEmail = (form.email || '').trim();
+    const trimmedPhone = (form.phone || '').trim();
+    const trimmedNationalId = (form.nationalId || '').trim();
+
+    if (!trimmedFullName) {
+      clientErrors.fullName = language === 'ar' ? 'الاسم الكامل مطلوب.' : 'Full Legal Name is required.';
+    }
+
     if (!trimmedEmail) {
-      setError(language === 'ar' ? 'البريد الإلكتروني مطلوب.' : 'Email address is required.');
-      return;
+      clientErrors.email = language === 'ar' ? 'البريد الإلكتروني مطلوب.' : 'Email address is required.';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        clientErrors.email = language === 'ar' ? 'صيغة البريد الإلكتروني غير صحيحة.' : 'Please enter a valid email address.';
+      }
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      setError(language === 'ar' ? 'صيغة البريد الإلكتروني غير صحيحة.' : 'Please enter a valid email address.');
-      return;
+    if (!trimmedPhone) {
+      clientErrors.phone = language === 'ar' ? 'رقم الهاتف مطلوب.' : 'Mobile phone number is required.';
+    } else if (!/^(\+?20|0020|0)?1[0125]\d{8}$/.test(trimmedPhone)) {
+      clientErrors.phone = language === 'ar'
+        ? 'يرجى إدخال رقم هاتف محمول مصري صحيح (مثال: 01012345678 أو +201012345678).'
+        : 'Please enter a valid Egyptian mobile number (e.g. 01012345678 or +201012345678).';
     }
 
-    if (!isNationalIdValid) {
-      setError(language === 'ar' ? 'يجب أن يتكون الرقم القومي من ١٤ رقماً.' : 'National ID must be exactly 14 digits.');
-      return;
+    if (!trimmedNationalId) {
+      clientErrors.nationalId = language === 'ar' ? 'الرقم القومي مطلوب.' : 'Egyptian National ID is required.';
+    } else if (!/^\d{14}$/.test(trimmedNationalId)) {
+      clientErrors.nationalId = language === 'ar' ? 'يجب أن يتكون الرقم القومي من ١٤ رقماً بالتمام.' : 'National ID must be exactly 14 digits.';
     }
-    if (form.password !== form.confirmPassword) {
-      setError(language === 'ar' ? 'كلمات المرور غير متطابقة.' : 'Passwords do not match.');
-      return;
+
+    if (!form.password) {
+      clientErrors.password = language === 'ar' ? 'كلمة المرور مطلوبة.' : 'Password is required.';
+    } else if (form.password.length < 6) {
+      clientErrors.password = language === 'ar' ? 'كلمة المرور يجب أن لا تقل عن 6 أحرف.' : 'Password must be at least 6 characters.';
     }
+
+    if (!form.confirmPassword) {
+      clientErrors.confirmPassword = language === 'ar' ? 'يرجى تأكيد كلمة المرور.' : 'Please confirm your password.';
+    } else if (form.password !== form.confirmPassword) {
+      clientErrors.confirmPassword = language === 'ar' ? 'كلمات المرور غير متطابقة.' : 'Passwords do not match.';
+    }
+
     if (!form.agreeToTerms) {
-      setError(t.termsRequired);
+      clientErrors.agreeToTerms = t.termsRequired || (language === 'ar' ? 'يجب الموافقة على لوائح وأحكام التدريب.' : 'You must accept the training regulations to register.');
+    }
+
+    if (Object.keys(clientErrors).length > 0) {
+      setFieldErrors(clientErrors);
+      setError(language === 'ar' ? 'يرجى تصحيح الأخطاء الموضحة أدناه.' : 'Please correct the highlighted fields below.');
       return;
     }
 
     setLoading(true);
     try {
       const sanitizedForm = {
-        ...form,
-        fullName: (form.fullName || '').trim(),
+        fullName: trimmedFullName,
         email: trimmedEmail,
-        phone: (form.phone || '').trim(),
-        nationalId: (form.nationalId || '').trim(),
-        university: (form.university || '').trim(),
-        faculty: (form.faculty || '').trim(),
-        department: (form.department || '').trim(),
+        phone: trimmedPhone,
+        nationalId: trimmedNationalId,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        status: form.status,
+        university: (form.university || '').trim() || undefined,
+        faculty: (form.faculty || '').trim() || (form.university || '').trim() || undefined,
+        department: (form.department || '').trim() || undefined,
+        graduationYear: form.graduationYear ? Number(form.graduationYear) : undefined,
+        agreeToTerms: true,
       };
+
       const res = await register(sanitizedForm);
       const successMessage = res?.message || (language === 'ar'
         ? 'تم إنشاء الحساب بنجاح. يرجى تسجيل الدخول باستخدام البريد الإلكتروني وكلمة المرور.'
@@ -143,7 +187,44 @@ export default function RegisterPage() {
         replace: true,
       });
     } catch (err) {
-      setError(err.response?.data?.message || (language === 'ar' ? 'فشل إنشاء الحساب. يرجى مراجعة البيانات.' : 'Registration failed. Please check your data.'));
+      const resp = err.response;
+      const status = resp?.status;
+      const data = resp?.data;
+
+      if (status === 400 && Array.isArray(data?.errors) && data.errors.length > 0) {
+        const backendFieldErrors = {};
+        const messages = [];
+        data.errors.forEach((errItem) => {
+          if (errItem.field) {
+            backendFieldErrors[errItem.field] = errItem.message;
+          }
+          if (errItem.message) {
+            messages.push(errItem.message);
+          }
+        });
+        setFieldErrors(backendFieldErrors);
+        setError(messages.join(' '));
+      } else if (status === 409) {
+        const msg = data?.message || (language === 'ar' ? 'الحساب مسجل بالفعل.' : 'An account with these details already exists.');
+        const lowerMsg = (msg || '').toLowerCase();
+        const conflictErrors = {};
+        if (lowerMsg.includes('email') || lowerMsg.includes('البريد')) {
+          conflictErrors.email = msg;
+        }
+        if (lowerMsg.includes('national') || lowerMsg.includes('القومي') || lowerMsg.includes('id')) {
+          conflictErrors.nationalId = msg;
+        }
+        if (Object.keys(conflictErrors).length > 0) {
+          setFieldErrors(conflictErrors);
+        }
+        setError(msg);
+      } else if (status >= 500) {
+        setError(language === 'ar' ? 'حدث خطأ في الخادم أثناء معالجة طلبك. يرجى المحاولة لاحقاً.' : 'A server error occurred while processing your registration. Please try again later.');
+      } else if (!resp) {
+        setError(language === 'ar' ? 'تعذر الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت.' : 'Unable to connect to the server. Please check your network connection.');
+      } else {
+        setError(data?.message || (language === 'ar' ? 'فشل إنشاء الحساب. يرجى مراجعة البيانات.' : 'Registration failed. Please check your data.'));
+      }
     } finally {
       setLoading(false);
     }
@@ -382,13 +463,18 @@ export default function RegisterPage() {
                     <input
                       id="fullName"
                       type="text"
-                      className="form-control"
+                      className={`form-control ${fieldErrors.fullName ? 'is-invalid' : ''}`}
                       value={form.fullName}
                       onChange={update('fullName')}
                       placeholder={t.fullNamePlaceholder}
                       autoComplete="name"
                       required
                     />
+                    {fieldErrors.fullName && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.fullName}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -398,13 +484,18 @@ export default function RegisterPage() {
                     <input
                       id="email"
                       type="email"
-                      className="form-control"
+                      className={`form-control ${fieldErrors.email ? 'is-invalid' : ''}`}
                       value={form.email}
                       onChange={update('email')}
                       placeholder={t.emailPlaceholder}
                       autoComplete="email"
                       required
                     />
+                    {fieldErrors.email && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.email}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -414,13 +505,18 @@ export default function RegisterPage() {
                     <input
                       id="phone"
                       type="tel"
-                      className="form-control"
+                      className={`form-control ${fieldErrors.phone ? 'is-invalid' : ''}`}
                       value={form.phone}
                       onChange={update('phone')}
                       placeholder={t.phonePlaceholder}
                       autoComplete="tel"
                       required
                     />
+                    {fieldErrors.phone && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.phone}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -431,15 +527,15 @@ export default function RegisterPage() {
                       id="nationalId"
                       type="text"
                       maxLength={14}
-                      className={`form-control font-monospace ${form.nationalId && !isNationalIdValid ? 'is-invalid' : ''}`}
+                      className={`form-control font-monospace ${fieldErrors.nationalId || (form.nationalId && !isNationalIdValid) ? 'is-invalid' : ''}`}
                       value={form.nationalId}
                       onChange={update('nationalId')}
                       placeholder={t.nationalIdPlaceholder}
                       required
                     />
-                    {form.nationalId && !isNationalIdValid && (
-                      <div className="invalid-feedback small">
-                        {language === 'ar' ? 'الرقم القومي يجب أن يتكون من ١٤ رقماً بالتمام.' : 'National ID must be exactly 14 digits.'}
+                    {(fieldErrors.nationalId || (form.nationalId && !isNationalIdValid)) && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.nationalId || (language === 'ar' ? 'الرقم القومي يجب أن يتكون من ١٤ رقماً بالتمام.' : 'National ID must be exactly 14 digits.')}
                       </div>
                     )}
                   </div>
@@ -458,14 +554,20 @@ export default function RegisterPage() {
                     </label>
                     <select
                       id="status"
-                      className="form-select"
+                      className={`form-select ${fieldErrors.status ? 'is-invalid' : ''}`}
                       value={form.status}
                       onChange={update('status')}
                       required
                     >
-                      <option value="student">{t.statusStudent}</option>
-                      <option value="graduate">{t.statusGraduate}</option>
+                      <option value="student">{t.statusStudent || 'Undergraduate Student'}</option>
+                      <option value="graduate">{t.statusGraduate || 'Graduate'}</option>
+                      <option value="practicing_engineer">{language === 'ar' ? 'مهندس ممارس' : 'Practicing Engineer'}</option>
                     </select>
+                    {fieldErrors.status && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.status}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -486,32 +588,40 @@ export default function RegisterPage() {
 
                   <div className="col-12 col-md-6">
                     <label className="form-label small fw-semibold" htmlFor="university">
-                      {t.universityLabel} <span className="text-danger">*</span>
+                      {t.universityLabel}
                     </label>
                     <input
                       id="university"
                       type="text"
-                      className="form-control"
+                      className={`form-control ${fieldErrors.university ? 'is-invalid' : ''}`}
                       value={form.university}
                       onChange={update('university')}
                       placeholder={t.universityPlaceholder}
-                      required
                     />
+                    {fieldErrors.university && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.university}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 col-md-6">
                     <label className="form-label small fw-semibold" htmlFor="faculty">
-                      {t.facultyLabel} <span className="text-danger">*</span>
+                      {t.facultyLabel}
                     </label>
                     <input
                       id="faculty"
                       type="text"
-                      className="form-control"
+                      className={`form-control ${fieldErrors.faculty ? 'is-invalid' : ''}`}
                       value={form.faculty}
                       onChange={update('faculty')}
                       placeholder={t.facultyPlaceholder}
-                      required
                     />
+                    {fieldErrors.faculty && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.faculty}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12">
@@ -544,7 +654,7 @@ export default function RegisterPage() {
                       <input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
-                        className="form-control"
+                        className={`form-control ${fieldErrors.password ? 'is-invalid' : ''}`}
                         value={form.password}
                         onChange={update('password')}
                         autoComplete="new-password"
@@ -559,6 +669,11 @@ export default function RegisterPage() {
                         <i className={`fa-regular ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                       </button>
                     </div>
+                    {fieldErrors.password && (
+                      <div className="invalid-feedback small d-block">
+                        {fieldErrors.password}
+                      </div>
+                    )}
 
                     {/* Password Strength Indicator */}
                     {form.password && (
@@ -601,7 +716,7 @@ export default function RegisterPage() {
                       <input
                         id="confirmPassword"
                         type={showConfirm ? 'text' : 'password'}
-                        className={`form-control ${form.confirmPassword && !passwordsMatch ? 'is-invalid' : ''}`}
+                        className={`form-control ${fieldErrors.confirmPassword || (form.confirmPassword && !passwordsMatch) ? 'is-invalid' : ''}`}
                         value={form.confirmPassword}
                         onChange={update('confirmPassword')}
                         autoComplete="new-password"
@@ -616,9 +731,9 @@ export default function RegisterPage() {
                         <i className={`fa-regular ${showConfirm ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                       </button>
                     </div>
-                    {form.confirmPassword && !passwordsMatch && (
+                    {(fieldErrors.confirmPassword || (form.confirmPassword && !passwordsMatch)) && (
                       <div className="invalid-feedback small d-block">
-                        {language === 'ar' ? 'كلمات المرور غير متطابقة.' : 'Passwords do not match.'}
+                        {fieldErrors.confirmPassword || (language === 'ar' ? 'كلمات المرور غير متطابقة.' : 'Passwords do not match.')}
                       </div>
                     )}
                   </div>
@@ -653,7 +768,7 @@ export default function RegisterPage() {
                   <input
                     id="agreeToTerms"
                     type="checkbox"
-                    className="form-check-input"
+                    className={`form-check-input ${fieldErrors.agreeToTerms ? 'is-invalid' : ''}`}
                     checked={form.agreeToTerms}
                     onChange={update('agreeToTerms')}
                     required
@@ -661,6 +776,11 @@ export default function RegisterPage() {
                   <label className="form-check-label small" htmlFor="agreeToTerms">
                     {t.termsAgreement}
                   </label>
+                  {fieldErrors.agreeToTerms && (
+                    <div className="text-danger small mt-1">
+                      {fieldErrors.agreeToTerms}
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}

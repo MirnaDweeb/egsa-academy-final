@@ -26,6 +26,10 @@ export default function App() {
       <Route path="/login" element={<UnifiedLogin />} />
       <Route path="/register" element={<UnifiedRegister />} />
 
+      {/* Direct Academy & Portal Aliases */}
+      <Route path="/academy" element={<Navigate to="/student/dashboard" replace />} />
+      <Route path="/portal" element={<Navigate to="/student/dashboard" replace />} />
+
       {/* Student Portal and Auth Routes */}
       <Route
         path="/student/*"

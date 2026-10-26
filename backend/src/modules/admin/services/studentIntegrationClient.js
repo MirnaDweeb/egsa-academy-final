@@ -2,7 +2,7 @@ const http = require('http');
 const jwt = require('jsonwebtoken');
 
 function getStudentServiceUrl() {
-  return process.env.STUDENT_SERVICE_URL || 'http://localhost:5000';
+  return process.env.STUDENT_SERVICE_URL || `http://localhost:${process.env.PORT || 5500}`;
 }
 
 function getStudentJwtSecret() {

@@ -9,6 +9,46 @@
   animation: dashboardFadeIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Ensure Bootstrap grid columns and rows behave consistently and never break from external CSS leaks */
+.egsa-dashboard-root .row {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: calc(-1 * var(--bs-gutter-y));
+  margin-right: calc(-0.5 * var(--bs-gutter-x));
+  margin-left: calc(-0.5 * var(--bs-gutter-x));
+}
+
+.egsa-dashboard-root .row > * {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  padding-right: calc(var(--bs-gutter-x) * 0.5);
+  padding-left: calc(var(--bs-gutter-x) * 0.5);
+  margin-top: var(--bs-gutter-y);
+}
+
+@media (min-width: 768px) {
+  .egsa-dashboard-root .col-md-6 {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+}
+
+@media (min-width: 992px) {
+  .egsa-dashboard-root .col-lg-8 {
+    flex: 0 0 auto;
+    width: 66.66666667%;
+  }
+  .egsa-dashboard-root .col-lg-4 {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+  }
+}
+
 @keyframes dashboardFadeIn {
   from {
     opacity: 0;
@@ -485,11 +525,11 @@
 }
 
 .card-heading-title {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-black);
   margin-bottom: 0;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .clean-action-link {
@@ -556,17 +596,6 @@
 /* =========================================================================
    4. CURRENT TRAINING PROGRAM CARD
    ========================================================================= */
-.training-program-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-black);
-  line-height: 1.35;
-}
-
-.training-program-desc {
-  font-size: 0.875rem;
-  line-height: 1.55;
-}
 
 .code-pill {
   font-family: var(--font-mono);
@@ -605,11 +634,28 @@
   color: var(--color-secondary);
 }
 
+.training-program-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-black);
+  line-height: 1.35;
+}
+
+.training-program-desc {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .training-metadata-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  padding-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1.25rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--color-border-subtle);
 }
 
@@ -913,29 +959,52 @@
    6. QUICK ACTIONS GRID
    ========================================================================= */
 .quick-actions-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
+}
+
+@media (min-width: 1400px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
 }
 
 .quick-action-tile {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 1rem 1.15rem;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.85rem;
+  min-height: 60px;
   display: flex;
   align-items: center;
-  gap: 0.95rem;
+  gap: 0.7rem;
   text-decoration: none;
   color: inherit;
   transition: all var(--transition-fast);
   position: relative;
+  min-width: 0;
 }
 
 .quick-action-tile:hover {
   transform: translateY(-2px);
   border-color: var(--color-primary-light);
-  box-shadow: 0 6px 18px rgba(14, 26, 34, 0.06);
+  box-shadow: 0 4px 12px rgba(14, 26, 34, 0.06);
 }
 
 .quick-action-tile.tile-priority {
@@ -944,15 +1013,15 @@
 }
 
 .tile-icon-box {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-xs);
   background: rgba(58, 105, 133, 0.08);
   color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  font-size: 1rem;
   flex-shrink: 0;
   transition: all var(--transition-fast);
 }
@@ -982,19 +1051,18 @@
   font-weight: 700;
   color: var(--color-black);
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .tile-desc {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
   margin-bottom: 0;
-  line-height: 1.35;
-  white-space: normal;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .tile-priority-badge {
@@ -1292,29 +1360,94 @@
 }
 
 /* =========================================================================
-   11. RESPONSIVE MEDIA QUERIES
+   11. RESPONSIVE MEDIA QUERIES & GRID BALANCING
    ========================================================================= */
-@media (max-width: 1200px) {
+
+/* Desktop & Laptop Tweaks (1200px and up) */
+@media (min-width: 1200px) {
   .dashboard-stats-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1rem;
   }
 }
 
+/* Medium Tablets & Narrow Desktops (768px to 1199.98px)
+   Balanced 2-row layout: Row 1 has 2 cards (50% each), Row 2 has 3 cards (33.3% each) */
+@media (max-width: 1199.98px) and (min-width: 768px) {
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(1),
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(2) {
+    grid-column: span 3;
+  }
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(3),
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(4),
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(5) {
+    grid-column: span 2;
+  }
+}
+
+/* Tablet & Below (<992px) */
 @media (max-width: 991.98px) {
   .egsa-dashboard-hero {
     padding: 1.75rem 1.5rem;
   }
   .hero-title {
-    font-size: 1.5rem;
+    font-size: 1.65rem;
   }
-  .dashboard-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .quick-actions-grid {
-    grid-template-columns: 1fr;
+  .hero-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
   }
 }
 
+/* Mobile Devices (<=767.98px)
+   Balanced 2-column layout: Cards 1-4 are 2x2, Card 5 spans both columns */
+@media (max-width: 767.98px) {
+  .egsa-dashboard-hero {
+    padding: 1.5rem 1.25rem;
+  }
+  .hero-title {
+    font-size: 1.45rem;
+  }
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(1),
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(2),
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(3),
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(4) {
+    grid-column: span 1;
+  }
+  .dashboard-stats-grid > .dashboard-stat-card:nth-child(5) {
+    grid-column: span 2;
+  }
+  .dashboard-stat-card {
+    padding: 0.95rem 1rem;
+  }
+  .stat-card-value {
+    font-size: 1.5rem;
+  }
+  .egsa-institutional-card {
+    padding: 1.25rem 1rem;
+  }
+
+  /* Smooth scrollable stepper for mobile */
+  .pipeline-stepper-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.75rem;
+  }
+  .pipeline-steps-wrapper {
+    min-width: 480px;
+    padding: 0 0.5rem;
+  }
+}
+
+/* Small Mobile (<576px) */
 @media (max-width: 575.98px) {
   .egsa-dashboard-hero {
     padding: 1.25rem 1rem;
@@ -1322,24 +1455,13 @@
   .hero-title {
     font-size: 1.35rem;
   }
-  .hero-subtitle {
-    font-size: 0.85rem;
+  .hero-actions-row {
+    flex-direction: column;
+    align-items: stretch;
   }
-  .dashboard-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 379.98px) {
-  .dashboard-stats-grid {
-    grid-template-columns: 1fr;
-  }
-  .pipeline-steps-wrapper {
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-  }
-  .pipeline-step-node {
-    min-width: 80px;
+  .hero-actions-row .btn {
+    width: 100%;
+    justify-content: center;
   }
   .upcoming-item-row {
     flex-direction: column;
@@ -1351,6 +1473,28 @@
   }
   .item-action-area .btn {
     width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Extra-small screens (<=420px) */
+@media (max-width: 420px) {
+  .dashboard-stats-grid {
+    gap: 0.5rem;
+  }
+  .dashboard-stat-card {
+    padding: 0.8rem 0.85rem;
+  }
+  .stat-card-label {
+    font-size: 0.72rem;
+  }
+  .stat-card-value {
+    font-size: 1.35rem;
+  }
+  .stat-card-icon-wrap {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
   }
 }
 
@@ -1371,183 +1515,74 @@
 }
 
 /* =========================================================================
-   13. CLARITY ENHANCEMENTS (Minimal visual improvements for better readability)
+   13. COLUMN ALIGNMENT & ACCESSIBILITY
    ========================================================================= */
-
-/* Increase section spacing to reduce visual density */
-.egsa-dashboard-hero {
-  margin-bottom: 2.5rem !important;
+.dashboard-main-col,
+.dashboard-side-col {
+  min-width: 0;
 }
 
-.dashboard-stats-grid {
-  margin-bottom: 2.5rem !important;
+.dashboard-main-col > *:last-child,
+.dashboard-side-col > *:last-child {
+  margin-bottom: 0 !important;
 }
 
-/* Main content section spacing - targets the row containing the 2-column layout */
-.egsa-dashboard-root > .row.g-4 {
-  margin-bottom: 2rem !important;
-}
-
-/* Improve typography hierarchy - make headings more prominent */
-.hero-title {
-  font-size: 2rem !important;
-  letter-spacing: -0.03em !important;
-}
-
-.hero-subtitle {
-  font-size: 1.05rem !important;
-  line-height: 1.6 !important;
-  max-width: 720px !important;
-}
-
-/* Enhance statistics visual hierarchy */
-.stat-card-label {
-  font-size: 0.825rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.015em !important;
-}
-
-.stat-card-value {
-  font-size: 1.95rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.01em !important;
-}
-
-.stat-card-unit {
-  font-size: 1.1rem !important;
-  font-weight: 600 !important;
-}
-
-.stat-card-status {
-  font-size: 0.78rem !important;
-  font-weight: 500 !important;
-}
-
-/* Improve button hierarchy - make primary actions more distinct */
-.hero-btn-primary {
-  padding: 0.65rem 1.4rem !important;
-  font-weight: 600 !important;
-  box-shadow: 0 4px 16px rgba(30, 124, 133, 0.35) !important;
-}
-
-.hero-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(30, 124, 133, 0.45) !important;
-  transform: translateY(-2px) !important;
-}
-
-.hero-btn-secondary,
-.hero-btn-accent {
-  padding: 0.6rem 1.2rem !important;
-  font-weight: 500 !important;
-}
-
-/* Improve card spacing and depth for better content breathing room */
-.dashboard-stat-card {
-  padding: 1.35rem 1.5rem !important;
-}
-
-.dashboard-stat-card:hover {
-  transform: translateY(-3px) !important;
-  box-shadow: 0 8px 24px rgba(14, 26, 34, 0.09) !important;
-}
-
-.stat-card-icon-wrap {
-  width: 36px !important;
-  height: 36px !important;
-  font-size: 1.05rem !important;
-}
-
-.egsa-institutional-card {
-  padding: 1.75rem !important;
-}
-
-.egsa-institutional-card:hover {
-  box-shadow: 0 6px 18px rgba(14, 26, 34, 0.08) !important;
-}
-
-/* Improve spacing within card headers and content blocks */
+/* Card Header Standardization */
 .card-header-clean {
-  margin-bottom: 1.5rem !important;
-  padding-bottom: 1rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.card-heading-title {
-  font-size: 1.2rem !important;
+/* Sub-card recommendations */
+.recommendation-subcard {
+  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.clean-action-link {
-  font-size: 0.875rem !important;
-  font-weight: 600 !important;
+.recommendation-subcard:hover {
+  border-color: var(--color-primary-light) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Enhance responsive spacing for better mobile experience */
-@media (max-width: 1200px) {
-  .dashboard-stats-grid {
-    gap: 1rem !important;
-  }
-  
-  .stat-card-value {
-    font-size: 1.75rem !important;
-  }
+/* Standardized Card Bottom Action */
+.card-bottom-action {
+  border-top: 1px solid var(--color-border-subtle) !important;
 }
 
-@media (max-width: 991.98px) {
-  .dashboard-stats-grid {
-    gap: 1rem !important;
-  }
-  
-  .egsa-dashboard-hero {
-    padding: 2rem 1.75rem !important;
-  }
-  
-  .hero-title {
-    font-size: 1.75rem !important;
-  }
-  
-  .hero-subtitle {
-    font-size: 0.95rem !important;
-  }
+.card-bottom-action .btn {
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-xs);
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@media (max-width: 575.98px) {
-  .dashboard-stats-grid {
-    gap: 0.85rem !important;
-    margin-bottom: 2rem !important;
-  }
-  
-  .egsa-dashboard-hero {
-    padding: 1.5rem 1.25rem !important;
-  }
-  
-  .hero-title {
-    font-size: 1.5rem !important;
-  }
-  
-  .hero-subtitle {
-    font-size: 0.8rem !important;
-  }
-  
-  .stat-card-value {
-    font-size: 1.5rem !important;
-  }
-  
-  .stat-card-label {
-    font-size: 0.875rem !important;
-  }
+.card-bottom-action .btn:hover {
+  background-color: rgba(58, 105, 133, 0.08);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 
-/* Improve focus states for better accessibility */
-.dashboard-stat-card:focus-with-in,
-.egsa-institutional-card:focus-with-in,
+/* Focus States for Keyboard Navigation */
+.dashboard-stat-card:focus-visible,
+.egsa-institutional-card:focus-visible,
+.quick-action-tile:focus-visible,
 .hero-btn-primary:focus-visible,
 .hero-btn-secondary:focus-visible,
 .hero-btn-accent:focus-visible {
-  outline: 2px solid var(--color-primary-light) !important;
-  outline-offset: 2px !important;
-}
-
-/* Enhance hover states for better affordance */
-.dashboard-stat-card:hover .stat-card-icon-wrap,
-.egsa-institutional-card:hover .card-header-icon-pill {
-  transform: scale(1.08) !important;
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 2px;
 }

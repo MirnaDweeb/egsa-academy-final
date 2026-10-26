@@ -1,47 +1,107 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import '../pages/student/ExploreProgramsPage.css';
 
 export default function CourseCard({ course }) {
   return (
-    <div className="egsa-card p-4 h-100 d-flex flex-column">
-      <div className="d-flex justify-content-between align-items-start mb-2">
-        <span className="badge bg-primary-egsa">{course.level}</span>
-        <span className="text-accent-egsa fw-bold">{course.price != null ? `${course.price} ${course.currency || 'EGP'}` : 'Pricing TBA'}</span>
+    <div className="egsa-program-card h-100 d-flex flex-column justify-content-between position-relative">
+      <div>
+        <div className="egsa-badges-row">
+          <div className="d-flex align-items-center gap-1 flex-wrap">
+            {course.category && (
+              <span className="egsa-badge-category">{course.category}</span>
+            )}
+            <span className="egsa-badge-level">{course.level || 'Standard'}</span>
+          </div>
+        </div>
+
+        <h5 className="egsa-program-title" title={course.title}>{course.title}</h5>
+        {course.tagline && (
+          <p className="egsa-program-tagline" title={course.tagline}>
+            {course.tagline}
+          </p>
+        )}
+        <p className="egsa-program-desc">
+          {course.shortDescription || course.overview || 'Comprehensive practical curriculum designed by Egyptian Space Agency engineers.'}
+        </p>
+
+        <ul className="egsa-program-meta">
+          <li className="egsa-program-meta-item">
+            <i className="fa-regular fa-clock egsa-meta-icon"></i>
+            <span>
+              {course.duration != null ? `${course.duration} ${course.durationUnit || 'Days'}` : 'Duration TBA'}
+              {course.hoursPerDay ? ` · ${course.hoursPerDay}` : ''}
+            </span>
+          </li>
+          <li className="egsa-program-meta-item">
+            <i className="fa-solid fa-location-dot egsa-meta-icon"></i>
+            <span>{course.deliveryMode}</span>
+          </li>
+          {course.startDate && (
+            <li className="egsa-program-meta-item">
+              <i className="fa-regular fa-calendar egsa-meta-icon"></i>
+              <span>Starts {new Date(course.startDate).toLocaleDateString()}</span>
+            </li>
+          )}
+          {course.capacity != null && (
+            <li className="egsa-program-meta-item">
+              <i className="fa-solid fa-users egsa-meta-icon"></i>
+              <span>{course.availableSeats ?? course.capacity} seats available</span>
+            </li>
+          )}
+        </ul>
       </div>
-      <h5 className="mb-1 text-dark fw-bold">{course.title}</h5>
-      {course.tagline && (
-        <small className="text-secondary-egsa fw-semibold d-block mb-1 text-truncate">
-          {course.tagline}
-        </small>
-      )}
-      <p className="text-muted small flex-grow-1">{course.shortDescription}</p>
-      <ul className="list-unstyled small text-muted mb-3">
-        <li>
-          <i className="fa-regular fa-clock me-2"></i>
-          {course.duration != null ? `${course.duration} ${course.durationUnit || 'Days'}` : 'Duration TBA'}
-          {course.hoursPerDay ? ` · ${course.hoursPerDay}` : ''}
-        </li>
-        <li><i className="fa-solid fa-location-dot me-2"></i>{course.deliveryMode}</li>
-        {course.startDate && (
-          <li><i className="fa-regular fa-calendar me-2"></i>{new Date(course.startDate).toLocaleDateString()}</li>
-        )}
-        {course.capacity != null && (
-          <li><i className="fa-solid fa-chair me-2"></i>{course.availableSeats ?? course.capacity} seats available</li>
-        )}
-      </ul>
-      <div className="d-flex gap-2 mt-auto">
-        <Link to={`/student/courses/${course._id}`} className="btn btn-outline-primary btn-sm flex-grow-1">
-          View Details
-        </Link>
-        {course.price != null ? (
-          <Link to={`/student/courses/${course._id}/fit`} className="btn btn-primary btn-sm flex-grow-1">
-            Check My Fit
-          </Link>
-        ) : (
-          <button className="btn btn-primary btn-sm flex-grow-1" disabled title="Applications open once pricing is published">
-            Coming Soon
-          </button>
-        )}
+
+      <div className="egsa-card-actions-wrapper">
+        <div className="egsa-program-pricing-block">
+          <span className="egsa-tuition-label">Tuition</span>
+          <div className="egsa-price-value">
+            {course.price != null ? (
+              <>{course.price.toLocaleString()} <span className="egsa-currency">{course.currency || 'EGP'}</span></>
+            ) : (
+              'Pricing TBA'
+            )}
+          </div>
+        </div>
+
+        <div className="egsa-actions-container">
+          <div className="w-100">
+            <Link
+              to={`/student/courses/${course._id}`}
+              className="btn egsa-btn-primary w-100"
+            >
+              <i className="fa-solid fa-paper-plane me-1.5"></i> Apply Now
+            </Link>
+          </div>
+          <div className="egsa-subtle-links-row">
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="egsa-subtle-link"
+              title="Prerequisite Alignment & Course Fit"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart egsa-subtle-icon"></i> Course Fit
+            </Link>
+            <span className="egsa-subtle-divider">·</span>
+            <Link
+              to={`/student/courses/${course._id}`}
+              className="egsa-subtle-link"
+              title="Prerequisite and Readiness diagnostic"
+            >
+              <i className="fa-solid fa-clipboard-check egsa-subtle-icon"></i> Readiness
+            </Link>
+          </div>
+          <div className="egsa-card-footer">
+            <span className="egsa-footer-accreditation">
+              <i className="fa-regular fa-circle-check text-success me-1"></i>Accredited EGSA Program
+            </span>
+            <Link
+              to={`/student/courses/${course._id}`}
+              className="egsa-footer-details-link"
+            >
+              View Details <i className="fa-solid fa-arrow-right egsa-footer-arrow"></i>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

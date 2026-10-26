@@ -20,6 +20,7 @@ router.patch('/applications/:id/review', ctrl.reviewApplication);
 router.patch('/applications/:id/waitlist', ctrl.waitlistApplication);
 router.patch('/applications/:id/reject', ctrl.rejectApplication);
 router.patch('/applications/:id/promote', ctrl.promoteWaitlist);
+router.get('/applications/:id/document', ctrl.streamApplicationDocument);
 
 // Cohorts & Capacity Management
 router.get('/cohorts', ctrl.listCohorts);

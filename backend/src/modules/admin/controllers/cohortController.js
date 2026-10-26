@@ -1,5 +1,9 @@
 const cohortService = require('../services/cohortService');
 const { syncCohortToPortal } = require('../services/instructorIntegrationClient');
+let unifiedSyncService;
+try {
+  unifiedSyncService = require('../../integration/unifiedSyncService');
+} catch (_) {}
 
 // =========================================================================
 // ADMIN CONTROLLERS
@@ -8,20 +12,32 @@ const { syncCohortToPortal } = require('../services/instructorIntegrationClient'
 async function createCohortAdmin(req, res, next) {
   try {
     const cohort = await cohortService.createCohort({
-      ...req.body,
-      user: req.user,
-    });
+       ...req.body,
+       user: req.user,
+     });
     // Trigger S2S sync to instructor portal
     syncCohortToPortal({
       externalId: cohort._id ? cohort._id.toString() : cohort.id,
       name: cohort.name,
-      courseId: cohort.course,
+      courseId: cohort.program || cohort.course,
       instructorId: cohort.instructor,
       startDate: cohort.startDate,
       endDate: cohort.endDate,
       status: cohort.status,
       division: cohort.division,
     });
+    if (unifiedSyncService?.syncCohortAndInstructor) {
+      unifiedSyncService.syncCohortAndInstructor({
+        cohortId: cohort._id ? cohort._id.toString() : cohort.id,
+        cohortName: cohort.name,
+        courseId: cohort.program || cohort.course,
+        instructorId: cohort.instructor,
+        startDate: cohort.startDate,
+        endDate: cohort.endDate,
+        status: cohort.status,
+        division: cohort.division,
+      }).catch((err) => console.warn('[COHORT] Unified sync error on create:', err.message));
+    }
     res.status(201).json({ success: true, data: cohort });
   } catch (err) {
     next(err);
@@ -62,13 +78,25 @@ async function updateCohortAdmin(req, res, next) {
       syncCohortToPortal({
         externalId: cohort._id ? cohort._id.toString() : cohort.id,
         name: cohort.name,
-        courseId: cohort.course,
+        courseId: cohort.program || cohort.course,
         instructorId: cohort.instructor,
         startDate: cohort.startDate,
         endDate: cohort.endDate,
         status: cohort.status,
         division: cohort.division,
       });
+      if (unifiedSyncService?.syncCohortAndInstructor) {
+        unifiedSyncService.syncCohortAndInstructor({
+          cohortId: cohort._id ? cohort._id.toString() : cohort.id,
+          cohortName: cohort.name,
+          courseId: cohort.program || cohort.course,
+          instructorId: cohort.instructor,
+          startDate: cohort.startDate,
+          endDate: cohort.endDate,
+          status: cohort.status,
+          division: cohort.division,
+        }).catch((err) => console.warn('[COHORT] Unified sync error on update:', err.message));
+      }
     }
     res.json({ success: true, data: cohort });
   } catch (err) {
@@ -83,6 +111,15 @@ async function assignEnrollmentAdmin(req, res, next) {
       req.body.enrollmentId,
       req.user
     );
+    if (unifiedSyncService?.syncEnrollment && result) {
+      unifiedSyncService.syncEnrollment({
+        student: result.student,
+        course: result.program || result.course,
+        cohort: result.cohort,
+        enrollmentId: result._id,
+        status: result.status,
+      }).catch((err) => console.warn('[COHORT] Unified sync error on assign enrollment:', err.message));
+    }
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);

@@ -1,6 +1,8 @@
 const http = require('http');
 
-const INSTRUCTOR_SERVICE_URL = process.env.INSTRUCTOR_SERVICE_URL || 'http://localhost:5100';
+function getInstructorServiceUrl() {
+  return process.env.INSTRUCTOR_SERVICE_URL || `http://localhost:${process.env.PORT || 5500}`;
+}
 const INTEGRATION_API_KEY = process.env.INTEGRATION_API_KEY;
 
 if (process.env.NODE_ENV === 'production') {
@@ -56,7 +58,7 @@ async function requestWithRetry(url, options, bodyData, maxRetries = 1) {
 
 async function syncInstructorToPortal(payload) {
   try {
-    const url = new URL('/api/v1/integration/instructors', INSTRUCTOR_SERVICE_URL);
+    const url = new URL('/api/v1/integration/instructors', getInstructorServiceUrl());
     const bodyData = JSON.stringify(payload);
     const options = {
       method: 'POST',
@@ -81,7 +83,7 @@ async function syncInstructorToPortal(payload) {
 
 async function syncCohortToPortal(payload) {
   try {
-    const url = new URL('/api/v1/integration/cohorts', INSTRUCTOR_SERVICE_URL);
+    const url = new URL('/api/v1/integration/cohorts', getInstructorServiceUrl());
     const bodyData = JSON.stringify(payload);
     const options = {
       method: 'POST',
@@ -104,4 +106,29 @@ async function syncCohortToPortal(payload) {
   }
 }
 
-module.exports = { syncInstructorToPortal, syncCohortToPortal };
+async function syncEnrollmentToPortal(payload) {
+  try {
+    const url = new URL('/api/v1/integration/enrollments', getInstructorServiceUrl());
+    const bodyData = JSON.stringify(payload);
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': INTEGRATION_API_KEY || '',
+        'Content-Length': Buffer.byteLength(bodyData),
+      },
+      timeout: 5000,
+    };
+
+    const res = await requestWithRetry(url, options, bodyData, 1);
+    if (!res.success) {
+      console.warn('[S2S] Enrollment sync incomplete:', res.error || `HTTP ${res.statusCode}`);
+    }
+    return res;
+  } catch (err) {
+    console.warn('[S2S] Error building enrollment sync request:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { syncInstructorToPortal, syncCohortToPortal, syncEnrollmentToPortal, getInstructorServiceUrl };

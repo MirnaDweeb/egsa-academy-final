@@ -70,7 +70,7 @@ export default function FoundationReviewPage() {
         subtitle={`${course.title || 'Specialized Program'} — Diagnostic Assessment Advisory Report`}
         breadcrumbs={[
           { label: 'Portal', to: '/student/dashboard' },
-          { label: 'My Applications', to: '/student/applications' },
+          { label: 'My Training', to: '/student/training?tab=applications' },
           { label: application.referenceNumber || 'Application', to: `/student/applications/${application._id}` },
           { label: 'Foundation Review' },
         ]}

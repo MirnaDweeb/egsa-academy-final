@@ -69,6 +69,15 @@ async function autoAcceptAndReserveSeat({
     throw new AppError('Course not found.', 404);
   }
 
+  if (courseDoc.price == null) {
+    return {
+      success: false,
+      reason: 'PRICING_NOT_FINALIZED',
+      application: appDoc,
+      message: 'Course pricing has not been published yet. Application remains under committee review.',
+    };
+  }
+
   const isDirectPermitted = courseDoc.directEnrollmentPermitted !== false;
 
   // Preserve existing readiness and eligibility rules UNLESS direct enrollment applies
@@ -261,6 +270,17 @@ async function autoAcceptAndReserveSeat({
     appDoc.status = 'Confirmed';
     appDoc.enrollment = enrollment?._id;
     if (typeof appDoc.save === 'function') await appDoc.save();
+
+    try {
+      const { syncEnrollment } = require('../../integration/unifiedSyncService');
+      syncEnrollment({
+        student: appDoc.student,
+        course: courseDoc,
+        cohort: cohortDoc || appDoc.cohort,
+        enrollmentId: enrollment?._id,
+        status: 'Confirmed',
+      }).catch(err => console.warn('[ADMISSION] Enrollment sync notice:', err.message));
+    } catch (_) {}
   }
 
   // Institutional email and in-app notification (non-blocking)

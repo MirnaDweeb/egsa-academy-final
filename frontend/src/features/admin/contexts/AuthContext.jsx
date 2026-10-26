@@ -48,15 +48,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('esa_token');
     localStorage.removeItem('esa_user');
-    localStorage.removeItem('egsa_access_token');
-    localStorage.removeItem('egsa_token');
-    localStorage.removeItem('egsa_refresh_token');
-    localStorage.removeItem('egsa_refresh');
-    localStorage.removeItem('egsa_user');
-    localStorage.removeItem('agency_role');
-    localStorage.removeItem('agency_email');
     setUser(null);
-    window.location.href = '/admin/login';
   };
 
   return (

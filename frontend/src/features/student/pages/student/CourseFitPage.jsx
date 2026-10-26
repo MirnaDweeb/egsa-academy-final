@@ -62,11 +62,28 @@ export default function CourseFitPage() {
     }
   };
 
+  const handleStandardApply = async () => {
+    setApplying(true);
+    try {
+      const res = await applicationService.create({ courseId: id, directEnroll: false });
+      const app = res.data;
+      if (app?._id) {
+        navigate(`/student/applications/${app._id}`);
+      } else {
+        navigate('/student/applications');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to submit application.');
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const handleApplyOrAssess = async () => {
     if (fit.result === 'Foundation Required') {
       setApplying(true);
       try {
-        await applicationService.create({ courseId: id });
+        await applicationService.create({ courseId: id, directEnroll: false });
         navigate('/student/applications');
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to submit application.');
@@ -77,7 +94,10 @@ export default function CourseFitPage() {
     }
 
     if (!fit.requiresReadiness) {
-      return handleDirectEnroll();
+      if (course?.price != null && course?.directEnrollmentPermitted !== false) {
+        return handleDirectEnroll();
+      }
+      return handleStandardApply();
     }
 
     navigate(`/student/readiness/start?courseId=${id}`);
@@ -141,24 +161,47 @@ export default function CourseFitPage() {
           </div>
 
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <Link to="/student/programs" className="btn btn-outline-secondary btn-sm">
-              <i className="fa-solid fa-arrow-left me-1"></i> Browse Other Courses
-            </Link>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <Link to="/student/programs" className="btn btn-outline-secondary btn-sm">
+                <i className="fa-solid fa-arrow-left me-1"></i> Browse Other Courses
+              </Link>
+              <Link to={`/student/readiness/start?courseId=${id}`} className="btn btn-outline-primary btn-sm">
+                <i className="fa-solid fa-clipboard-check me-1"></i> Diagnostic Readiness
+              </Link>
+            </div>
 
-            {fit.result !== 'Not Eligible' && (
-              <div className="d-flex align-items-center gap-2">
-                {fit.result === 'Foundation Required' ? (
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              {fit.result === 'Not Eligible' ? (
+                <button
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={handleStandardApply}
+                  disabled={applying}
+                  title="Submit your qualifications for manual admissions committee evaluation"
+                >
+                  {applying ? 'Submitting…' : 'Submit for Committee Review'}
+                </button>
+              ) : fit.result === 'Foundation Required' ? (
+                <div className="d-flex gap-2">
                   <button
-                    className="btn btn-warning px-4"
+                    className="btn btn-warning btn-sm px-3"
                     onClick={handleApplyOrAssess}
                     disabled={applying}
                   >
                     {applying ? 'Submitting…' : 'Apply to Recommended Foundation'}
                   </button>
-                ) : (
-                  <>
+                  <button
+                    className="btn btn-outline-secondary btn-sm px-3"
+                    onClick={handleStandardApply}
+                    disabled={applying}
+                  >
+                    Submit for Review Anyway
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {course?.price != null && course?.directEnrollmentPermitted !== false ? (
                     <button
-                      className="btn btn-primary px-3 fw-bold"
+                      className="btn btn-primary btn-sm px-3 fw-bold"
                       onClick={handleDirectEnroll}
                       disabled={applying}
                     >
@@ -168,19 +211,31 @@ export default function CourseFitPage() {
                         </>
                       )}
                     </button>
-                    {fit.requiresReadiness && (
-                      <button
-                        className="btn btn-outline-primary px-3 fw-semibold"
-                        onClick={handleApplyOrAssess}
-                        disabled={applying}
-                      >
-                        Check Readiness First <i className="fa-solid fa-arrow-right ms-1"></i>
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <button
+                      className="btn btn-primary btn-sm px-3 fw-bold"
+                      onClick={handleStandardApply}
+                      disabled={applying}
+                    >
+                      {applying ? 'Submitting…' : (
+                        <>
+                          <i className="fa-solid fa-paper-plane me-1"></i> Submit Application
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {fit.requiresReadiness && (
+                    <button
+                      className="btn btn-outline-primary btn-sm px-3 fw-semibold"
+                      onClick={handleApplyOrAssess}
+                      disabled={applying}
+                    >
+                      Check Readiness First <i className="fa-solid fa-arrow-right ms-1"></i>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

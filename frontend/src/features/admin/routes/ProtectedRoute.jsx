@@ -11,7 +11,7 @@ export default function ProtectedRoute() {
   const location = useLocation();
 
   if (isLoading) return <LoadingState fullPage message="Checking your session..." />;
-  if (!isAuthenticated) return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  if (!isAuthenticated) return <Navigate to="/login?role=admin" state={{ from: location }} replace />;
 
   return <Outlet />;
 }

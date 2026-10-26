@@ -7,7 +7,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: 'admin@agency.gov', password: 'Password123!' });
+  const [form, setForm] = useState({ email: 'superadmin@esa.dev', password: 'Password123!' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 

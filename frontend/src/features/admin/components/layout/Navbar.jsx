@@ -81,7 +81,7 @@ export default function Navbar({
 
   const handleLogout = () => {
     logout();
-    navigate('/admin/login');
+    navigate('/', { replace: true });
   };
 
   const currentDivisionMeta = workspaceSwitcher

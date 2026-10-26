@@ -27,6 +27,12 @@ export default defineConfig({
         target: process.env.VITE_UNIFIED_API_URL || 'http://localhost:5500',
         changeOrigin: true,
       },
+      // Socket.IO real-time websocket proxy
+      '/socket.io': {
+        target: process.env.VITE_UNIFIED_API_URL || 'http://localhost:5500',
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
 });

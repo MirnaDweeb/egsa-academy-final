@@ -4,6 +4,120 @@ import { readinessService, applicationService } from '../../services/cycleServic
 import { courseService } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingState, PageHeader } from '../../components/StateComponents.jsx';
+import './ReadinessStartPage.css';
+
+const TECHNICAL_COMPETENCIES = [
+  {
+    icon: 'fa-brain',
+    title: 'Logical Thinking & Systems',
+    desc: 'Quantitative reasoning, algorithmic logic & systems analysis',
+  },
+  {
+    icon: 'fa-ruler-combined',
+    title: 'Measurement & Physics',
+    desc: 'Scientific units, telemetry scales & fundamental principles',
+  },
+  {
+    icon: 'fa-flask-vial',
+    title: 'Hypothesis & Diagnostics',
+    desc: 'Formulating testable models, anomaly detection & troubleshooting',
+  },
+  {
+    icon: 'fa-chart-line',
+    title: 'Telemetry & Data Analysis',
+    desc: 'Data interpretation, time-series graphs & signal verification',
+  },
+  {
+    icon: 'fa-certificate',
+    title: 'Scientific Methodology',
+    desc: 'Empirical reproducibility, academic integrity & research rigor',
+  },
+  {
+    icon: 'fa-shield-halved',
+    title: 'Operational Lab Protocols',
+    desc: 'Equipment handling safety, clean-room standards & compliance',
+  },
+  {
+    icon: 'fa-compass',
+    title: 'Independent Critical Inquiry',
+    desc: 'Self-directed research, deductive clarity & problem decomposition',
+  },
+  {
+    icon: 'fa-shuttle-space',
+    title: 'Curriculum Alignment',
+    desc: 'Prerequisite readiness for specialized aerospace and tech tracks',
+  },
+];
+
+const CROSSFIT_COMPETENCIES = [
+  {
+    icon: 'fa-dumbbell',
+    title: 'Movement Mechanics',
+    desc: 'Functional fitness fundamentals and core joint stabilization',
+  },
+  {
+    icon: 'fa-fire',
+    title: 'Warm-up & Mobility',
+    desc: 'Dynamic activation, joint mobility drills & structured cool-downs',
+  },
+  {
+    icon: 'fa-person-running',
+    title: 'Bodyweight Standards',
+    desc: 'Controlled air squats, push-ups, lunges & postural balance',
+  },
+  {
+    icon: 'fa-shield-heart',
+    title: 'Injury Mitigation',
+    desc: 'Joint alignment, neutral spine awareness & safe technical form',
+  },
+  {
+    icon: 'fa-droplet',
+    title: 'Hydration & Recovery',
+    desc: 'Central recovery protocols, hydration guidelines & muscle rest',
+  },
+  {
+    icon: 'fa-heart-pulse',
+    title: 'Effort Calibration',
+    desc: 'Distinguishing safe muscular exertion from acute strain signals',
+  },
+  {
+    icon: 'fa-clipboard-user',
+    title: 'Coaching Compliance',
+    desc: 'Responsiveness to technical cues & academy floor safety rules',
+  },
+  {
+    icon: 'fa-sliders',
+    title: 'Movement Scaling',
+    desc: 'Appropriate exercise regressions & adaptive workout pacing',
+  },
+];
+
+const SCORING_TIERS = [
+  {
+    range: '80% – 100%',
+    status: 'Eligible / Ready',
+    desc: 'Direct clearance for admissions processing and seat allocation.',
+    tierClass: 'tier-ready',
+    pillClass: 'pill-ready',
+    icon: 'fa-circle-check',
+  },
+  {
+    range: '50% – 79%',
+    status: 'Foundation Recommended',
+    desc: 'Preparatory foundational modules advised for optimal progression.',
+    tierClass: 'tier-foundation',
+    pillClass: 'pill-foundation',
+    icon: 'fa-triangle-exclamation',
+  },
+  {
+    range: 'Below 50%',
+    status: 'Committee Review',
+    desc: 'Referred to EGSA Academic Committee for individualized evaluation.',
+    tierClass: 'tier-review',
+    pillClass: 'pill-review',
+    icon: 'fa-user-tie',
+  },
+];
 
 export default function ReadinessStartPage() {
   const [params] = useSearchParams();
@@ -150,347 +264,290 @@ export default function ReadinessStartPage() {
       {loadingCourse ? (
         <LoadingState label="Loading program details…" />
       ) : (
-        <div className="row g-4 justify-content-center">
-          <div className="col-lg-8">
-            {/* Active or Completed Attempt Notifications */}
-            {statusData?.inProgressAttemptId && (
-              <div className="alert alert-info border-info-subtle d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 shadow-sm">
-                <div className="d-flex align-items-center gap-3">
-                  <i className="fa-solid fa-clock-rotate-left fa-xl text-primary-egsa"></i>
-                  <div>
-                    <strong className="d-block text-dark">Active Assessment In Progress</strong>
-                    <span className="small text-muted">
-                      You have an unfinished attempt saved for this course. You can resume without losing progress.
-                    </span>
-                  </div>
+        <div className="readiness-container pb-5">
+          {/* Active or Completed Attempt Notifications */}
+          {statusData?.inProgressAttemptId && (
+            <div className="alert alert-info border-info-subtle d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 p-3 rounded-3 shadow-sm">
+              <div className="d-flex align-items-center gap-3">
+                <div className="readiness-section-icon" style={{ width: 38, height: 38, fontSize: '1.1rem' }}>
+                  <i className="fa-solid fa-clock-rotate-left"></i>
                 </div>
+                <div>
+                  <strong className="d-block text-dark">Active Assessment In Progress</strong>
+                  <span className="small text-muted">
+                    You have an unfinished attempt saved for this course. You can resume without losing progress.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm rounded-pill"
+                onClick={() => handleStart(false)}
+                disabled={starting}
+              >
+                <i className="fa-solid fa-play me-1.5"></i> Resume Assessment
+              </button>
+            </div>
+          )}
+
+          {statusData?.latestSubmittedAttemptId && (
+            <div className="alert alert-success-subtle border-success-subtle d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 p-3 rounded-3 shadow-sm">
+              <div className="d-flex align-items-center gap-3">
+                <div className="readiness-section-icon" style={{ width: 38, height: 38, fontSize: '1.1rem', background: '#ecfdf5', color: '#059669' }}>
+                  <i className="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                  <strong className="d-block text-dark">
+                    Assessment Completed: Score {statusData.latestScore}%
+                  </strong>
+                  <span className="small text-muted">
+                    Status outcome: <strong className="text-dark">{statusData.latestOutcome?.replace(/_/g, ' ')}</strong>
+                  </span>
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <Link
+                  to={`/student/readiness/${statusData.latestSubmittedAttemptId}/result`}
+                  className="btn btn-outline-success btn-sm px-3 py-1.5 fw-semibold rounded-pill"
+                >
+                  View Result
+                </Link>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm px-3 fw-bold shadow-sm"
-                  onClick={() => handleStart(false)}
+                  className="btn btn-outline-secondary btn-sm px-3 py-1.5 rounded-pill"
+                  onClick={() => handleStart(true)}
                   disabled={starting}
+                  title="Retake the readiness assessment"
                 >
-                  <i className="fa-solid fa-play me-1"></i> Resume Assessment
+                  Retake
                 </button>
               </div>
-            )}
+            </div>
+          )}
 
-            {statusData?.latestSubmittedAttemptId && (
-              <div className="alert alert-success-subtle border-success-subtle d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 shadow-sm">
-                <div className="d-flex align-items-center gap-3">
-                  <i className="fa-solid fa-circle-check fa-xl text-success"></i>
-                  <div>
-                    <strong className="d-block text-dark">
-                      Assessment Completed: Score {statusData.latestScore}%
-                    </strong>
-                    <span className="small text-muted">
-                      Status outcome: <strong>{statusData.latestOutcome?.replace(/_/g, ' ')}</strong>
+          {/* Course Selector if none preselected */}
+          {!params.get('courseId') && availableCourses.length > 0 && (
+            <div className="readiness-master-card p-4 mb-4">
+              <label className="form-label fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+                <i className="fa-solid fa-graduation-cap text-primary"></i>
+                Select Program to Evaluate:
+              </label>
+              <select
+                className="form-select form-select-lg rounded-3"
+                value={courseId}
+                onChange={(e) => {
+                  const sel = availableCourses.find((c) => c._id === e.target.value);
+                  setCourseId(e.target.value);
+                  setCourse(sel);
+                  if (isAuthenticated && sel) {
+                    readinessService.status(sel._id)
+                      .then((sRes) => setStatusData(sRes.data))
+                      .catch(() => setStatusData(null));
+                  }
+                }}
+              >
+                {availableCourses.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.title} ({c.level || 'All Levels'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Master Overview Card */}
+          <div className="readiness-master-card p-4 p-md-5 mb-4">
+            {/* Header Badges */}
+            <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
+              <span className="readiness-badge-tech">
+                <i className={`fa-solid ${isCrossfit ? 'fa-dumbbell' : 'fa-satellite'}`}></i>
+                {isCrossfit ? 'Physical Conditioning & Spaceflight Fitness' : course?.category || 'EGSA Academy Program'}
+              </span>
+              <span className="readiness-badge-neutral">
+                {course?.level || 'Introductory'}
+              </span>
+              {course?.hasCustomReadinessQuestions ? (
+                <span className="readiness-badge-success">
+                  <i className="fa-solid fa-check-double"></i> Course-Specific Assessment
+                </span>
+              ) : (
+                <span className="readiness-badge-neutral">
+                  <i className="fa-solid fa-certificate"></i> Academy Standard Assessment
+                </span>
+              )}
+            </div>
+
+            <h2 className="fw-bold text-dark mb-2" style={{ letterSpacing: '-0.02em' }}>
+              {course?.title || 'EGSA Program Readiness Assessment'}
+            </h2>
+            <p className="text-muted mb-4 fs-6" style={{ maxWidth: '820px', lineHeight: 1.6 }}>
+              {course?.tagline ||
+                course?.subtitle ||
+                (isCrossfit
+                  ? 'Comprehensive physical conditioning readiness evaluation covering functional movement mechanics, injury prevention, progressive overload, and recovery.'
+                  : 'Comprehensive foundational readiness evaluation covering logical reasoning, core technical principles, problem solving, and curriculum readiness.')}
+            </p>
+
+            {/* Optional Assessment Notice */}
+            <div className="alert alert-primary-subtle border-primary-subtle d-flex align-items-center gap-2.5 mb-4 p-3 rounded-3 small text-dark">
+              <i className="fa-solid fa-circle-check text-primary fs-5 flex-shrink-0"></i>
+              <span>
+                <strong>Assessment is Optional:</strong> You can take this assessment to evaluate your knowledge and readiness standards, or proceed directly to enrollment and payment at any time.
+              </span>
+            </div>
+
+            {/* 1. Modern Top Metric Cards */}
+            <div className="readiness-metrics-grid">
+              <div className="readiness-metric-card">
+                <div className="readiness-metric-icon-wrap readiness-metric-icon-blue">
+                  <i className="fa-solid fa-list-check"></i>
+                </div>
+                <div className="readiness-metric-data">
+                  <div className="readiness-metric-value">12 Questions</div>
+                  <div className="readiness-metric-label">Multiple Choice</div>
+                </div>
+              </div>
+
+              <div className="readiness-metric-card">
+                <div className="readiness-metric-icon-wrap readiness-metric-icon-amber">
+                  <i className="fa-regular fa-clock"></i>
+                </div>
+                <div className="readiness-metric-data">
+                  <div className="readiness-metric-value">10–15 Mins</div>
+                  <div className="readiness-metric-label">Self-Paced</div>
+                </div>
+              </div>
+
+              <div className="readiness-metric-card">
+                <div className="readiness-metric-icon-wrap readiness-metric-icon-emerald">
+                  <i className="fa-solid fa-award"></i>
+                </div>
+                <div className="readiness-metric-data">
+                  <div className="readiness-metric-value">80% Passing</div>
+                  <div className="readiness-metric-label">Direct Eligibility</div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. What is covered - Compact Micro-cards Grid */}
+            <div className="readiness-section-title">
+              <span className="readiness-section-icon">
+                <i className="fa-solid fa-microchip"></i>
+              </span>
+              <span>What This Assessment Evaluates</span>
+            </div>
+
+            <div className="readiness-eval-grid">
+              {(isCrossfit ? CROSSFIT_COMPETENCIES : TECHNICAL_COMPETENCIES).map((item) => (
+                <div key={item.title} className="readiness-eval-card">
+                  <div className="readiness-eval-icon">
+                    <i className={`fa-solid ${item.icon}`}></i>
+                  </div>
+                  <div className="readiness-eval-body">
+                    <div className="readiness-eval-title">{item.title}</div>
+                    <p className="readiness-eval-desc">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 3. Scoring Policy Tiers - Compact Horizontal Roadmap */}
+            <div className="readiness-section-title">
+              <span className="readiness-section-icon">
+                <i className="fa-solid fa-chart-pie"></i>
+              </span>
+              <span>Admissions Scoring Tiers</span>
+            </div>
+
+            <div className="readiness-tiers-strip">
+              {SCORING_TIERS.map((tier) => (
+                <div key={tier.range} className={`readiness-tier-card ${tier.tierClass}`}>
+                  <div className="readiness-tier-header">
+                    <span className={`readiness-tier-pill ${tier.pillClass}`}>
+                      <i className={`fa-solid ${tier.icon} me-1`}></i>
+                      {tier.range}
                     </span>
+                    <span className="readiness-tier-title">{tier.status}</span>
                   </div>
+                  <p className="readiness-tier-desc">{tier.desc}</p>
                 </div>
-                <div className="d-flex align-items-center gap-2">
-                  <Link
-                    to={`/student/readiness/${statusData.latestSubmittedAttemptId}/result`}
-                    className="btn btn-outline-success btn-sm px-3 fw-semibold"
-                  >
-                    View Result
-                  </Link>
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm px-3"
-                    onClick={() => handleStart(true)}
-                    disabled={starting}
-                    title="Retake the readiness assessment"
-                  >
-                    Retake
-                  </button>
-                </div>
+              ))}
+            </div>
+
+            {/* 4. Context Disclaimer Advisory */}
+            <div className={`readiness-advisory-box ${isCrossfit ? 'warning-tone' : ''}`}>
+              <div className="readiness-advisory-icon">
+                <i className={`fa-solid ${isCrossfit ? 'fa-heart-pulse' : 'fa-compass'}`}></i>
               </div>
-            )}
-
-            {/* Course Selector if none preselected */}
-            {!params.get('courseId') && availableCourses.length > 0 && (
-              <div className="egsa-card p-4 mb-4 shadow-sm">
-                <label className="form-label fw-bold text-dark mb-2">
-                  <i className="fa-solid fa-graduation-cap text-primary-egsa me-2"></i>
-                  Select Program to Evaluate:
-                </label>
-                <select
-                  className="form-select form-select-lg"
-                  value={courseId}
-                  onChange={(e) => {
-                    const sel = availableCourses.find((c) => c._id === e.target.value);
-                    setCourseId(e.target.value);
-                    setCourse(sel);
-                    if (isAuthenticated && sel) {
-                      readinessService.status(sel._id)
-                        .then((sRes) => setStatusData(sRes.data))
-                        .catch(() => setStatusData(null));
-                    }
-                  }}
-                >
-                  {availableCourses.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.title} ({c.level || 'All Levels'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Overview Card */}
-            <div className="egsa-card p-4 p-md-5 mb-4 shadow-sm">
-              <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                <span className="badge bg-primary-egsa px-3 py-2 fs-6">
-                  <i className={`fa-solid ${isCrossfit ? 'fa-dumbbell' : 'fa-satellite'} me-1`}></i>
-                  {isCrossfit ? 'Physical Conditioning & Spaceflight Fitness' : course?.category || 'EGSA Academy Program'}
-                </span>
-                <span className="badge bg-light text-dark border px-2 py-2">
-                  {course?.level || 'Introductory'}
-                </span>
-                {course?.hasCustomReadinessQuestions ? (
-                  <span className="badge bg-success-subtle text-success border px-2 py-2">
-                    <i className="fa-solid fa-check-double me-1"></i> Course-Specific Assessment
-                  </span>
-                ) : (
-                  <span className="badge bg-info-subtle text-info-emphasis border px-2 py-2">
-                    <i className="fa-solid fa-certificate me-1"></i> Academy Standard Assessment
-                  </span>
-                )}
-              </div>
-
-              <h3 className="fw-bold text-dark mb-2">
-                {course?.title || 'EGSA Program Readiness Assessment'}
-              </h3>
-              <p className="text-muted mb-4">
-                {course?.tagline ||
-                  course?.subtitle ||
-                  (isCrossfit
-                    ? 'Comprehensive physical conditioning readiness evaluation covering functional movement mechanics, injury prevention, progressive overload, and recovery.'
-                    : 'Comprehensive foundational readiness evaluation covering logical reasoning, core technical principles, problem solving, and curriculum readiness.')}
-              </p>
-
-              {/* Optional Assessment Notice */}
-              <div className="alert alert-primary-subtle border-primary-subtle d-flex align-items-center gap-2 mb-4 p-3 small text-dark">
-                <i className="fa-solid fa-circle-check text-primary-egsa fa-lg"></i>
-                <span>
-                  <strong>Assessment is Optional:</strong> You can take this assessment to evaluate your knowledge and readiness standards, or proceed directly to enrollment and payment at any time.
-                </span>
-              </div>
-
-              {/* Assessment Specs Grid */}
-              <div className="row g-3 mb-4">
-                <div className="col-sm-4">
-                  <div className="p-3 rounded bg-light border text-center h-100">
-                    <div className="text-primary-egsa mb-1">
-                      <i className="fa-solid fa-list-check fa-xl"></i>
-                    </div>
-                    <div className="fw-bold text-dark fs-5">12 Questions</div>
-                    <div className="text-muted small">Multiple Choice</div>
-                  </div>
-                </div>
-                <div className="col-sm-4">
-                  <div className="p-3 rounded bg-light border text-center h-100">
-                    <div className="text-primary-egsa mb-1">
-                      <i className="fa-regular fa-clock fa-xl"></i>
-                    </div>
-                    <div className="fw-bold text-dark fs-5">10–15 Mins</div>
-                    <div className="text-muted small">Self-Paced</div>
-                  </div>
-                </div>
-                <div className="col-sm-4">
-                  <div className="p-3 rounded bg-light border text-center h-100">
-                    <div className="text-primary-egsa mb-1">
-                      <i className="fa-solid fa-award fa-xl"></i>
-                    </div>
-                    <div className="fw-bold text-dark fs-5">80% Passing</div>
-                    <div className="text-muted small">Direct Eligibility</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* What is covered */}
-              <h5 className="fw-bold text-dark mb-3">
-                <i className="fa-solid fa-graduation-cap text-primary-egsa me-2"></i>
-                What This Assessment Evaluates
-              </h5>
-              <div className="row g-2 mb-4 text-muted small">
+              <div className="readiness-advisory-content">
                 {isCrossfit ? (
                   <>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Functional fitness and core movement mechanics</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Dynamic warm-ups and structured cool-downs</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Bodyweight standards: Air squats, push-ups, lunges</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Injury prevention and safe technical form</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Rest, hydration, and central recovery protocols</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Pain vs. discomfort: Knowing when to stop safely</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Following coach cues and facility safety rules</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Movement scaling for all fitness levels</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Logical thinking, quantitative reasoning, and systems analysis</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Technical and scientific measurement fundamentals</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Problem-solving, hypothesis testing, and anomaly diagnosis</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Data interpretation and telemetry signal analysis</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Scientific methodology, reproducibility, and academic integrity</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Operational laboratory protocols and equipment safety adherence</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Self-regulation, independent study, and critical inquiry</span>
-                    </div>
-                    <div className="col-md-6 d-flex align-items-center gap-2">
-                      <i className="fa-solid fa-circle-check text-success"></i>
-                      <span>Interdisciplinary readiness for advanced space curricula</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Scoring Policy Tiers */}
-              <h5 className="fw-bold text-dark mb-3">
-                <i className="fa-solid fa-chart-pie text-primary-egsa me-2"></i>
-                Admissions Scoring Tiers
-              </h5>
-              <div className="d-flex flex-column gap-2 mb-4">
-                <div className="p-3 border rounded bg-white d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-success">80% – 100%</span>
-                    <strong className="text-dark small">Eligible / Ready</strong>
-                  </div>
-                  <span className="text-muted small">Direct clearance for admissions processing and seat allocation.</span>
-                </div>
-                <div className="p-3 border rounded bg-white d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-warning text-dark">50% – 79%</span>
-                    <strong className="text-dark small">Foundation Recommended</strong>
-                  </div>
-                  <span className="text-muted small">Preparatory foundational modules advised for optimal progression.</span>
-                </div>
-                <div className="p-3 border rounded bg-white d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-danger">Below 50%</span>
-                    <strong className="text-dark small">Manual Review</strong>
-                  </div>
-                  <span className="text-muted small">Referred to EGSA Academic Committee for individualized evaluation.</span>
-                </div>
-              </div>
-
-              {/* Context Disclaimer Banner */}
-              {isCrossfit ? (
-                <div className="alert alert-warning border-warning-subtle d-flex align-items-start gap-3 mb-4">
-                  <i className="fa-solid fa-heart-pulse fa-lg text-danger mt-1"></i>
-                  <div className="small">
-                    <strong className="d-block mb-1 text-dark">Important Health & Safety Disclaimer:</strong>
+                    <strong className="d-block mb-1">Important Health & Safety Disclaimer:</strong>
                     This assessment evaluates introductory training concepts, safety rules, and consistency awareness.
                     It is <strong>not</strong> a medical clearance or proof of clinical fitness. Students are encouraged
                     to consult a certified physician before starting high-intensity physical conditioning.
-                  </div>
-                </div>
-              ) : (
-                <div className="alert alert-info border-info-subtle d-flex align-items-start gap-3 mb-4">
-                  <i className="fa-solid fa-compass fa-lg text-primary-egsa mt-1"></i>
-                  <div className="small">
-                    <strong className="d-block mb-1 text-dark">Academic & Foundational Readiness Advisory:</strong>
+                  </>
+                ) : (
+                  <>
+                    <strong className="d-block mb-1">Academic & Foundational Readiness Advisory:</strong>
                     This diagnostic readiness assessment evaluates foundational concepts, analytical problem solving, and
                     learning readiness. It ensures proper program placement and maximizes cadet academic success across
                     EGSA Space Academy tracks.
-                  </div>
-                </div>
-              )}
+                  </>
+                )}
+              </div>
+            </div>
 
-              {/* Start Button & Actions */}
-              <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 pt-3 border-top">
-                <Link to="/student/programs" className="btn btn-outline-secondary">
-                  <i className="fa-solid fa-arrow-left me-1"></i> Return to Programs
-                </Link>
+            {/* 5. Start Button & Actions */}
+            <div className="readiness-actions-bar">
+              <Link to="/student/programs" className="readiness-cta-secondary">
+                <i className="fa-solid fa-arrow-left"></i> Return to Programs
+              </Link>
 
-                <div className="d-flex align-items-center gap-2">
-                  {course?.price != null && (
-                    <button
-                      type="button"
-                      className="btn btn-primary px-3 py-2 fw-semibold shadow-sm"
-                      onClick={handleDirectEnroll}
-                      disabled={enrolling}
-                    >
-                      {enrolling ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                          Enrolling…
-                        </>
-                      ) : (
-                        <>
-                          <i className="fa-solid fa-credit-card me-1"></i> Skip & Enroll Directly ({course.price} {course.currency || 'EGP'})
-                        </>
-                      )}
-                    </button>
-                  )}
-
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                {course?.price != null && (
                   <button
                     type="button"
-                    className="btn btn-accent px-4 py-2 fw-semibold"
-                    onClick={() => handleStart(false)}
-                    disabled={starting || !courseId}
+                    className="readiness-cta-direct"
+                    onClick={handleDirectEnroll}
+                    disabled={enrolling}
                   >
-                    {starting ? (
+                    {enrolling ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Preparing Question Bank…
-                      </>
-                    ) : statusData?.inProgressAttemptId ? (
-                      <>
-                        <i className="fa-solid fa-play me-2"></i>
-                        Resume Readiness Assessment
+                        <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Enrolling…
                       </>
                     ) : (
                       <>
-                        <i className="fa-solid fa-play me-2"></i>
-                        Start Readiness Assessment
+                        <i className="fa-solid fa-bolt text-primary"></i> Skip & Enroll Directly ({course.price} {course.currency || 'EGP'})
                       </>
                     )}
                   </button>
-                </div>
+                )}
+
+                <button
+                  type="button"
+                  className="readiness-cta-primary"
+                  onClick={() => handleStart(false)}
+                  disabled={starting || !courseId}
+                >
+                  {starting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Preparing Question Bank…
+                    </>
+                  ) : statusData?.inProgressAttemptId ? (
+                    <>
+                      <i className="fa-solid fa-play"></i>
+                      Resume Readiness Assessment
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-play"></i>
+                      Start Readiness Assessment
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

@@ -1,0 +1,650 @@
+/* ==========================================================================
+   EGSA Academy — My Academic Progress Tracker Styling
+   Cohesive Palette: Deep Space Navy (#0F172A), Slate, Soft Emerald (#10B981)
+   ========================================================================== */
+
+/* Unified Progress Summary Header Card */
+.progress-summary-card {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #1E3A8A 100%);
+  color: #FFFFFF;
+  border-radius: 18px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.25), 0 4px 10px -2px rgba(15, 23, 42, 0.15);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.progress-summary-card::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(37, 99, 235, 0) 70%);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.progress-summary-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+@media (max-width: 991px) {
+  .progress-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* Overall Graduation Readiness Gauge */
+.readiness-gauge-box {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding-right: 1.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 991px) {
+  .readiness-gauge-box {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-right: 0;
+    padding-bottom: 1.5rem;
+  }
+}
+
+.readiness-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+}
+
+.readiness-circle-val {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
+}
+
+.readiness-circle-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.readiness-status-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 0.25rem;
+}
+
+.readiness-status-sub {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.readiness-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #6EE7B7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.readiness-badge-pill.warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.readiness-badge-pill.danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #FCA5A5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Three Sleek Progress Pillar Indicators */
+.metrics-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .metrics-pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.metric-pillar-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.metric-pillar-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.pillar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.pillar-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #93C5FD;
+  font-size: 0.85rem;
+}
+
+.pillar-icon-wrap.attendance {
+  color: #6EE7B7;
+}
+
+.pillar-icon-wrap.exams {
+  color: #C4B5FD;
+}
+
+.pillar-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.pillar-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.25rem;
+}
+
+.pillar-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.65rem;
+}
+
+.pillar-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 0.65rem;
+}
+
+.pillar-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.pillar-progress-bar.primary {
+  background: linear-gradient(90deg, #3B82F6, #60A5FA);
+}
+
+.pillar-progress-bar.success {
+  background: linear-gradient(90deg, #10B981, #34D399);
+}
+
+.pillar-progress-bar.warning {
+  background: linear-gradient(90deg, #F59E0B, #FBBF24);
+}
+
+.pillar-progress-bar.danger {
+  background: linear-gradient(90deg, #EF4444, #F87171);
+}
+
+.pillar-progress-bar.purple {
+  background: linear-gradient(90deg, #8B5CF6, #A78BFA);
+}
+
+.pillar-footer-link {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #93C5FD;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: color 0.15s ease;
+}
+
+.pillar-footer-link:hover {
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   Milestone Visual Stepper (Interactive Timeline)
+   ========================================================================== */
+.stepper-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.stepper-item {
+  display: flex;
+  gap: 1.15rem;
+  position: relative;
+  cursor: pointer;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.stepper-item:hover {
+  background-color: #F8FAFC;
+}
+
+.stepper-item.selected {
+  background-color: #F0F7FF;
+  border: 1px solid #BFDBFE;
+}
+
+/* Stepper Node & Connector */
+.stepper-node-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 36px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.stepper-indicator {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  z-index: 2;
+  transition: all 0.25s ease;
+}
+
+/* Completed Step Indicator: Soft Emerald */
+.stepper-indicator.completed {
+  background-color: #10B981;
+  color: #FFFFFF;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+/* Current / Active Step: Active Glow & Deep Navy / Blue Accent */
+.stepper-indicator.active {
+  background-color: #2563EB;
+  color: #FFFFFF;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25), 0 4px 12px rgba(37, 99, 235, 0.4);
+  animation: pulse-glow 2.2s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25), 0 4px 12px rgba(37, 99, 235, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.35), 0 6px 18px rgba(37, 99, 235, 0.55);
+  }
+}
+
+/* Upcoming / Pending Step */
+.stepper-indicator.upcoming {
+  background-color: #F1F5F9;
+  color: #64748B;
+  border: 2px solid #CBD5E1;
+}
+
+/* Connector Line between steps */
+.stepper-connector {
+  width: 2px;
+  background-color: #E2E8F0;
+  flex-grow: 1;
+  min-height: 24px;
+  margin: 4px 0;
+  transition: background-color 0.25s ease;
+}
+
+.stepper-connector.completed {
+  background-color: #10B981;
+}
+
+.stepper-connector.active {
+  background: linear-gradient(180deg, #2563EB 0%, #CBD5E1 100%);
+}
+
+/* Stepper Content */
+.stepper-content {
+  flex-grow: 1;
+  padding-bottom: 0.5rem;
+}
+
+.stepper-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.stepper-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stepper-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.stepper-badge.completed {
+  background-color: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.stepper-badge.active {
+  background-color: #EFF6FF;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+
+.stepper-badge.upcoming {
+  background-color: #F8FAFC;
+  color: #64748B;
+  border: 1px solid #E2E8F0;
+}
+
+.stepper-desc {
+  font-size: 0.82rem;
+  color: #475569;
+  margin-bottom: 0.5rem;
+  line-height: 1.45;
+}
+
+/* Expandable Milestone Details on Click */
+.stepper-details-drawer {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  margin-top: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.stepper-modules-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.module-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  background-color: #F1F5F9;
+  color: #334155;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #E2E8F0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.module-tag.verified {
+  background-color: #ECFDF5;
+  color: #047857;
+  border-color: #A7F3D0;
+}
+
+/* ==========================================================================
+   Actionable Remaining Requirements (Right Panel)
+   ========================================================================== */
+.requirements-panel-card {
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05);
+}
+
+.req-item-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.req-item-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
+}
+
+.req-item-card.is-priority {
+  border-left: 4px solid #2563EB;
+}
+
+.req-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.req-icon-and-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.req-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: #F1F5F9;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.req-icon-box.blue {
+  background-color: #EFF6FF;
+  color: #2563EB;
+}
+
+.req-icon-box.emerald {
+  background-color: #ECFDF5;
+  color: #059669;
+}
+
+.req-icon-box.amber {
+  background-color: #FFFBEB;
+  color: #D97706;
+}
+
+.req-icon-box.purple {
+  background-color: #F5F3FF;
+  color: #7C3AED;
+}
+
+.req-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 0.15rem;
+  line-height: 1.3;
+}
+
+.req-desc {
+  font-size: 0.78rem;
+  color: #64748B;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+
+/* Action Badges */
+.req-status-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.req-status-badge.in-progress {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+.req-status-badge.pending {
+  background-color: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.req-status-badge.ready {
+  background-color: #F3E8FF;
+  color: #6B21A8;
+  border: 1px solid #DDD6FE;
+}
+
+.req-status-badge.completed {
+  background-color: #ECFDF5;
+  color: #047857;
+  border: 1px solid #A7F3D0;
+}
+
+/* Bottom Action Row */
+.req-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #E2E8F0;
+  gap: 0.5rem;
+}
+
+.req-sub-info {
+  font-size: 0.72rem;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.req-action-btn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.req-action-btn.btn-primary-action {
+  background-color: #0F172A;
+  color: #FFFFFF;
+  border: 1px solid #0F172A;
+}
+
+.req-action-btn.btn-primary-action:hover {
+  background-color: #1E293B;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+}
+
+.req-action-btn.btn-outline-action {
+  background-color: #FFFFFF;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+
+.req-action-btn.btn-outline-action:hover {
+  background-color: #EFF6FF;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
+/* Advisor Card Polish */
+.advisor-guidance-card {
+  border-radius: 14px;
+  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+  border: 1px solid #E2E8F0;
+  padding: 1.25rem 1.35rem;
+}

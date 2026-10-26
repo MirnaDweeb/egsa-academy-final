@@ -9,6 +9,7 @@ const instructorRoutes = require('./instructorRoutes');
 const certificatePublicRoutes = require('./certificatePublicRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const studentAssessmentRoutes = require('./studentAssessmentRoutes');
+const messagingRoutes = require('./messagingRoutes');
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.use('/payments', paymentRoutes);
 router.use('/instructor', instructorRoutes);
 router.use('/certificates', certificatePublicRoutes);
 router.use('/notifications', notificationRoutes);
-
+router.use('/messages', messagingRoutes);
 
 const { getAdminConn } = require('../../../config/database');
 router.get('/health', (req, res) => {

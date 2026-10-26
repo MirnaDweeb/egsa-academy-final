@@ -69,6 +69,7 @@ const {
   sendMessagePaymentProofAdmin,
   getPaymentSettingsAdmin,
   updatePaymentSettingsAdmin,
+  getApplicationDocumentFileAdmin,
 } = require('../controllers/paymentProofProxyController');
 const {
   createCohortAdmin,
@@ -169,6 +170,7 @@ router.post('/applications/:id/notes', resolveDivisionScope, requirePermission(P
 router.patch('/applications/:id/decision', resolveDivisionScope, requirePermission(PERMISSIONS.APPLICATIONS_REVIEW), updateApplicationDecision);
 router.post('/applications/:id/readiness', resolveDivisionScope, requirePermission(PERMISSIONS.APPLICATIONS_REVIEW), evaluateApplicationReadiness);
 router.get('/applications/:id/readiness', resolveDivisionScope, requirePermission(PERMISSIONS.APPLICATIONS_REVIEW), getApplicationReadinessHistory);
+router.get('/applications/:id/document', resolveDivisionScope, requirePermission(PERMISSIONS.APPLICATIONS_VIEW), getApplicationDocumentFileAdmin);
 
 // Phase 9: Enrollment, Capacity & Waitlist Workflow — Division scoped
 router.post('/applications/:id/enroll', resolveDivisionScope, requirePermission(PERMISSIONS.ENROLLMENTS_MANAGE), enrollApplicationAdmin);

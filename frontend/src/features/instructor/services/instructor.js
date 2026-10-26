@@ -27,6 +27,7 @@ export const instructorApi = {
   conversations: (q) => getWithMeta(`${B}/conversations`, q),
   conversation: (id) => get(`${B}/conversations/${id}`),
   createConversation: (b) => post(`${B}/conversations`, b),
+  contactAdmin: (b) => post(`${B}/conversations/admin-support`, b),
   messages: (id, q) => getWithMeta(`${B}/conversations/${id}/messages`, q),
   sendMessage: (id, b) => post(`${B}/conversations/${id}/messages`, b),
   markMessagesRead: (id) => patch(`${B}/conversations/${id}/read`),
