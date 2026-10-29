@@ -16,6 +16,7 @@ const CourseSchema = new mongoose.Schema(
     titleEn: { type: String }, // MISSING BUSINESS DATA for most: currently mirrors `title`
     titleAr: { type: String }, // MISSING BUSINESS DATA: no Arabic names provided yet
     slug: { type: String, required: true, unique: true },
+    division: { type: String, enum: ['PRE_UNIVERSITY', 'UNIVERSITY'], index: true },
 
     // Content fields: extracted from official course PDFs
     tagline: { type: String },
@@ -76,6 +77,8 @@ const CourseSchema = new mongoose.Schema(
 
     location: { type: String, default: 'EGSA Academy, Cairo' },
     instructor: { type: String, default: 'TBD' },
+    assignedInstructorId: { type: String },
+    instructorEmail: { type: String },
 
     capacity: { type: Number }, // MISSING BUSINESS DATA - no capacity given per course yet
     seatsTaken: { type: Number, default: 0 },

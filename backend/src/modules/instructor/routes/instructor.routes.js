@@ -12,6 +12,7 @@ router.use(authenticate, authorize(ROLES.INSTRUCTOR)); // every route below: JWT
 router.get('/dashboard', c.dashboard);
 router.get('/courses', c.courses);
 router.get('/courses/:id', V.id(), validate, c.course);
+router.get('/courses/:id/evaluations', V.id(), validate, c.courseEvaluations);
 
 router.get('/cohorts', c.cohorts);
 router.get('/cohorts/:id', V.id(), validate, c.cohort);

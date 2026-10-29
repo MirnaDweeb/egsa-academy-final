@@ -211,16 +211,21 @@ async function getAssessmentById(assessmentId, callerUser) {
     };
   }
 
-  // Student view: Verify enrollment in cohort
+  // Student view: Verify enrollment in cohort or course
   const cohortId = assessment.cohort?._id || assessment.cohort;
+  const courseId = assessment.course?._id || assessment.course;
+  const orEnrollmentConds = [];
+  if (cohortId) orEnrollmentConds.push({ cohort: cohortId });
+  if (courseId) orEnrollmentConds.push({ course: courseId });
+
   const enrollment = await Enrollment.findOne({
     student: callerUser._id,
-    cohort: cohortId,
+    $or: orEnrollmentConds.length > 0 ? orEnrollmentConds : [{ cohort: null }],
     status: { $in: ['Active', 'Confirmed', 'Completed'] },
   });
 
   if (!enrollment) {
-    throw new AppError('You are not authorized to view this assessment. Cohort enrollment required.', 403);
+    throw new AppError('You are not authorized to view this assessment. Course enrollment required.', 403);
   }
 
   // Find student's submission
@@ -680,9 +685,10 @@ async function getStudentAssessments(studentId, query = {}) {
     .populate('course', 'title code category level instructor')
     .populate('cohort', 'name cohortCode startDate endDate status');
 
-  const cohortIds = enrollments.map((e) => e.cohort?._id).filter(Boolean);
+  const courseIds = enrollments.map((e) => e.course?._id || e.course).filter(Boolean);
+  const cohortIds = enrollments.map((e) => e.cohort?._id || e.cohort).filter(Boolean);
 
-  if (cohortIds.length === 0) {
+  if (courseIds.length === 0 && cohortIds.length === 0) {
     return {
       assessments: [],
       sections: {
@@ -700,9 +706,16 @@ async function getStudentAssessments(studentId, query = {}) {
     };
   }
 
-  // Find all assessments for these cohorts
-  const assessmentFilter = { cohort: { $in: cohortIds } };
-  if (query.courseId) assessmentFilter.course = query.courseId;
+  const orAssessmentConds = [];
+  if (cohortIds.length > 0) orAssessmentConds.push({ cohort: { $in: cohortIds } });
+  if (courseIds.length > 0) orAssessmentConds.push({ course: { $in: courseIds } });
+
+  // Find all published/active assessments for enrolled courses or cohorts (keep drafts hidden)
+  const assessmentFilter = {
+    $or: orAssessmentConds,
+    status: { $in: ['Scheduled', 'In_Progress', 'Completed'] },
+  };
+  if (query.courseId && query.courseId !== 'ALL') assessmentFilter.course = query.courseId;
 
   const assessments = await Assessment.find(assessmentFilter)
     .populate('course', 'title code category level')
@@ -713,7 +726,6 @@ async function getStudentAssessments(studentId, query = {}) {
   // Find all submissions for this student
   const submissions = await StudentSubmission.find({
     student: studentId,
-    cohort: { $in: cohortIds },
   });
 
   const submissionMap = new Map();
@@ -724,7 +736,6 @@ async function getStudentAssessments(studentId, query = {}) {
   // Find all evaluation results for this student
   const results = await AssessmentResult.find({
     student: studentId,
-    cohort: { $in: cohortIds },
   }).populate('instructor', 'fullName email');
 
   const resultMap = new Map();
@@ -965,7 +976,7 @@ async function submitAssessment(assessmentId, studentUser, data = {}, file = nul
     );
 
     if (unifiedSyncService?.syncSubmissionFromStudent) {
-      unifiedSyncService.syncSubmissionFromStudent({
+      await unifiedSyncService.syncSubmissionFromStudent({
         studentUser,
         assessment,
         submission: existing,
@@ -1003,7 +1014,7 @@ async function submitAssessment(assessmentId, studentUser, data = {}, file = nul
   );
 
   if (unifiedSyncService?.syncSubmissionFromStudent) {
-    unifiedSyncService.syncSubmissionFromStudent({
+    await unifiedSyncService.syncSubmissionFromStudent({
       studentUser,
       assessment,
       submission: newSubmission,
@@ -1026,7 +1037,7 @@ async function downloadAttachment(assessmentId, filename, callerUser, res, isVie
   if (!isStaff) {
     const enrollment = await Enrollment.findOne({
       student: callerUser._id,
-      cohort: assessment.cohort,
+      $or: [{ cohort: assessment.cohort }, { course: assessment.course }],
       status: { $in: ['Active', 'Confirmed', 'Completed'] },
     });
     if (!enrollment) {
@@ -1034,12 +1045,19 @@ async function downloadAttachment(assessmentId, filename, callerUser, res, isVie
     }
   }
 
-  const att = (assessment.attachments || []).find((a) => a.fileName === filename);
+  const att = (assessment.attachments || []).find(
+    (a) => a.fileName === filename || a.originalName === filename || (a.fileUrl && a.fileUrl.endsWith(filename))
+  );
   if (!att) {
     throw new AppError('Attachment not found in this assessment.', 404);
   }
 
+  const baseUploads = path.resolve(__dirname, '../../../../uploads');
   const possiblePaths = [
+    path.join(baseUploads, 'assignments', att.fileName),
+    path.join(baseUploads, 'assessments', att.fileName),
+    path.join(baseUploads, 'media', att.fileName),
+    path.join(baseUploads, att.fileName),
     path.join(__dirname, '../../uploads/assessments', att.fileName),
     path.join(__dirname, '../../uploads/media', att.fileName),
     path.join(__dirname, '../../uploads', att.fileName),
@@ -1072,9 +1090,17 @@ async function downloadSubmissionFile(submissionId, callerUser, res, isViewMode 
     throw new AppError('You do not have permission to access this student submission.', 403);
   }
 
-  const filePath = path.join(__dirname, '../../uploads/assessments', submission.file.fileName);
+  const baseUploads = path.resolve(__dirname, '../../../../uploads');
+  const possiblePaths = [
+    path.join(baseUploads, 'assessments', submission.file.fileName),
+    path.join(baseUploads, 'assignments', submission.file.fileName),
+    path.join(baseUploads, submission.file.fileName),
+    path.join(__dirname, '../../uploads/assessments', submission.file.fileName),
+  ];
 
-  if (!fs.existsSync(filePath)) {
+  const filePath = possiblePaths.find((p) => fs.existsSync(p));
+
+  if (!filePath) {
     throw new AppError('Submission file is not currently available on the server.', 404);
   }
 

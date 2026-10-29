@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import PageHeader from '../../components/common/PageHeader';
-import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
@@ -40,7 +38,6 @@ function formatSessionDate(dateStr, startTime) {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    year: 'numeric',
   });
   return startTime ? `${formattedDate} · ${startTime}` : formattedDate;
 }
@@ -104,6 +101,7 @@ export default function DivisionOverviewPage() {
   }
 
   const divisionName = DIVISION_LABELS[normDivision] || normDivision;
+  const isUni = normDivision === 'UNIVERSITY';
   const upcomingSessions = stats?.upcomingSessions || [];
   const recentActivity = stats?.recentActivity || [];
   const recentApplications = stats?.recentApplications || [];
@@ -111,162 +109,294 @@ export default function DivisionOverviewPage() {
 
   return (
     <div className={styles.dashboardContainer}>
-      {/* Page Header with Quick Actions & Live Refresh */}
-      <PageHeader
-        title={`${divisionName} Administration`}
-        subtitle={`Operational overview of students, programs, live sessions, and applications for ${divisionName}.`}
-        actions={
-          <div className={styles.headerActions}>
-            <button
-              type="button"
-              className={styles.refreshBtn}
-              onClick={() => load(true)}
-              disabled={refreshing}
-              title="Refresh live dashboard metrics"
-              aria-label="Refresh Dashboard Data"
-            >
-              <i
-                className={`fa-solid fa-rotate-right ${refreshing ? 'fa-spin' : ''}`}
-                aria-hidden="true"
-              ></i>
-              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-            </button>
-            <Link
-              to={`/admin/${normDivision}/sessions`}
-              className="btn btn-outline-primary btn-sm"
-              title="View all scheduled and live sessions"
-            >
-              <i className="fa-solid fa-tower-broadcast me-1.5" aria-hidden="true"></i>
-              Live Sessions
-            </Link>
-            <Link
-              to={`/admin/${normDivision}/applications`}
-              className="btn btn-primary btn-sm"
-              title="Review student applications"
-            >
-              <i className="fa-solid fa-file-lines me-1.5" aria-hidden="true"></i>
-              Applications
-            </Link>
+      {/* 1. Page Introduction Header (Open, Spacious Canvas Header) */}
+      <header className={styles.pageHeader}>
+        <div className={styles.headerInfo}>
+          <div className={styles.categoryBreadcrumb}>
+            <span className={styles.orgTag}>Egyptian Space Agency Academy</span>
+            <span className={styles.bulletSeparator}>·</span>
+            <span className={`${styles.divisionBadge} ${isUni ? styles.badgeUni : styles.badgePreUni}`}>
+              <i className={`fa-solid ${isUni ? 'fa-graduation-cap' : 'fa-school'}`} aria-hidden="true"></i>
+              {divisionName}
+            </span>
+            <span className={styles.bulletSeparator}>·</span>
+            <span className={styles.liveIndicator}>
+              <span className={styles.liveDot}></span>
+              Live Synced
+            </span>
           </div>
-        }
-      />
 
-      {/* KPI Summary Section: 6 Database-Derived Metric Cards */}
-      <div className={styles.kpiGrid}>
-        <StatCard
-          icon="fa-user-graduate"
-          label="Registered Students"
-          value={stats.studentCount ?? 0}
-          tone="cyan"
-          helper="Enrolled division trainees"
-        />
-        <StatCard
-          icon="fa-book-open"
-          label="Active Programs"
-          value={stats.activePrograms ?? 0}
-          tone="gold"
-          helper="Published active curricula"
-        />
-        <StatCard
-          icon="fa-id-card"
-          label="Pending Applications"
-          value={stats.pendingApplications ?? 0}
-          tone="default"
-          helper="Awaiting review or decision"
-        />
-        <StatCard
-          icon="fa-people-group"
-          label="Active Cohorts"
-          value={stats.activeCohorts ?? 0}
-          tone="cyan"
-          helper="Scheduled & running cohorts"
-        />
-        <StatCard
-          icon="fa-calendar-days"
-          label="Upcoming Sessions"
-          value={stats.upcomingSessionsCount ?? 0}
-          tone="gold"
-          helper="Scheduled & in-progress"
-        />
-        <StatCard
-          icon="fa-certificate"
-          label="Issued Certificates"
-          value={stats.issuedCertificatesCount ?? 0}
-          tone="default"
-          helper={`${stats.completedSessionsCount ?? 0} sessions completed`}
-        />
-      </div>
+          <h1 className={styles.pageTitle}>{divisionName} Command Overview</h1>
+          <p className={styles.pageDescription}>
+            Operational oversight of students, active curricula, live sessions, and the admissions pipeline.
+          </p>
+        </div>
 
-      {/* Primary Operational Grid: Upcoming Sessions & Recent Activity */}
-      <div className={styles.operationalGrid}>
-        {/* Left Column: Upcoming Academic Sessions */}
-        <section className={styles.sectionCard} aria-labelledby="upcoming-sessions-heading">
-          <div className={styles.sectionHeader}>
-            <div className={styles.headerTitleGroup}>
-              <i className={`fa-solid fa-calendar-days ${styles.sectionIcon}`} aria-hidden="true"></i>
-              <h2 id="upcoming-sessions-heading" className={styles.sectionTitle}>
-                Upcoming Sessions
+        <div className={styles.headerControls}>
+          <button
+            type="button"
+            className={styles.syncBtn}
+            onClick={() => load(true)}
+            disabled={refreshing}
+            title="Sync latest live database metrics"
+            aria-label="Refresh Dashboard Data"
+          >
+            <i className={`fa-solid fa-rotate-right ${refreshing ? 'fa-spin' : ''}`} aria-hidden="true"></i>
+            <span>{refreshing ? 'Syncing...' : 'Sync'}</span>
+          </button>
+          <Link
+            to={`/admin/${normDivision}/sessions`}
+            className="btn btn-outline-primary btn-sm"
+            title="View all scheduled and live sessions"
+          >
+            <i className="fa-solid fa-tower-broadcast me-1.5" aria-hidden="true"></i>
+            Live Sessions
+          </Link>
+          <Link
+            to={`/admin/${normDivision}/applications`}
+            className="btn btn-primary btn-sm"
+            title="Review student applications"
+          >
+            <i className="fa-solid fa-file-lines me-1.5" aria-hidden="true"></i>
+            Applications
+          </Link>
+        </div>
+      </header>
+
+      {/* 2. Primary Operational Pillars (4 High-Hierarchy Metrics with Integrated Context) */}
+      <section className={styles.kpiGrid} aria-label="Key Operational Metrics">
+        {/* Metric 1: Students */}
+        <Link to={`/admin/${normDivision}/students`} className={`${styles.kpiCard} ${styles.kpiCardTeal}`}>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Enrolled Trainees</span>
+            <div className={`${styles.kpiIconWrap} ${styles.iconTeal}`}>
+              <i className="fa-solid fa-user-graduate" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div className={styles.kpiValue}>{stats?.studentCount ?? 0}</div>
+          <div className={styles.kpiContext}>
+            <i className="fa-solid fa-circle-check text-muted" aria-hidden="true"></i>
+            <span>Active division cadets</span>
+          </div>
+        </Link>
+
+        {/* Metric 2: Curricula */}
+        <Link to={`/admin/${normDivision}/programs`} className={`${styles.kpiCard} ${styles.kpiCardGold}`}>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Active Curricula</span>
+            <div className={`${styles.kpiIconWrap} ${styles.iconGold}`}>
+              <i className="fa-solid fa-book-open" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div className={styles.kpiValue}>{stats?.activePrograms ?? 0}</div>
+          <div className={styles.kpiContext}>
+            <i className="fa-solid fa-certificate text-muted" aria-hidden="true"></i>
+            <span>{stats?.issuedCertificatesCount ?? 0} certificates issued</span>
+          </div>
+        </Link>
+
+        {/* Metric 3: Cohorts & Sessions */}
+        <Link to={`/admin/${normDivision}/cohorts`} className={`${styles.kpiCard} ${styles.kpiCardBlue}`}>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Active Cohorts</span>
+            <div className={`${styles.kpiIconWrap} ${styles.iconBlue}`}>
+              <i className="fa-solid fa-people-group" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div className={styles.kpiValue}>{stats?.activeCohorts ?? 0}</div>
+          <div className={styles.kpiContext}>
+            <i className="fa-solid fa-calendar-days text-muted" aria-hidden="true"></i>
+            <span>{stats?.upcomingSessionsCount ?? 0} upcoming · {stats?.completedSessionsCount ?? 0} completed</span>
+          </div>
+        </Link>
+
+        {/* Metric 4: Admissions Review (Action Priority) */}
+        <Link
+          to={`/admin/${normDivision}/applications`}
+          className={`${styles.kpiCard} ${stats?.pendingApplications > 0 ? styles.kpiCardAlert : styles.kpiCardDefault}`}
+        >
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Pending Applications</span>
+            <div className={`${styles.kpiIconWrap} ${stats?.pendingApplications > 0 ? styles.iconCoral : styles.iconMuted}`}>
+              <i className="fa-solid fa-id-card" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div className={styles.kpiValueRow}>
+            <span className={styles.kpiValue}>{stats?.pendingApplications ?? 0}</span>
+            {stats?.pendingApplications > 0 && (
+              <span className={styles.actionChip}>Action Needed</span>
+            )}
+          </div>
+          <div className={styles.kpiContext}>
+            <i className="fa-solid fa-file-invoice text-muted" aria-hidden="true"></i>
+            <span>{stats?.totalApplicationsCount ?? 0} total applications</span>
+          </div>
+        </Link>
+      </section>
+
+      {/* 3. Streamlined Admissions Pipeline Funnel */}
+      <section className={styles.sectionPanel} aria-labelledby="admissions-pipeline-heading">
+        <div className={styles.panelHeader}>
+          <div className={styles.panelTitleGroup}>
+            <i className={`fa-solid fa-bars-progress ${styles.panelIcon}`} aria-hidden="true"></i>
+            <div>
+              <h2 id="admissions-pipeline-heading" className={styles.panelTitle}>
+                Admissions Pipeline Status
               </h2>
-              <span className={styles.countBadge} title="Scheduled & in-progress sessions">
-                {stats.upcomingSessionsCount ?? upcomingSessions.length}
+              <span className={styles.panelSubtitle}>
+                Real candidate flow across all admissions review stages
               </span>
+            </div>
+          </div>
+          <Link
+            to={`/admin/${normDivision}/applications`}
+            className={styles.headerLink}
+            title="Open complete applications manager"
+          >
+            <span>Manage Applications</span>
+            <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </Link>
+        </div>
+
+        <div className={styles.pipelineTrack}>
+          {/* Stage 1: Submitted */}
+          <Link to={`/admin/${normDivision}/applications`} className={styles.pipelineStage}>
+            <div className={styles.stageTop}>
+              <span className={`${styles.stageDot} ${styles.dotSubmitted}`}></span>
+              <span className={styles.stageLabel}>Submitted</span>
+            </div>
+            <div className={styles.stageCount}>{appBreakdown.SUBMITTED ?? 0}</div>
+            <div className={styles.stageNote}>New entries</div>
+          </Link>
+
+          {/* Stage 2: Manual Review */}
+          <Link
+            to={`/admin/${normDivision}/applications`}
+            className={`${styles.pipelineStage} ${(appBreakdown.MANUAL_REVIEW ?? 0) > 0 ? styles.stageHighlighted : ''}`}
+          >
+            <div className={styles.stageTop}>
+              <span className={`${styles.stageDot} ${styles.dotReview}`}></span>
+              <span className={styles.stageLabel}>Manual Review</span>
+            </div>
+            <div className={styles.stageCount}>{appBreakdown.MANUAL_REVIEW ?? 0}</div>
+            <div className={styles.stageNote}>Awaiting decision</div>
+          </Link>
+
+          {/* Stage 3: Payment Pending */}
+          <Link
+            to={`/admin/${normDivision}/applications`}
+            className={`${styles.pipelineStage} ${(appBreakdown.ELIGIBLE_PAYMENT_PENDING ?? 0) > 0 ? styles.stageHighlightedBlue : ''}`}
+          >
+            <div className={styles.stageTop}>
+              <span className={`${styles.stageDot} ${styles.dotPayment}`}></span>
+              <span className={styles.stageLabel}>Payment Pending</span>
+            </div>
+            <div className={styles.stageCount}>{appBreakdown.ELIGIBLE_PAYMENT_PENDING ?? 0}</div>
+            <div className={styles.stageNote}>Eligible candidates</div>
+          </Link>
+
+          {/* Stage 4: Confirmed */}
+          <Link to={`/admin/${normDivision}/applications`} className={styles.pipelineStage}>
+            <div className={styles.stageTop}>
+              <span className={`${styles.stageDot} ${styles.dotConfirmed}`}></span>
+              <span className={styles.stageLabel}>Confirmed</span>
+            </div>
+            <div className={styles.stageCount}>{appBreakdown.CONFIRMED ?? 0}</div>
+            <div className={styles.stageNote}>Enrolled trainees</div>
+          </Link>
+
+          {/* Stage 5: Waitlisted */}
+          <Link to={`/admin/${normDivision}/applications`} className={styles.pipelineStage}>
+            <div className={styles.stageTop}>
+              <span className={`${styles.stageDot} ${styles.dotWaitlist}`}></span>
+              <span className={styles.stageLabel}>Waitlisted</span>
+            </div>
+            <div className={styles.stageCount}>{appBreakdown.WAITLISTED ?? 0}</div>
+            <div className={styles.stageNote}>Reserve roster</div>
+          </Link>
+
+          {/* Stage 6: Cancelled */}
+          <Link to={`/admin/${normDivision}/applications`} className={styles.pipelineStage}>
+            <div className={styles.stageTop}>
+              <span className={`${styles.stageDot} ${styles.dotCancelled}`}></span>
+              <span className={styles.stageLabel}>Cancelled</span>
+            </div>
+            <div className={styles.stageCount}>{appBreakdown.CANCELLED ?? 0}</div>
+            <div className={styles.stageNote}>Withdrawn / Closed</div>
+          </Link>
+        </div>
+      </section>
+
+      {/* 4. Primary Workstations (Academic Sessions Schedule & Administrative Activity) */}
+      <div className={styles.workstationsGrid}>
+        {/* Left Column: Academic Delivery Schedule */}
+        <section className={styles.sectionPanel} aria-labelledby="upcoming-sessions-heading">
+          <div className={styles.panelHeader}>
+            <div className={styles.panelTitleGroup}>
+              <i className={`fa-solid fa-calendar-days ${styles.panelIcon}`} aria-hidden="true"></i>
+              <div>
+                <h2 id="upcoming-sessions-heading" className={styles.panelTitle}>
+                  Academic Delivery Schedule
+                </h2>
+                <span className={styles.panelSubtitle}>
+                  Scheduled and active training sessions
+                </span>
+              </div>
             </div>
             <Link
               to={`/admin/${normDivision}/sessions`}
-              className={styles.sectionActionLink}
+              className={styles.headerLink}
               title="Navigate to Session Monitoring Dashboard"
             >
-              <span>View all sessions</span>
+              <span>View all ({stats?.upcomingSessionsCount ?? upcomingSessions.length})</span>
               <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </Link>
           </div>
 
-          <div className={styles.sectionBody}>
+          <div className={styles.panelContent}>
             {upcomingSessions.length > 0 ? (
-              <div className={styles.sessionsList}>
+              <div className={styles.sessionRowsList}>
                 {upcomingSessions.map((session) => (
-                  <div key={session.sessionId || session._id} className={styles.sessionCard}>
-                    <div className={styles.sessionTopRow}>
-                      <div className={styles.sessionTopicWrap}>
-                        <span className={styles.sessionNumTag}>
-                          Session #{session.sessionNumber}
-                        </span>
-                        <span className={styles.sessionTopic}>{session.topic}</span>
+                  <div key={session.sessionId || session._id} className={styles.sessionRow}>
+                    <div className={styles.sessionMain}>
+                      <div className={styles.sessionHeaderRow}>
+                        <span className={styles.sessionBadge}>Session {session.sessionNumber}</span>
+                        <h3 className={styles.sessionTopicTitle}>{session.topic}</h3>
+                        <StatusBadge status={session.status} />
                       </div>
-                      <StatusBadge status={session.status} />
+
+                      <div className={styles.sessionMetaStrip}>
+                        <span className={styles.sessionMetaItem}>
+                          <i className="fa-solid fa-graduation-cap text-muted" aria-hidden="true"></i>
+                          <span className={styles.programCohortText}>
+                            {session.cohortNumber} · {session.programTitle}
+                          </span>
+                        </span>
+                        <span className={styles.sessionMetaItem}>
+                          <i className="fa-solid fa-calendar text-muted" aria-hidden="true"></i>
+                          <span>{formatSessionDate(session.date, session.startTime)}</span>
+                        </span>
+                        <span className={styles.sessionMetaItem}>
+                          <i className="fa-solid fa-chalkboard-user text-muted" aria-hidden="true"></i>
+                          <span>{session.instructorName || 'Assigned Instructor'}</span>
+                        </span>
+                        <span className={styles.sessionMetaItem}>
+                          <i
+                            className={`fa-solid ${session.deliveryMode === 'ONLINE' ? 'fa-video' : 'fa-location-dot'} text-muted`}
+                            aria-hidden="true"
+                          ></i>
+                          <span>{session.deliveryMode}{session.location ? ` (${session.location})` : ''}</span>
+                        </span>
+                      </div>
                     </div>
 
-                    <div className={styles.sessionMetaRow}>
-                      <span className={styles.metaItem}>
-                        <i className="fa-solid fa-calendar" aria-hidden="true"></i>
-                        <span>{formatSessionDate(session.date, session.startTime)}</span>
-                      </span>
-                      <span className={styles.metaItem}>
-                        <i className="fa-solid fa-chalkboard-user" aria-hidden="true"></i>
-                        <span>{session.instructorName}</span>
-                      </span>
-                      <span className={styles.metaItem}>
-                        <i
-                          className={`fa-solid ${
-                            session.deliveryMode === 'ONLINE' ? 'fa-video' : 'fa-location-dot'
-                          }`}
-                          aria-hidden="true"
-                        ></i>
-                        <span>{session.deliveryMode} · {session.location}</span>
-                      </span>
-                    </div>
-
-                    <div className={styles.sessionFooterRow}>
-                      <span className={styles.cohortTag}>
-                        <i className="fa-solid fa-graduation-cap me-1 text-muted" aria-hidden="true"></i>
-                        <span>{session.cohortNumber} · {session.programTitle}</span>
-                      </span>
+                    <div className={styles.sessionActionCol}>
                       <Link
                         to={`/admin/${normDivision}/sessions`}
-                        className={styles.sessionDetailsLink}
-                        title="Monitor live academic session"
+                        className={styles.monitorBtn}
+                        title={`Monitor live academic session ${session.sessionNumber}`}
                       >
-                        <span>Monitor Session</span>
+                        <span>Monitor</span>
                         <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
                       </Link>
                     </div>
@@ -274,18 +404,18 @@ export default function DivisionOverviewPage() {
                 ))}
               </div>
             ) : (
-              <div className={styles.emptyStateContainer}>
+              <div className={styles.emptyContainer}>
                 <EmptyState
                   icon="fa-calendar-days"
-                  title="No sessions currently scheduled"
+                  title="No sessions scheduled"
                   description="There are no upcoming scheduled sessions in this division. Sessions will appear here once scheduled for active cohorts."
                 />
                 <Link
                   to={`/admin/${normDivision}/cohorts`}
-                  className={styles.emptyStateLink}
+                  className={styles.emptyActionLink}
                   title="Manage training cohorts"
                 >
-                  <i className="fa-solid fa-people-group me-1" aria-hidden="true"></i>
+                  <i className="fa-solid fa-people-group me-1.5" aria-hidden="true"></i>
                   <span>Manage Cohorts & Scheduling</span>
                 </Link>
               </div>
@@ -293,87 +423,88 @@ export default function DivisionOverviewPage() {
           </div>
         </section>
 
-        {/* Right Column: Recent Administrative Activity */}
-        <section className={styles.sectionCard} aria-labelledby="recent-activity-heading">
-          <div className={styles.sectionHeader}>
-            <div className={styles.headerTitleGroup}>
-              <i className={`fa-solid fa-clock-rotate-left ${styles.sectionIcon}`} aria-hidden="true"></i>
-              <h2 id="recent-activity-heading" className={styles.sectionTitle}>
-                Recent Activity
-              </h2>
+        {/* Right Column: Security Audit & Administrative Activity Timeline */}
+        <section className={styles.sectionPanel} aria-labelledby="recent-activity-heading">
+          <div className={styles.panelHeader}>
+            <div className={styles.panelTitleGroup}>
+              <i className={`fa-solid fa-clock-rotate-left ${styles.panelIcon}`} aria-hidden="true"></i>
+              <div>
+                <h2 id="recent-activity-heading" className={styles.panelTitle}>
+                  Administrative Activity
+                </h2>
+                <span className={styles.panelSubtitle}>
+                  Institutional audit trail of security & governance events
+                </span>
+              </div>
             </div>
             <Link
               to={`/admin/${normDivision}/audit-logs`}
-              className={styles.sectionActionLink}
+              className={styles.headerLink}
               title="Navigate to Security Audit Logs"
             >
-              <span>View full audit log</span>
+              <span>Full audit log</span>
               <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </Link>
           </div>
 
-          <div className={styles.sectionBody}>
+          <div className={styles.panelContent}>
             {recentActivity.length > 0 ? (
-              <div className={styles.activityList}>
-                {recentActivity.map((activity) => (
-                  <div key={activity._id} className={styles.activityItem}>
-                    <div className={styles.activityIconWrap} aria-hidden="true">
-                      <i className={`fa-solid ${getActionIcon(activity.action)}`}></i>
+              <div className={styles.activityTimeline}>
+                {recentActivity.map((activity, idx) => (
+                  <div key={activity._id || idx} className={styles.timelineItem}>
+                    <div className={styles.timelineTrackCol}>
+                      <div className={styles.timelineIconBubble}>
+                        <i className={`fa-solid ${getActionIcon(activity.action)}`}></i>
+                      </div>
+                      {idx < recentActivity.length - 1 && <div className={styles.timelineLine}></div>}
                     </div>
 
-                    <div className={styles.activityContent}>
-                      <div className={styles.activityHeader}>
-                        <span className={styles.activityActionLabel}>
-                          {activity.actionLabel || activity.action}
-                        </span>
-                        <span className={styles.activityTime} title={new Date(activity.timestamp).toLocaleString()}>
+                    <div className={styles.timelineBody}>
+                      <div className={styles.timelineHeader}>
+                        <span className={styles.timelineAction}>{activity.actionLabel || activity.action}</span>
+                        <span className={styles.timelineTime} title={new Date(activity.timestamp).toLocaleString()}>
                           {formatRelativeTime(activity.timestamp)}
                         </span>
                       </div>
 
-                      <div className={styles.activityActorRow}>
-                        <span className={styles.actorName}>
-                          {activity.actor?.fullName || 'System Admin'}
-                        </span>
+                      <div className={styles.timelineActorRow}>
+                        <span className={styles.actorName}>{activity.actor?.fullName || 'System Administrator'}</span>
                         {activity.actor?.role && (
-                          <span className={styles.actorRoleBadge}>
-                            {activity.actor.role.replace(/_/g, ' ')}
-                          </span>
+                          <span className={styles.actorRoleTag}>{activity.actor.role.replace(/_/g, ' ')}</span>
                         )}
                       </div>
 
                       {activity.reason && (
-                        <div className={styles.activityReason} title={activity.reason}>
+                        <div className={styles.timelineReason} title={activity.reason}>
                           {activity.reason}
                         </div>
                       )}
-                    </div>
 
-                    {activity.link && (
-                      <Link
-                        to={activity.link}
-                        className={styles.activityActionLink}
-                        title="View affected operational entity"
-                      >
-                        <span>View</span>
-                      </Link>
-                    )}
+                      {activity.link && (
+                        <div className={styles.timelineLinkWrap}>
+                          <Link to={activity.link} className={styles.timelineLink}>
+                            <span>Inspect Entity</span>
+                            <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className={styles.emptyStateContainer}>
+              <div className={styles.emptyContainer}>
                 <EmptyState
                   icon="fa-clock-rotate-left"
-                  title="No recent activity recorded"
-                  description="No administrative actions have been logged for this division yet. Activity entries will appear as admins perform operations."
+                  title="No recent activity logged"
+                  description="Administrative actions and security events will automatically appear here as operations are performed."
                 />
                 <Link
                   to={`/admin/${normDivision}/audit-logs`}
-                  className={styles.emptyStateLink}
+                  className={styles.emptyActionLink}
                   title="Inspect audit log repository"
                 >
-                  <i className="fa-solid fa-shield-halved me-1" aria-hidden="true"></i>
+                  <i className="fa-solid fa-shield-halved me-1.5" aria-hidden="true"></i>
                   <span>Inspect Security Audit Logs</span>
                 </Link>
               </div>
@@ -382,128 +513,86 @@ export default function DivisionOverviewPage() {
         </section>
       </div>
 
-      {/* Secondary Operational Summary: Application Pipeline & Recent Applications */}
-      <div className={styles.secondaryGrid}>
-        {/* Left Box: Application Pipeline Breakdown */}
-        <section className={styles.sectionCard} aria-labelledby="pipeline-breakdown-heading">
-          <div className={styles.sectionHeader}>
-            <div className={styles.headerTitleGroup}>
-              <i className={`fa-solid fa-bars-progress ${styles.sectionIcon}`} aria-hidden="true"></i>
-              <h2 id="pipeline-breakdown-heading" className={styles.sectionTitle}>
-                Admissions Pipeline
+      {/* 5. Recent Applications Queue Table */}
+      <section className={styles.sectionPanel} aria-labelledby="recent-applications-heading">
+        <div className={styles.panelHeader}>
+          <div className={styles.panelTitleGroup}>
+            <i className={`fa-solid fa-user-plus ${styles.panelIcon}`} aria-hidden="true"></i>
+            <div>
+              <h2 id="recent-applications-heading" className={styles.panelTitle}>
+                Recent Applications Queue
               </h2>
-              <span className={styles.countBadge} title="Total applications in this division">
-                {stats.totalApplicationsCount ?? 0} Total
+              <span className={styles.panelSubtitle}>
+                Latest applicants seeking admission into {divisionName} curricula
               </span>
             </div>
-            <Link
-              to={`/admin/${normDivision}/applications`}
-              className={styles.sectionActionLink}
-              title="Manage student applications"
-            >
-              <span>Manage Applications</span>
-              <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            </Link>
           </div>
+          <Link
+            to={`/admin/${normDivision}/applications`}
+            className={styles.headerLink}
+            title="Review all student applications"
+          >
+            <span>All Applications</span>
+            <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </Link>
+        </div>
 
-          <div className={styles.sectionBody}>
-            <div className={styles.pipelineBreakdown}>
-              <div className={styles.pipelineCard}>
-                <span className={styles.pipelineStatusName}>Submitted</span>
-                <span className={styles.pipelineCount}>{appBreakdown.SUBMITTED ?? 0}</span>
-              </div>
-              <div className={styles.pipelineCard}>
-                <span className={styles.pipelineStatusName}>Manual Review</span>
-                <span className={styles.pipelineCount}>{appBreakdown.MANUAL_REVIEW ?? 0}</span>
-              </div>
-              <div className={styles.pipelineCard}>
-                <span className={styles.pipelineStatusName}>Payment Pending</span>
-                <span className={styles.pipelineCount}>{appBreakdown.ELIGIBLE_PAYMENT_PENDING ?? 0}</span>
-              </div>
-              <div className={styles.pipelineCard}>
-                <span className={styles.pipelineStatusName}>Confirmed</span>
-                <span className={styles.pipelineCount}>{appBreakdown.CONFIRMED ?? 0}</span>
-              </div>
-              <div className={styles.pipelineCard}>
-                <span className={styles.pipelineStatusName}>Waitlisted</span>
-                <span className={styles.pipelineCount}>{appBreakdown.WAITLISTED ?? 0}</span>
-              </div>
-              <div className={styles.pipelineCard}>
-                <span className={styles.pipelineStatusName}>Cancelled</span>
-                <span className={styles.pipelineCount}>{appBreakdown.CANCELLED ?? 0}</span>
-              </div>
+        <div className={styles.tableWrap}>
+          {recentApplications.length > 0 ? (
+            <table className={styles.rosterTable}>
+              <thead>
+                <tr>
+                  <th scope="col">Applicant</th>
+                  <th scope="col">Program Track</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Submitted</th>
+                  <th scope="col" className="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentApplications.map((app) => (
+                  <tr key={app._id}>
+                    <td>
+                      <div className={styles.applicantName}>{app.studentName}</div>
+                      {app.studentEmail && (
+                        <div className={styles.applicantEmail}>{app.studentEmail}</div>
+                      )}
+                    </td>
+                    <td>
+                      <div className={styles.programTitle} title={app.programTitle}>
+                        {app.programTitle}
+                      </div>
+                    </td>
+                    <td>
+                      <StatusBadge status={app.status} />
+                    </td>
+                    <td title={app.createdAt ? new Date(app.createdAt).toLocaleString() : ''}>
+                      <span className={styles.relativeTime}>{formatRelativeTime(app.createdAt)}</span>
+                    </td>
+                    <td className="text-end">
+                      <Link
+                        to={`/admin/${normDivision}/applications`}
+                        className="btn btn-outline-primary btn-sm py-1 px-3"
+                        title={`Review application from ${app.studentName}`}
+                      >
+                        Review
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className={styles.emptyContainer}>
+              <EmptyState
+                icon="fa-file-lines"
+                title="No applications submitted yet"
+                description="Student applications will appear here as candidates submit registrations for active curricula."
+              />
             </div>
-          </div>
-        </section>
-
-        {/* Right Box: Recent Student Applications */}
-        <section className={styles.sectionCard} aria-labelledby="recent-applications-heading">
-          <div className={styles.sectionHeader}>
-            <div className={styles.headerTitleGroup}>
-              <i className={`fa-solid fa-user-plus ${styles.sectionIcon}`} aria-hidden="true"></i>
-              <h2 id="recent-applications-heading" className={styles.sectionTitle}>
-                Recent Applications
-              </h2>
-            </div>
-            <Link
-              to={`/admin/${normDivision}/applications`}
-              className={styles.sectionActionLink}
-              title="Review all student applications"
-            >
-              <span>View all</span>
-              <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            </Link>
-          </div>
-
-          <div className={styles.sectionBody}>
-            {recentApplications.length > 0 ? (
-              <div className={styles.appTableWrap}>
-                <table className={styles.appTable}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Applicant</th>
-                      <th scope="col">Program</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Submitted</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentApplications.map((app) => (
-                      <tr key={app._id}>
-                        <td>
-                          <div className={styles.applicantName}>{app.studentName}</div>
-                          {app.studentEmail && (
-                            <div className={styles.applicantEmail}>{app.studentEmail}</div>
-                          )}
-                        </td>
-                        <td>
-                          <div className={styles.appProgramTitle} title={app.programTitle}>
-                            {app.programTitle}
-                          </div>
-                        </td>
-                        <td>
-                          <StatusBadge status={app.status} />
-                        </td>
-                        <td title={app.createdAt ? new Date(app.createdAt).toLocaleString() : ''}>
-                          {formatRelativeTime(app.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className={styles.emptyStateContainer}>
-                <EmptyState
-                  icon="fa-file-lines"
-                  title="No applications submitted yet"
-                  description="Student applications will appear here as candidates submit registrations."
-                />
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

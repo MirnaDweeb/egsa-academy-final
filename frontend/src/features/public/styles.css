@@ -14,6 +14,34 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
 .hdr-in nav a:not(.btn){text-decoration:none;font-size:.92rem;padding:6px 0;border-bottom:2px solid transparent;transition:border-color .2s,color .2s}
 .hdr-in nav a.active{border-color:var(--gold);color:var(--gold)}
 .hdr-in nav a:not(.btn):hover{border-color:var(--gold);color:var(--gold)}
+/* Specific navigation items text color: pure white (#FFFFFF) */
+.hdr-in nav a.nav-item-white,
+.hdr-in nav a[href="/about"],
+.hdr-in nav a[href="/programs"],
+.hdr-in nav a[href="/training"],
+.hdr-in nav a[href="/research"],
+.hdr-in nav a[href="/news"],
+.hdr-in nav a[href="/contact"] {
+  color: #FFFFFF !important;
+}
+.hdr-in nav a.nav-item-white:hover,
+.hdr-in nav a[href="/about"]:hover,
+.hdr-in nav a[href="/programs"]:hover,
+.hdr-in nav a[href="/training"]:hover,
+.hdr-in nav a[href="/research"]:hover,
+.hdr-in nav a[href="/news"]:hover,
+.hdr-in nav a[href="/contact"]:hover {
+  color: #FFFFFF !important;
+}
+.hdr-in nav a.nav-item-white.active,
+.hdr-in nav a[href="/about"].active,
+.hdr-in nav a[href="/programs"].active,
+.hdr-in nav a[href="/training"].active,
+.hdr-in nav a[href="/research"].active,
+.hdr-in nav a[href="/news"].active,
+.hdr-in nav a[href="/contact"].active {
+  color: #FFFFFF !important;
+}
 .lang{background:none;border:0;color:var(--muted);font:inherit;font-size:.85rem;cursor:not-allowed}
 .burger{display:none;background:rgba(14,26,34,.6);border:1px solid rgba(184,199,212,.3);color:var(--off);padding:8px 14px;border-radius:4px;font:500 .88rem 'IBM Plex Sans Arabic',sans-serif;align-items:center;gap:6px;cursor:pointer;transition:border-color .2s,background .2s}
 .burger:hover{border-color:var(--gold);background:rgba(212,184,124,.1)}
@@ -224,6 +252,10 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:40px}.grid3{display:grid;grid-template-columns:1.2fr 1fr 1.2fr;gap:40px}.vm{margin-top:72px}
 .panel{border-top:3px solid var(--gold);background:#fff;padding:28px;height:100%;border-radius:0 0 6px 6px;box-shadow:0 4px 16px rgba(6,17,29,.05)}.panel h3{color:var(--teal)}
 .phero{padding:150px 0 80px;background-size:cover;background-position:center;border-bottom:1px solid rgba(212,184,124,.2)}
+.phero h1,
+.phero .phero-title {
+  color: #FFFFFF !important;
+}
 .crumb{color:var(--muted);font-size:.9rem}.crumb a{text-decoration:none;transition:color .2s}.crumb a:hover{color:var(--gold)}
 .prose{max-width:760px}.prose h2{margin-top:1.6em;color:var(--deep)}.prose li{margin:.3em 0}.day{border-left:3px solid var(--teal);padding-left:18px;margin:20px 0}
 .notice{background:#fff7e0;border-left:4px solid var(--gold);padding:12px 16px;border-radius:0 4px 4px 0}
@@ -476,6 +508,23 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
   color: var(--gold);
   transform: translateX(4px);
 }
+/* Targeted pure white navigation items for footer quick navigation */
+.ftr-link-list a[href="/about"],
+.ftr-link-list a[href="/programs"],
+.ftr-link-list a[href="/training"],
+.ftr-link-list a[href="/research"],
+.ftr-link-list a[href="/news"],
+.ftr-link-list a[href="/contact"] {
+  color: #FFFFFF !important;
+}
+.ftr-link-list a[href="/about"]:hover,
+.ftr-link-list a[href="/programs"]:hover,
+.ftr-link-list a[href="/training"]:hover,
+.ftr-link-list a[href="/research"]:hover,
+.ftr-link-list a[href="/news"]:hover,
+.ftr-link-list a[href="/contact"]:hover {
+  color: #FFFFFF !important;
+}
 .ftr-link-list a:hover::before {
   width: 7px;
   margin-right: 6px;
@@ -714,6 +763,10 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
   font-family: 'IBM Plex Sans Arabic', sans-serif;
   font-size: clamp(2.3rem, 5vw, 3.6rem);
   letter-spacing: -.01em;
+  color: #FFFFFF !important;
+}
+.hero h1 .gold {
+  color: var(--gold) !important;
 }
 .hero .lead {
   color: var(--off);
@@ -1178,6 +1231,46 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
 .prog-meta-item svg {
   color: var(--teal);
   flex-shrink: 0;
+}
+
+/* Catalog Grid Card Pricing */
+.prog-card-pricing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+}
+.prog-price-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+}
+.prog-price-tag {
+  color: #64748B;
+  font-weight: 500;
+}
+.prog-price-val {
+  color: var(--navy);
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+}
+.prog-price-val.unavailable {
+  color: #94A3B8;
+  font-weight: 500;
+  font-style: italic;
+}
+.prog-price-pill.transport {
+  border-left: 1px solid #CBD5E1;
+  padding-left: 10px;
+}
+.prog-price-pill.transport .prog-price-val {
+  color: #0369A1;
 }
 .prog-card-footer {
   display: flex;
@@ -3317,6 +3410,84 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
   font-weight: 500;
   color: #E2E8F0;
 }
+/* Featured Planetary Orbit Course Pricing */
+.system-detail-pricing {
+  margin-bottom: 20px;
+}
+.system-pricing-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(6, 17, 29, 0.72);
+  border: 1px solid rgba(212, 184, 124, 0.32);
+  border-radius: 10px;
+  padding: 10px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 14px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+.system-price-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.system-price-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94A3B8;
+}
+.system-price-label svg {
+  color: var(--gold);
+}
+.system-price-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+  font-feature-settings: 'tnum';
+}
+.system-price-val.unavailable {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #94A3B8;
+  font-style: italic;
+}
+.system-price-val.transport {
+  color: #9EC5FF;
+}
+.system-price-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 480px) {
+  .system-pricing-card {
+    gap: 10px;
+    padding: 8px 12px;
+  }
+  .system-price-divider {
+    display: none;
+  }
+  .prog-card-pricing {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .prog-price-pill.transport {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid #E2E8F0;
+    padding-top: 4px;
+    width: 100%;
+  }
+}
+
 .system-detail-actions {
   display: flex;
   align-items: center;
@@ -3559,6 +3730,9 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
   background: linear-gradient(180deg, rgba(6, 17, 29, 0.92) 0%, rgba(6, 17, 29, 0.98) 100%);
   border-bottom: 1px solid rgba(184, 199, 212, 0.14);
 }
+.pdetail-hero h1 {
+  color: #FFFFFF !important;
+}
 .pdetail-hero-content {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -3755,4 +3929,20 @@ a{color:inherit}img{max-width:100%;display:block}.wrap{max-width:1160px;margin:a
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   Authoritative Primary Page Headings System (Pure White #FFFFFF)
+   ========================================================================== */
+.phero h1,
+.phero .phero-title,
+.hero h1,
+.hero.short h1,
+.pdetail-hero h1 {
+  color: #FFFFFF !important;
+}
+
+.hero h1 .gold {
+  color: var(--gold) !important;
+}
+
 

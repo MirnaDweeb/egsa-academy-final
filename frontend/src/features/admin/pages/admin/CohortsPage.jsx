@@ -382,6 +382,7 @@ export default function CohortsPage() {
   // Stats calculation
   const totalCohorts = cohorts.length;
   const activeCohortsCount = cohorts.filter((c) => c.status === COHORT_STATUS.IN_PROGRESS || c.status === COHORT_STATUS.SCHEDULED).length;
+  const completedCount = cohorts.filter((c) => c.status === COHORT_STATUS.COMPLETED).length;
   const totalStudentsCount = cohorts.reduce((sum, c) => sum + (c.enrolledCount || 0), 0);
 
   const columns = [
@@ -519,33 +520,42 @@ export default function CohortsPage() {
           title="Total Cohorts"
           label="Total Cohorts"
           value={totalCohorts}
-          tone="primary"
-          subtitle="Managed runs"
+          tone="blue"
+          subtitle="Managed cohorts"
         />
         <StatCard
           icon="fa-calendar-check"
           title="Active Runs"
           label="Active Runs"
           value={activeCohortsCount}
-          tone="success"
+          tone="teal"
           subtitle="Scheduled / In Progress"
         />
         <StatCard
+          icon="fa-flag-checkered"
+          title="Completed"
+          label="Completed"
+          value={completedCount}
+          tone="gold"
+          subtitle="Concluded runs"
+        />
+        <StatCard
           icon="fa-user-graduate"
-          title="Confirmed Students"
-          label="Confirmed Students"
+          title="Enrolled Students"
+          label="Enrolled Students"
           value={totalStudentsCount}
-          tone="cyan"
-          subtitle="Across all cohorts"
+          tone="default"
+          subtitle="Confirmed participants"
         />
       </div>
 
       {/* TOOLBAR */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
+          <i className={`fa-solid fa-magnifying-glass ${styles.searchIcon}`} />
           <input
             type="text"
-            className="form-control form-control-sm"
+            className={styles.searchInput}
             placeholder="Search cohort name or number..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}

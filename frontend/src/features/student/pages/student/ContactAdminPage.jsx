@@ -29,6 +29,21 @@ const STATUS_MAP = {
   resolved: { label: 'Resolved', badgeClass: 'bg-secondary-subtle text-secondary border-secondary-subtle' },
 };
 
+function formatDateSeparator(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return 'Today';
+  }
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export default function ContactAdminPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
@@ -617,28 +632,48 @@ export default function ContactAdminPage() {
                 ) : (
                   messages.map((m, idx) => {
                     const isStudent = m.senderRole === 'student';
+                    const showDateSep =
+                      idx === 0 ||
+                      new Date(m.createdAt).toDateString() !== new Date(messages[idx - 1].createdAt).toDateString();
+
                     return (
-                      <div
-                        key={m._id || `msg-${idx}`}
-                        className={`${s.messageRow} ${isStudent ? s.sent : s.received}`}
-                      >
-                        <div className={s.messageBubble}>
-                          <div className={s.messageSenderRole}>
-                            {m.senderName || (isStudent ? 'You (Cadet)' : 'EGSA Administrator')}
+                      <React.Fragment key={m._id || `msg-${idx}`}>
+                        {showDateSep && (
+                          <div className={s.dateSeparator}>
+                            <span>{formatDateSeparator(m.createdAt)}</span>
                           </div>
-                          <div className={s.messageText}>{m.body}</div>
-                          <div className={s.messageMeta}>
-                            <span>
-                              {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </span>
-                            {isStudent && (
-                              <span className={s.readIndicator} title={m.read ? 'Read' : 'Delivered'}>
-                                <i className={`fa-solid ${m.read ? 'fa-check-double text-info' : 'fa-check text-muted'}`} />
+                        )}
+                        <div
+                          className={`${s.messageRow} ${isStudent ? s.sent : s.received}`}
+                        >
+                          <div className={s.messageBubble}>
+                            <div className={s.messageSenderRole}>
+                              {isStudent ? (
+                                <>
+                                  <span>You (Cadet)</span>
+                                  <i className="fa-solid fa-user-astronaut ms-1" />
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fa-solid fa-shield-halved me-1 text-primary" />
+                                  <span>{m.senderName || 'EGSA Administrator'}</span>
+                                </>
+                              )}
+                            </div>
+                            <div className={s.messageText}>{m.body}</div>
+                            <div className={s.messageMeta}>
+                              <span>
+                                {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
-                            )}
+                              {isStudent && (
+                                <span className={s.readIndicator} title={m.read ? 'Read by Administrator' : 'Delivered'}>
+                                  <i className={`fa-solid ${m.read ? 'fa-check-double text-info' : 'fa-check text-muted'}`} />
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     );
                   })
                 )}

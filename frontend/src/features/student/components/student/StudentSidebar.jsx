@@ -61,9 +61,10 @@ const SIDEBAR_SECTIONS = [
         icon: 'fa-credit-card',
       },
       {
-        name: 'My Media',
-        path: '/student/media',
-        icon: 'fa-photo-film',
+        name: 'Learning Hub',
+        path: '/student/learning-hub',
+        icon: 'fa-book-open',
+        matchPrefixes: ['/student/learning-hub', '/student/media'],
       },
       {
         name: 'Certificate',

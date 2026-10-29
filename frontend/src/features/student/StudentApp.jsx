@@ -21,6 +21,7 @@ import CourseFitPage from './pages/student/CourseFitPage.jsx';
 import ApplicationDetailPage from './pages/student/ApplicationDetailPage.jsx';
 import FoundationReviewPage from './pages/student/FoundationReviewPage.jsx';
 import TrainingPage from './pages/student/TrainingPage.jsx';
+import TrainingWorkspace from './pages/student/TrainingWorkspace.jsx';
 import AttendancePage from './pages/student/AttendancePage.jsx';
 import AssessmentsPage from './pages/student/AssessmentsPage.jsx';
 import ReadinessStartPage from './pages/student/ReadinessStartPage.jsx';
@@ -74,8 +75,10 @@ export default function StudentApp() {
           <Route path="applications/:id" element={<ApplicationDetailPage />} />
           <Route path="applications/:id/foundation" element={<FoundationReviewPage />} />
 
-          {/* 4. My Training */}
+          {/* 4. My Training & Interactive Program Workspace */}
           <Route path="training" element={<TrainingPage />} />
+          <Route path="training/:programId" element={<TrainingWorkspace />} />
+          <Route path="workspace/:programId" element={<TrainingWorkspace />} />
           <Route path="my-training" element={<Navigate to="/student/training" replace />} />
           <Route path="my-courses" element={<Navigate to="/student/training" replace />} />
           <Route path="enrollments" element={<Navigate to="/student/training" replace />} />
@@ -101,7 +104,8 @@ export default function StudentApp() {
           {/* 9. Payments */}
           <Route path="payments" element={<PaymentsPage />} />
 
-          {/* 10. My Media */}
+          {/* 10. Learning Hub (formerly My Media) */}
+          <Route path="learning-hub" element={<MediaPage />} />
           <Route path="media" element={<MediaPage />} />
 
           {/* 11. Certificate */}

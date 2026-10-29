@@ -319,9 +319,12 @@ export const evaluationService = {
           const isCourseCompleted = Boolean(submission?.courseFeedbackCompleted || submission?.ratings?.content);
           const isAgencyCompleted = Boolean(submission?.agencyFeedbackCompleted);
           const isCompleted = isCourseCompleted && isAgencyCompleted;
+          const isLocked = enr.status === 'Hold' || !['Confirmed', 'Active', 'Completed'].includes(enr.status);
 
           return {
             enrollmentId: enr._id,
+            enrollmentStatus: enr.status,
+            isLocked,
             courseId: course._id,
             courseTitle: course.title,
             courseCode: course.code,
@@ -331,7 +334,9 @@ export const evaluationService = {
             isAgencyCompleted,
             isCompleted,
             submission,
-            status: isCompleted ? 'Submitted' : (isCourseCompleted ? 'Agency Feedback Required' : 'Course Feedback Required'),
+            status: isLocked
+              ? 'Enrollment Pending'
+              : (isCompleted ? 'Submitted' : (isCourseCompleted ? 'Agency Feedback Required' : 'Course Feedback Required')),
             availableDate: enr.createdAt || new Date().toISOString(),
           };
         })
@@ -495,121 +500,21 @@ export const mediaService = {
     return res.data;
   },
 
+  /**
+   * Fetches real aggregated academic resources (course materials, assignment briefs, submissions, feedback).
+   */
+  async getAcademicResources(params = {}) {
+    const res = await api.get('/media/resources', { params });
+    return res.data?.data || res.data;
+  },
+
   async getMediaLibrary() {
-    const enrollmentsRes = await enrollmentService.my();
-    const enrollments = enrollmentsRes.data || [];
-    const enrolledCourseIds = new Set(enrollments.map((e) => String(e.course?._id || e.course)));
-
-    // Standard EGSA resource repository structure
-    const sampleLibraries = [
-      {
-        track: 'Space Technologies',
-        courseId: 'sample-sat-fund',
-        courseTitle: 'Satellite Systems Fundamentals',
-        modules: [
-          {
-            moduleNumber: 1,
-            moduleTitle: 'Introduction to Space Mission Engineering',
-            resources: [
-              {
-                id: 'res-101',
-                title: 'EGSA Lecture 01 — Mission Concepts & Space Environment (Slides)',
-                type: 'pdf',
-                size: '4.8 MB',
-                duration: null,
-                icon: 'fa-file-pdf',
-                downloadUrl: '#',
-                addedAt: '2026-09-10',
-              },
-              {
-                id: 'res-102',
-                title: 'Recorded Lecture 01: Launch Vehicles & Orbital Mechanics',
-                type: 'video',
-                size: '340 MB',
-                duration: '1h 45m',
-                icon: 'fa-file-video',
-                downloadUrl: '#',
-                addedAt: '2026-09-10',
-              },
-            ],
-          },
-          {
-            moduleNumber: 2,
-            moduleTitle: 'Subsystem Engineering: Power, Thermal, & ADCS',
-            resources: [
-              {
-                id: 'res-103',
-                title: 'Electrical Power Systems (EPS) Design Standards Handout',
-                type: 'pdf',
-                size: '2.1 MB',
-                duration: null,
-                icon: 'fa-file-pdf',
-                downloadUrl: '#',
-                addedAt: '2026-09-15',
-              },
-              {
-                id: 'res-104',
-                title: 'CubeSat Reaction Wheel CAD Models & Telemetry Sample Dataset',
-                type: 'archive',
-                size: '18.4 MB',
-                duration: null,
-                icon: 'fa-file-zipper',
-                downloadUrl: '#',
-                addedAt: '2026-09-16',
-              },
-              {
-                id: 'res-105',
-                title: 'Lab Recording: ADCS Sensor Calibration & Magnetorquer Testing',
-                type: 'video',
-                size: '420 MB',
-                duration: '2h 10m',
-                icon: 'fa-file-video',
-                downloadUrl: '#',
-                addedAt: '2026-09-17',
-              },
-            ],
-          },
-          {
-            moduleNumber: 3,
-            moduleTitle: 'Ground Station Operations & Telemetry Handshake',
-            resources: [
-              {
-                id: 'res-106',
-                title: 'EGSA Cairo Ground Station Frequency Coordination Protocol',
-                type: 'pdf',
-                size: '1.5 MB',
-                duration: null,
-                icon: 'fa-file-pdf',
-                downloadUrl: '#',
-                addedAt: '2026-09-20',
-              },
-            ],
-          },
-        ],
-      },
-    ];
-
-    // Align with actual enrolled courses if available
-    const result = enrollments.map((enr) => {
-      const course = enr.course || {};
-      return {
-        track: course.category || 'Space Technologies',
-        courseId: course._id,
-        courseTitle: course.title,
-        isEnrolled: true,
-        modules: sampleLibraries[0].modules,
-      };
-    });
-
-    if (result.length === 0) {
-      // Show sample catalog with locked status
-      return sampleLibraries.map((item) => ({
-        ...item,
-        isEnrolled: enrolledCourseIds.has(String(item.courseId)),
-      }));
+    try {
+      const res = await api.get('/media/resources');
+      return res.data?.data?.resources || [];
+    } catch (_) {
+      return [];
     }
-
-    return result;
   },
 };
 

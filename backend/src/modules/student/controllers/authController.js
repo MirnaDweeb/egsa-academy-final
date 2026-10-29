@@ -68,6 +68,18 @@ async function register(req, res, next) {
       throw new AppError('An account with this email address or National ID already exists.', 409);
     }
 
+    // Resolve academic division (PRE_UNIVERSITY vs UNIVERSITY)
+    const rawDivision = (req.body.division || '').toString().trim().toUpperCase();
+    const resolvedDivision = (rawDivision === 'PRE_UNIVERSITY' || rawDivision === 'UNIVERSITY')
+      ? rawDivision
+      : (
+          ['school', 'secondary', 'pre_university'].includes(String(status).toLowerCase()) ||
+          /school|secondary|high school|stem/i.test(university || '') ||
+          /stem|school/i.test(faculty || '')
+            ? 'PRE_UNIVERSITY'
+            : 'UNIVERSITY'
+        );
+
     // Create User (STRICT SECURITY RULE: Public registration creates STUDENT with active status)
     const user = await User.create({
       fullName: fullName.trim(),
@@ -76,6 +88,7 @@ async function register(req, res, next) {
       phone: phone.trim(),
       nationalId: normalizedNationalId,
       role: 'student', // Enforce student role server-side
+      division: resolvedDivision,
       accountStatus: 'active',
       isEmailVerified: true,
       isActive: true,
@@ -86,15 +99,30 @@ async function register(req, res, next) {
       ? 'graduate'
       : 'student';
 
-    await StudentProfile.create({
+    const institutionName = (university || '').trim() || 'Egyptian Space Academy Candidate';
+    const profile = await StudentProfile.create({
       user: user._id,
+      division: resolvedDivision,
       status: normalizedStatus,
-      university: (university || '').trim() || 'Egyptian Space Academy Candidate',
-      faculty: (faculty || '').trim() || (university || '').trim() || 'General Engineering',
+      university: institutionName,
+      institution: institutionName,
+      faculty: (faculty || '').trim() || institutionName || 'General Engineering',
       department: (department || '').trim() || undefined,
       graduationYear: graduationYear ? Number(graduationYear) : undefined,
+      phone: phone.trim(),
+      nationalId: normalizedNationalId,
       profileCompleted: false,
     });
+
+    // Synchronize to Admin and Instructor models non-blockingly
+    try {
+      const { syncStudentRegistration } = require('../../integration/unifiedSyncService');
+      if (typeof syncStudentRegistration === 'function') {
+        await syncStudentRegistration({ user, division: resolvedDivision, profile });
+      }
+    } catch (syncErr) {
+      console.warn('[AUTH SYNC NOTICE] Student mirror notice:', syncErr.message);
+    }
 
     // Send official institutional registration confirmation email (welcome email, non-blocking)
     try {

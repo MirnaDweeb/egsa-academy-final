@@ -488,7 +488,7 @@ async function verifyAndFinalizePayment({ transactionId, providerPayload = {}, s
 
     try {
       const { syncEnrollment } = require('../../integration/unifiedSyncService');
-      syncEnrollment({
+      await syncEnrollment({
         student: transaction.student,
         course: invoiceDoc.course,
         cohort: application.cohort,
@@ -695,6 +695,16 @@ async function confirmPayment({ invoice, method = 'Card', packageType = 'WITHOUT
         enrolledAt: new Date(),
       });
     }
+    try {
+      const { syncEnrollment } = require('../../integration/unifiedSyncService');
+      await syncEnrollment({
+        student: studentId,
+        course: courseId,
+        cohort: application.cohort,
+        enrollmentId: enrollment._id,
+        status: 'Confirmed',
+      }).catch((err) => console.warn('[PaymentService:recordManualPayment] Sync notice:', err.message));
+    } catch (_) {}
   }
 
   // Non-blocking confirmation email dispatch

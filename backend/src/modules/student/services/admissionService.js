@@ -102,7 +102,7 @@ async function autoAcceptAndReserveSeat({
     }
   }
 
-  if (appDoc.status === 'Manual Review' || appDoc.eligibilityStatus === 'In Progress') {
+  if (appDoc.status === 'Manual Review') {
     return {
       success: false,
       reason: 'MANUAL_REVIEW',
@@ -230,7 +230,7 @@ async function autoAcceptAndReserveSeat({
   // Create or reuse Invoice
   let invoice = null;
   try {
-    invoice = await Invoice.findOne({ application: appDoc._id });
+    invoice = await Invoice.findOne({ application: appDoc._id, status: { $ne: 'Cancelled' } });
   } catch (_) {
     invoice = null;
   }
@@ -263,6 +263,7 @@ async function autoAcceptAndReserveSeat({
         application: appDoc._id,
         invoice: invoice?._id,
         status: 'Confirmed',
+        paidAmount: 0,
         packageType: finalPackageType,
         enrolledAt: new Date(),
       });
@@ -273,7 +274,7 @@ async function autoAcceptAndReserveSeat({
 
     try {
       const { syncEnrollment } = require('../../integration/unifiedSyncService');
-      syncEnrollment({
+      await syncEnrollment({
         student: appDoc.student,
         course: courseDoc,
         cohort: cohortDoc || appDoc.cohort,

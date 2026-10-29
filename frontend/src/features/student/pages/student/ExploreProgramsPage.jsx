@@ -5,6 +5,7 @@ import { applicationService } from '../../services/cycleServices';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingState, ErrorState, EmptyState, PageHeader } from '../../components/StateComponents.jsx';
 import ApplyModal from '../../components/student/ApplyModal.jsx';
+import { resolveProgramCardState } from '../../utils/programStatus';
 import './ExploreProgramsPage.css';
 
 const TRACK_CATEGORIES = [
@@ -102,90 +103,63 @@ export default function ExploreProgramsPage() {
 
   const renderActionForCourse = (course, isFullBtn = false) => {
     const app = appMap[course._id?.toString()];
+    const cardState = resolveProgramCardState(course, app);
 
-    if (app) {
-      const renderAppBtn = () => {
-        if (app.enrollment || app.status === 'Confirmed') {
-          return (
-            <Link
-              to={`/student/applications/${app._id}`}
-              className="egsa-btn-enrolled"
-            >
-              <i className="fa-solid fa-circle-check egsa-btn-enrolled-icon"></i> Enrolled
-            </Link>
-          );
-        }
-        if (app.status === 'Waitlisted') {
-          return (
-            <Link
-              to={`/student/applications/${app._id}`}
-              className="egsa-btn-status-info"
-            >
-              <i className="fa-solid fa-clock me-1 text-muted"></i> Waitlisted (#{app.waitlistPosition || 1})
-            </Link>
-          );
-        }
-        if (['Accepted', 'Eligible - Payment Pending'].includes(app.status)) {
-          const inv = app.invoice;
-          const invId = inv?._id || '';
-          const isContinue = inv?.status === 'Payment Initiated';
-          return (
-            <Link
-              to={`/student/payments?invoiceId=${invId}&applicationId=${app._id}`}
-              className="egsa-btn-status-pending"
-            >
-              <i className={`fa-solid ${isContinue ? 'fa-spinner fa-spin' : 'fa-credit-card'} me-1`}></i>{' '}
-              {isContinue ? 'Continue Payment' : 'Pay Now'}
-            </Link>
-          );
-        }
-        if (app.status === 'Manual Review') {
-          return (
-            <Link
-              to={`/student/applications/${app._id}`}
-              className="egsa-btn-status-info"
-            >
-              <i className="fa-solid fa-clipboard-user me-1"></i> Manual Review Required
-            </Link>
-          );
-        }
-        if (app.status === 'Under Review' || app.status === 'Submitted') {
-          return (
-            <Link
-              to={`/student/applications/${app._id}`}
-              className="egsa-btn-status-info"
-            >
-              <i className="fa-solid fa-clock-rotate-left me-1"></i> Under Review
-            </Link>
-          );
-        }
-        if (app.status === 'Foundation Recommended' || app.status === 'Foundation Required') {
-          return (
-            <Link
-              to={`/student/applications/${app._id}/foundation`}
-              className="egsa-btn-status-pending"
-            >
-              <i className="fa-solid fa-graduation-cap me-1"></i> Review Foundation Request
-            </Link>
-          );
-        }
+    const renderButton = () => {
+      if (cardState.actionType === 'apply') {
+        return (
+          <button
+            type="button"
+            className="btn egsa-btn-primary w-100"
+            onClick={() => handleOpenApplyModal(course)}
+            title={cardState.tooltip}
+          >
+            <i className={`fa-solid ${cardState.actionIcon || 'fa-paper-plane'} me-1.5`}></i>{' '}
+            {cardState.actionLabel}
+          </button>
+        );
+      }
+
+      if (cardState.actionType === 'link') {
+        const btnClass =
+          cardState.key === 'ENROLLED'
+            ? 'egsa-btn-enrolled'
+            : cardState.key === 'PAYMENT_REQUIRED'
+            ? 'btn egsa-btn-pay-primary w-100'
+            : cardState.badgeClass === 'pending'
+            ? 'egsa-btn-status-pending'
+            : 'egsa-btn-status-info';
+
         return (
           <Link
-            to={`/student/applications/${app._id}`}
-            className="egsa-btn-status-info"
+            to={cardState.actionUrl}
+            className={btnClass}
+            title={cardState.tooltip}
           >
-            View Application
+            <i className={`fa-solid ${cardState.actionIcon} me-1`}></i>{' '}
+            {cardState.actionLabel}
           </Link>
         );
-      };
+      }
 
-      if (isFullBtn) return renderAppBtn();
+      // Disabled state (e.g. course closed)
+      return (
+        <button
+          type="button"
+          disabled
+          className="btn btn-secondary w-100 disabled"
+          title={cardState.tooltip}
+        >
+          <i className={`fa-solid ${cardState.actionIcon || 'fa-lock'} me-1.5`}></i>{' '}
+          {cardState.actionLabel}
+        </button>
+      );
+    };
 
+    if (isFullBtn) {
       return (
         <div className="egsa-actions-container">
-          <div className="w-100">
-            {renderAppBtn()}
-          </div>
+          <div className="w-100">{renderButton()}</div>
           <div className="egsa-subtle-links-row">
             <Link
               to={`/student/courses/${course._id}/fit`}
@@ -203,86 +177,13 @@ export default function ExploreProgramsPage() {
               <i className="fa-solid fa-clipboard-check egsa-subtle-icon"></i> Readiness
             </Link>
           </div>
-          <div className="egsa-card-footer">
-            <span className="egsa-footer-accreditation">
-              <i className="fa-regular fa-circle-check text-success me-1"></i>Accredited EGSA Program
-            </span>
-            <Link
-              to={`/student/courses/${course._id}`}
-              className="egsa-footer-details-link"
-            >
-              View Details <i className="fa-solid fa-arrow-right egsa-footer-arrow"></i>
-            </Link>
-          </div>
-        </div>
-      );
-    }
-
-    const isDirectAvailable = course.price != null && course.directEnrollmentPermitted !== false;
-
-    if (isFullBtn) {
-      return (
-        <div className="egsa-actions-container">
-          <div className="w-100">
-            {isDirectAvailable ? (
-              <button
-                type="button"
-                className="btn egsa-btn-pay-primary w-100"
-                onClick={() => handleOpenApplyModal(course, true)}
-              >
-                <i className="fa-solid fa-bolt me-1.5"></i> Pay & Enroll Now ({course.price.toLocaleString()} {course.currency || 'EGP'})
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn egsa-btn-primary w-100"
-                onClick={() => handleOpenApplyModal(course, false)}
-              >
-                <i className="fa-solid fa-paper-plane me-1.5"></i> Apply Now
-              </button>
-            )}
-          </div>
-          <div className="egsa-subtle-links-row">
-            <Link
-              to={`/student/courses/${course._id}/fit`}
-              className="egsa-subtle-link"
-            >
-              <i className="fa-solid fa-magnifying-glass-chart egsa-subtle-icon"></i> Course Fit
-            </Link>
-            <span className="egsa-subtle-divider">·</span>
-            <Link
-              to={`/student/readiness/start?courseId=${course._id}`}
-              className="egsa-subtle-link"
-            >
-              <i className="fa-solid fa-clipboard-check egsa-subtle-icon"></i> Readiness
-            </Link>
-          </div>
         </div>
       );
     }
 
     return (
       <div className="egsa-actions-container">
-        <div className="w-100">
-          {isDirectAvailable ? (
-            <button
-              type="button"
-              className="btn egsa-btn-pay-primary w-100"
-              onClick={() => handleOpenApplyModal(course, true)}
-              title="Direct Enrollment & Instant Payment"
-            >
-              <i className="fa-solid fa-bolt me-1.5"></i> Pay Now ({course.price.toLocaleString()} {course.currency || 'EGP'})
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn egsa-btn-primary w-100"
-              onClick={() => handleOpenApplyModal(course, false)}
-            >
-              <i className="fa-solid fa-paper-plane me-1.5"></i> Apply Now
-            </button>
-          )}
-        </div>
+        <div className="w-100">{renderButton()}</div>
         <div className="egsa-subtle-links-row">
           <Link
             to={`/student/courses/${course._id}/fit`}
@@ -460,23 +361,28 @@ export default function ExploreProgramsPage() {
                       </span>
                       <span className="egsa-badge-level">{course.level}</span>
                     </div>
-                    {appMap[course._id] && (
-                      <span
-                        className={`egsa-badge-status ${
-                          appMap[course._id].enrollment || appMap[course._id].status === 'Confirmed'
-                            ? 'bg-success-subtle text-success-emphasis border border-success-subtle'
-                            : ['Accepted', 'Eligible - Payment Pending'].includes(appMap[course._id].status)
-                            ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
-                            : appMap[course._id].status === 'Waitlisted'
-                            ? 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle'
-                            : ['Under Review', 'Manual Review'].includes(appMap[course._id].status)
-                            ? 'bg-info-subtle text-info-emphasis border border-info-subtle'
-                            : 'bg-light text-secondary border'
-                        }`}
-                      >
-                        {appMap[course._id].enrollment ? 'Enrolled' : appMap[course._id].status}
-                      </span>
-                    )}
+                    {appMap[course._id] && (() => {
+                      const cardState = resolveProgramCardState(course, appMap[course._id]);
+                      const badgeColorClass =
+                        cardState.badgeClass === 'ready'
+                          ? 'bg-success-subtle text-success-emphasis border border-success-subtle'
+                          : cardState.badgeClass === 'pending'
+                          ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                          : cardState.badgeClass === 'error'
+                          ? 'bg-danger-subtle text-danger-emphasis border border-danger-subtle'
+                          : cardState.badgeClass === 'gold'
+                          ? 'bg-warning-subtle text-dark border border-warning'
+                          : 'bg-info-subtle text-info-emphasis border border-info-subtle';
+                      return (
+                        <span
+                          className={`egsa-badge-status ${badgeColorClass}`}
+                          title={cardState.tooltip}
+                        >
+                          <i className={`fa-solid ${cardState.badgeIcon} me-1`}></i>
+                          {cardState.badgeLabel}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <h5 className="egsa-program-title" title={course.title}>
@@ -523,6 +429,12 @@ export default function ExploreProgramsPage() {
                           : 'Capacity: Open'}
                       </span>
                     </li>
+                    {course.instructor && course.instructor !== 'TBD' && (
+                      <li className="egsa-program-meta-item" data-testid={`course-instructor-${course._id}`}>
+                        <i className="fa-solid fa-chalkboard-user egsa-meta-icon"></i>
+                        <span>Instructor: {course.instructor}</span>
+                      </li>
+                    )}
                   </ul>
                 </div>
 

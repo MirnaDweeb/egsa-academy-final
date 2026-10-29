@@ -6,31 +6,30 @@
 
 .bellBtn {
   position: relative;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #e2e8f0;
-  width: 36px;
-  height: 36px;
+  background: #ffffff;
+  border: 1px solid #dce5ea;
+  color: #526773;
+  width: 34px;
+  height: 34px;
   border-radius: var(--esa-radius-sm, 6px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.18s ease;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .bellBtn:hover,
 .bellBtn.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border-color: var(--esa-cosmos-blue, #3a6985);
-  box-shadow: 0 0 10px rgba(58, 105, 133, 0.35);
+  background: #f8fafc;
+  color: #172b36;
+  border-color: #3a6985;
 }
 
 .bellBtn:focus-visible {
-  outline: 2px solid var(--esa-cosmos-blue, #3a6985);
-  outline-offset: 2px;
+  outline: 2px solid #3a6985;
+  outline-offset: 1px;
 }
 
 .badge {
@@ -41,13 +40,13 @@
   color: #ffffff;
   font-size: 10px;
   font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  line-height: 18px;
+  min-width: 17px;
+  height: 17px;
+  line-height: 17px;
   text-align: center;
   border-radius: 9px;
   padding: 0 4px;
-  box-shadow: 0 2px 4px rgba(223, 79, 76, 0.35);
+  box-shadow: 0 1px 3px rgba(223, 79, 76, 0.4);
   pointer-events: none;
 }
 
@@ -57,10 +56,10 @@
   right: 0;
   width: 380px;
   max-width: calc(100vw - 20px);
-  background: #162836;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #ffffff;
+  border: 1px solid #dce5ea;
   border-radius: var(--esa-radius-md, 8px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 10px 25px rgba(19, 36, 48, 0.12);
   z-index: 1050;
   overflow: hidden;
   animation: dropdownFadeIn 0.15s ease-out;
@@ -82,33 +81,33 @@
   align-items: center;
   justify-content: space-between;
   padding: 11px 16px;
-  background: #132430;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border-bottom: 1px solid #edf2f5;
 }
 
 .headerTitle {
   font-size: 13.5px;
-  font-weight: 600;
-  color: #ffffff;
+  font-weight: 700;
+  color: #0f172a;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .unreadChip {
-  background: rgba(58, 105, 133, 0.25);
-  color: #b6d3e5;
+  background: #edf5fa;
+  color: #24526d;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 12px;
-  border: 1px solid rgba(58, 105, 133, 0.45);
+  border: 1px solid #c8e0f0;
 }
 
 .markAllBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
   cursor: pointer;
   padding: 4px 8px;
@@ -120,8 +119,8 @@
 }
 
 .markAllBtn:hover {
-  color: #ffffff;
-  background: rgba(58, 105, 133, 0.25);
+  color: #0f172a;
+  background: #edf2f5;
 }
 
 .list {
@@ -131,7 +130,7 @@
 
 .item {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid #f1f5f9;
   display: flex;
   gap: 12px;
   position: relative;
@@ -140,7 +139,7 @@
 }
 
 .item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: #f8fafc;
 }
 
 .item:focus-visible {
@@ -149,11 +148,11 @@
 }
 
 .unreadItem {
-  background: rgba(58, 105, 133, 0.12);
+  background: #f0f7fb;
 }
 
 .unreadItem:hover {
-  background: rgba(58, 105, 133, 0.2);
+  background: #e6f1f7;
 }
 
 .iconCol {
@@ -164,7 +163,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .contentCol {
@@ -175,7 +174,7 @@
 .itemTitle {
   font-size: 13px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #0f172a;
   margin-bottom: 2px;
   display: flex;
   align-items: center;
@@ -186,15 +185,14 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--esa-cosmos-blue, #3a6985);
+  background: #1e7c85;
   flex-shrink: 0;
-  box-shadow: 0 0 6px rgba(58, 105, 133, 0.8);
 }
 
 .itemMsg {
   font-size: 12px;
-  color: #94a3b8;
-  line-height: 1.4;
+  color: #475569;
+  line-height: 1.45;
   margin-bottom: 6px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -213,7 +211,7 @@
 .readBtn {
   background: none;
   border: none;
-  color: var(--esa-teal-green, #1e7c85);
+  color: #1e7c85;
   font-size: 11px;
   cursor: pointer;
   padding: 2px 6px;
@@ -222,14 +220,14 @@
 }
 
 .readBtn:hover {
-  background: rgba(30, 124, 133, 0.18);
-  color: #ffffff;
+  background: #e6f6f8;
+  color: #0e6973;
 }
 
 .footer {
   padding: 10px 14px;
-  background: #132430;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border-top: 1px solid #edf2f5;
 }
 
 .adminFooterActions {
@@ -240,7 +238,7 @@
 }
 
 .viewAllLink {
-  color: #b6d3e5;
+  color: #3a6985;
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
@@ -251,19 +249,19 @@
 }
 
 .viewAllLink:hover {
-  color: #ffffff;
+  color: #1e3a4c;
   text-decoration: underline;
 }
 
 .subLink {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 11.5px;
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .subLink:hover {
-  color: #e2e8f0;
+  color: #0f172a;
   text-decoration: underline;
 }
 
@@ -276,27 +274,27 @@
 
 .emptyIcon {
   font-size: 26px;
-  color: #475569;
+  color: #94a3b8;
   margin-bottom: 8px;
 }
 
 .errorBox {
-  padding: 16px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(223, 79, 76, 0.12);
-  border: 1px solid rgba(223, 79, 76, 0.3);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   margin: 10px;
   border-radius: 6px;
   font-size: 12px;
-  color: #fca5a5;
+  color: #b91c1c;
 }
 
 .retryBtn {
-  background: rgba(223, 79, 76, 0.25);
-  border: 1px solid rgba(223, 79, 76, 0.4);
-  color: #fecaca;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 11px;
@@ -305,5 +303,5 @@
 }
 
 .retryBtn:hover {
-  background: rgba(223, 79, 76, 0.4);
+  background: #fecaca;
 }

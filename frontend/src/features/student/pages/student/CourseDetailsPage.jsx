@@ -5,6 +5,7 @@ import { applicationService } from '../../services/cycleServices';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingState, ErrorState, PageHeader } from '../../components/StateComponents.jsx';
 import ApplyModal from '../../components/student/ApplyModal.jsx';
+import { getCourseEnrollmentStatus } from '../../utils/programStatus';
 
 export default function CourseDetailsPage() {
   const { id } = useParams();
@@ -166,8 +167,34 @@ export default function CourseDetailsPage() {
     }
 
     const isDirectAvailable = course.price != null && course.directEnrollmentPermitted !== false;
+    const enrollmentStatus = getCourseEnrollmentStatus(course);
 
     if (isHeader) {
+      if (!enrollmentStatus.isOpen) {
+        return (
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-secondary-subtle text-secondary border px-3 py-2">
+              <i className={`fa-solid ${enrollmentStatus.state === 'SCHEDULED' ? 'fa-calendar-clock' : 'fa-lock'} me-1`}></i>
+              {enrollmentStatus.state === 'SCHEDULED' ? `Opens ${enrollmentStatus.openDateStr}` : 'Applications Closed'}
+            </span>
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="btn btn-outline-secondary btn-sm fw-semibold"
+              title="Prerequisite & Course Fit Check"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart me-1"></i> Course Fit
+            </Link>
+            <Link
+              to={`/student/readiness/start?courseId=${course._id}`}
+              className="btn btn-outline-primary btn-sm fw-semibold"
+              title="Evaluate readiness before enrolling"
+            >
+              <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
+            </Link>
+          </div>
+        );
+      }
+
       return (
         <div className="d-flex align-items-center gap-2">
           <button
@@ -200,6 +227,42 @@ export default function CourseDetailsPage() {
           >
             <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
           </Link>
+        </div>
+      );
+    }
+
+    if (!enrollmentStatus.isOpen) {
+      return (
+        <div className="d-flex flex-column gap-2 w-100">
+          <div className={`alert ${enrollmentStatus.state === 'SCHEDULED' ? 'alert-info' : 'alert-warning'} py-2 px-3 mb-1 small d-flex align-items-center gap-2`}>
+            <i className={`fa-solid ${enrollmentStatus.state === 'SCHEDULED' ? 'fa-calendar-clock' : 'fa-lock'} fa-lg`}></i>
+            <span>{enrollmentStatus.message}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary py-2 fw-bold w-100 shadow-sm"
+            disabled
+            title={enrollmentStatus.message}
+          >
+            <i className={`fa-solid ${enrollmentStatus.state === 'SCHEDULED' ? 'fa-clock' : 'fa-lock'} me-2`}></i>
+            {enrollmentStatus.state === 'SCHEDULED' ? `Applications Open on ${enrollmentStatus.openDateStr}` : 'Applications Closed'}
+          </button>
+          <div className="d-flex gap-2 w-100">
+            <Link
+              to={`/student/courses/${course._id}/fit`}
+              className="btn btn-outline-secondary py-2 flex-grow-1 fw-semibold"
+              title="Evaluate prerequisite alignment"
+            >
+              <i className="fa-solid fa-magnifying-glass-chart me-1"></i> Course Fit
+            </Link>
+            <Link
+              to={`/student/readiness/start?courseId=${course._id}`}
+              className="btn btn-outline-primary py-2 flex-grow-1 fw-semibold"
+              title="Diagnostic foundational assessment (optional)"
+            >
+              <i className="fa-solid fa-clipboard-check me-1"></i> Readiness
+            </Link>
+          </div>
         </div>
       );
     }
@@ -324,6 +387,19 @@ export default function CourseDetailsPage() {
             <span className="badge bg-success-subtle text-success border border-success-subtle p-2">
               <i className="fa-solid fa-circle-check me-1"></i> Accredited Program
             </span>
+            {enrollmentStatus.isOpen ? (
+              <span className="badge bg-success-subtle text-success border border-success-subtle p-2">
+                <i className="fa-solid fa-door-open me-1"></i> Admissions Open
+              </span>
+            ) : enrollmentStatus.state === 'SCHEDULED' ? (
+              <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle p-2">
+                <i className="fa-solid fa-calendar-clock me-1"></i> Opens {enrollmentStatus.openDateStr}
+              </span>
+            ) : (
+              <span className="badge bg-secondary-subtle text-secondary border p-2">
+                <i className="fa-solid fa-lock me-1"></i> Applications Closed
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -331,6 +407,42 @@ export default function CourseDetailsPage() {
       <div className="row g-4">
         {/* Left Main Content */}
         <div className="col-lg-8">
+          {/* Admissions Window Status Banner */}
+          {!application && (
+            <div
+              className={`alert ${
+                enrollmentStatus.isOpen
+                  ? 'alert-success border-success'
+                  : enrollmentStatus.state === 'SCHEDULED'
+                  ? 'alert-info border-info'
+                  : 'alert-warning border-warning'
+              } d-flex align-items-center justify-content-between p-3 mb-4 shadow-sm`}
+              style={{ borderRadius: '0.75rem' }}
+            >
+              <div className="d-flex align-items-center">
+                <i
+                  className={`fa-solid ${
+                    enrollmentStatus.isOpen
+                      ? 'fa-circle-check text-success'
+                      : enrollmentStatus.state === 'SCHEDULED'
+                      ? 'fa-calendar-clock text-info'
+                      : 'fa-lock text-warning'
+                  } fa-xl me-3`}
+                ></i>
+                <div>
+                  <div className="fw-bold mb-0 text-dark">
+                    {enrollmentStatus.isOpen
+                      ? 'Admissions Active — Open for Enrollment'
+                      : enrollmentStatus.state === 'SCHEDULED'
+                      ? 'Applications Scheduled'
+                      : 'Applications Currently Closed'}
+                  </div>
+                  <div className="small text-muted">{enrollmentStatus.message}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Admissions Status Alert Banner */}
           {application && (
             <div

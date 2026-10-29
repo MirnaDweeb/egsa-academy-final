@@ -18,10 +18,15 @@ const SALT_ROUNDS = 12;
 function formatInstructor(profile, user) {
   const profObj = profile.toObject ? profile.toObject() : profile;
   const userObj = user?.toSafeObject ? user.toSafeObject() : (user?.toObject ? user.toObject() : user);
+  if (userObj) {
+    if (!userObj._id && userObj.id) userObj._id = userObj.id;
+    if (!userObj.id && userObj._id) userObj.id = userObj._id;
+  }
 
   return {
     ...profObj,
     id: profObj._id,
+    userId: userObj?._id || userObj?.id || null,
     user: userObj,
     isActive: userObj?.isActive ?? true,
   };

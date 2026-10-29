@@ -91,16 +91,25 @@ export function Header() {
           <span>{open ? 'Close' : 'Menu'}</span>
         </button>
         <nav id="nav" className={open ? 'open' : ''} aria-label="Main navigation">
-          {config.nav.map(n => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.to === '/'}
-              onClick={() => setOpen(false)}
-            >
-              {n.label}
-            </NavLink>
-          ))}
+          {config.nav.map(n => {
+            const isTarget = ['/about', '/programs', '/training', '/research', '/news', '/contact'].includes(n.to);
+            return (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.to === '/'}
+                title={n.title || n.label}
+                aria-label={n.title || n.label}
+                className={({ isActive }) => [
+                  isTarget ? 'nav-item-white' : '',
+                  isActive ? 'active' : ''
+                ].filter(Boolean).join(' ')}
+                onClick={() => setOpen(false)}
+              >
+                {n.label}
+              </NavLink>
+            );
+          })}
           <button className="lang" disabled title="Arabic content is not yet available">العربية</button>
           {config.loginUrl ? (
             <a className="btn gold sm" href={config.loginUrl}>Sign In</a>
@@ -417,4 +426,4 @@ export function Footer() {
     </footer>
   );
 }
-export const PageHero=({title,lead,image,crumb})=><section className="phero" style={{backgroundImage:`linear-gradient(180deg,rgba(6,17,29,.75),rgba(6,17,29,.95)),url(${image})`}}><div className="wrap"><p className="crumb"><Link to="/">Home</Link> / {crumb||title}</p><h1>{title}</h1>{lead&&<p className="lead">{lead}</p>}</div></section>;
+export const PageHero=({title,lead,image,crumb})=><section className="phero" style={{backgroundImage:`linear-gradient(180deg,rgba(6,17,29,.75),rgba(6,17,29,.95)),url(${image})`}}><div className="wrap"><p className="crumb"><Link to="/">Home</Link> / {crumb||title}</p><h1 className="phero-title" style={{ color: '#FFFFFF' }}>{title}</h1>{lead&&<p className="lead">{lead}</p>}</div></section>;

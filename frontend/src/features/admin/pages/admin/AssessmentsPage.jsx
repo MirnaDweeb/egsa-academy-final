@@ -7,6 +7,7 @@ import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
+import StatCard from '../../components/common/StatCard';
 import Modal from '../../components/common/Modal';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import adminService from '../../services/api/adminService';
@@ -415,12 +416,19 @@ export default function AssessmentsPage() {
         title="Program Readiness & Admission Assessments"
         subtitle="Build candidate evaluation assessments to assess student suitability. Results serve as decision support alongside human admission reviews."
         actions={
-          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            <i className="fa-solid fa-plus me-1" aria-hidden="true"></i>
-            Create Assessment
+          <button type="button" className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1.5" onClick={handleOpenCreate}>
+            <i className="fa-solid fa-plus" aria-hidden="true"></i>
+            <span>Create Assessment</span>
           </button>
         }
       />
+
+      {/* 3-Card Summary Grid */}
+      <div className={styles.statsGrid}>
+        <StatCard label="Total Assessments" value={assessments.length} icon="fa-clipboard-question" tone="blue" helper="Configured evaluations" />
+        <StatCard label="Active & Published" value={assessments.filter((a) => a.isActive).length} icon="fa-circle-check" tone="teal" helper="Live in admission flows" />
+        <StatCard label="Drafts / Inactive" value={assessments.filter((a) => !a.isActive).length} icon="fa-pause" tone="default" helper="Disabled from active intake" />
+      </div>
 
       {/* Controls Bar */}
       <div className={styles.controlsBar}>

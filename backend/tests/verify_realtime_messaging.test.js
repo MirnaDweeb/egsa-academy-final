@@ -264,19 +264,19 @@ async function runMessagingVerification() {
   const iHasReply = iMsgs.some((m) => m.body === adminReplyToInstructorText && m.senderRole === 'admin');
   assert('Instructor Contact conversation persisted in DB after refresh', iHasSent && iHasReply);
 
-  // SCENARIO 5: A Student cannot initiate an Instructor conversation from Contact
-  console.log('\n[SCENARIO 5: Student Cannot Initiate Instructor Conversation from Contact]');
-  const instructorId = instructorUser._id || instructorUser.id;
+  // SCENARIO 5: A Student cannot initiate an Instructor conversation with an unassigned instructor (anti-IDOR)
+  console.log('\n[SCENARIO 5: Student Cannot Initiate Unassigned Instructor Conversation (Anti-IDOR)]');
+  const unassignedInstructorId = '507f1f77bcf86cd799439011';
   const blockedAttempt = await request('http://localhost:5500/api/messages/conversations/instructor', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${sToken}`,
     },
-    body: { instructorId },
+    body: { instructorId: unassignedInstructorId },
   });
   assert(
-    'Student initiation of Instructor conversation blocked with 403 Forbidden',
+    'Student initiation of unassigned Instructor conversation blocked with 403 Forbidden',
     blockedAttempt.status === 403 && blockedAttempt.json?.success === false
   );
 

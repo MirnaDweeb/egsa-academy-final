@@ -9,8 +9,9 @@ let instructorConn = null;
 let adminConn = null;
 
 function createScopedConnection(name, uri) {
+  const timeoutMs = Number(process.env.MONGO_TIMEOUT_MS) || 15000;
   const conn = mongoose.createConnection(uri, {
-    serverSelectionTimeoutMS: 8000,
+    serverSelectionTimeoutMS: timeoutMs,
   });
 
   conn.on('connected', () => {
@@ -53,18 +54,43 @@ function getAdminConn() {
   return adminConn;
 }
 
-async function initDatabases() {
-  const s = getStudentConn();
-  const i = getInstructorConn();
-  const a = getAdminConn();
+async function initDatabases(maxRetries = 3, retryDelayMs = 2000) {
+  let lastError = null;
 
-  await Promise.all([
-    s.asPromise(),
-    i.asPromise(),
-    a.asPromise(),
-  ]);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const s = getStudentConn();
+      const i = getInstructorConn();
+      const a = getAdminConn();
 
-  return { studentConn: s, instructorConn: i, adminConn: a };
+      await Promise.all([
+        s.asPromise(),
+        i.asPromise(),
+        a.asPromise(),
+      ]);
+
+      return { studentConn: s, instructorConn: i, adminConn: a };
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        if (!env.isTest) {
+          console.warn(`[Database] Connection attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${retryDelayMs / 1000}s...`);
+        }
+        try {
+          if (studentConn) await studentConn.close().catch(() => {});
+          if (instructorConn) await instructorConn.close().catch(() => {});
+          if (adminConn) await adminConn.close().catch(() => {});
+        } finally {
+          studentConn = null;
+          instructorConn = null;
+          adminConn = null;
+        }
+        await new Promise((res) => setTimeout(res, retryDelayMs));
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 async function closeDatabases() {

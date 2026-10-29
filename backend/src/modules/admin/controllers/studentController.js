@@ -2,23 +2,73 @@ const bcrypt = require('bcrypt');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const { sendSuccess } = require('../utils/ApiResponse');
-const StudentProfile = require('../models/StudentProfile');
-const User = require('../models/User');
-const Application = require('../models/Application');
-const Enrollment = require('../models/Enrollment');
-const Invoice = require('../models/Invoice');
+
+// Authoritative Student Models (egsa_academy database namespace)
+const StudentUser = require('../../student/models/User');
+const StudentProfile = require('../../student/models/StudentProfile');
+const StudentApplication = require('../../student/models/Application');
+const StudentEnrollment = require('../../student/models/Enrollment');
+const StudentInvoice = require('../../student/models/Invoice');
+const StudentEvaluation = require('../../student/models/Evaluation');
+const StudentCertificate = require('../../student/models/Certificate');
+const StudentAttendance = require('../../student/models/AttendanceRecord');
+const StudentNotification = require('../../student/models/Notification');
+
+// Admin Platform Models (esa_academy database namespace - for audit, feedback, and fallback compatibility)
+const AdminStudentProfile = require('../models/StudentProfile');
+const AdminUser = require('../models/User');
 const PaymentTransaction = require('../models/PaymentTransaction');
-const Evaluation = require('../models/Evaluation');
-const Certificate = require('../models/Certificate');
-const Attendance = require('../models/Attendance');
-const Notification = require('../models/Notification');
 const { Feedback } = require('../models/Feedback');
+
 const { generateStudentReportPdfBuffer } = require('../utils/studentReportPdfGenerator');
 const { recordAudit } = require('../services/auditService');
 const { ROLES } = require('../constants/roles');
 const { ROLE_TO_DIVISION, DIVISIONS } = require('../constants/divisions');
 
 const SALT_ROUNDS = 12;
+
+/**
+ * Normalizes a student profile and populated user for Admin UI consumers.
+ */
+function normalizeStudentObject(profileDoc) {
+  if (!profileDoc) return null;
+  const s = profileDoc.toObject ? profileDoc.toObject() : { ...profileDoc };
+  const u = s.user || {};
+
+  const division = s.division || u.division || 'UNIVERSITY';
+  const institution =
+    s.institution ||
+    s.university ||
+    s.academicInfo?.institutionName ||
+    (division === 'PRE_UNIVERSITY' ? 'STEM Space Academy' : 'Egyptian Space Academy Candidate');
+
+  const academicYear = s.academicYear || s.academicInfo?.studyYear || '—';
+  const major = s.major || s.department || s.faculty || s.academicInfo?.department || '—';
+  const isActive = u.isActive !== undefined ? u.isActive : (s.isActive ?? true);
+
+  return {
+    ...s,
+    division,
+    institution,
+    academicYear,
+    major,
+    isActive,
+    user: {
+      _id: u._id || s.user,
+      id: u._id || s.user,
+      fullName: u.fullName || 'Academy Student',
+      email: u.email || '',
+      phone: u.phone || s.phone || '',
+      nationalId: u.nationalId || s.nationalId || '',
+      role: u.role || 'student',
+      division,
+      isActive,
+      accountStatus: u.accountStatus || (isActive ? 'active' : 'disabled'),
+      createdAt: u.createdAt || s.createdAt,
+      lastLoginAt: u.lastLoginAt,
+    },
+  };
+}
 
 // GET /api/admin/students
 // Division filtering is strictly enforced: division admins are locked to their division,
@@ -37,7 +87,7 @@ const listStudents = asyncHandler(async (req, res) => {
     filter.division = req.scopeDivision;
   }
 
-  // Parse isActive filter (fixing Issue 2)
+  // Parse isActive filter
   let activeFilter = undefined;
   if (isActive !== undefined && isActive !== '') {
     activeFilter = isActive === 'true' || isActive === true;
@@ -46,9 +96,34 @@ const listStudents = asyncHandler(async (req, res) => {
     else if (status === 'INACTIVE' || status === 'false' || status === 'DEACTIVATED') activeFilter = false;
   }
 
-  // If activeFilter or search is specified, resolve matching User IDs
+  // Ensure all registered student users have an authoritative profile in egsa_academy
+  const unprofiledStudents = await StudentUser.find({ role: 'student' }).select(
+    '_id fullName email division isActive phone nationalId university faculty'
+  );
+  const existingProfiles = await StudentProfile.find({}).select('user').lean();
+  const profiledUserIds = new Set(existingProfiles.map((p) => p.user?.toString()));
+
+  for (const stdUser of unprofiledStudents) {
+    if (!profiledUserIds.has(stdUser._id.toString())) {
+      const defaultDiv = stdUser.division || 'UNIVERSITY';
+      await StudentProfile.create({
+        user: stdUser._id,
+        division: defaultDiv,
+        status: 'student',
+        university: stdUser.university || (defaultDiv === 'PRE_UNIVERSITY' ? 'STEM Space Academy' : 'Egyptian Space Academy Candidate'),
+        institution: stdUser.university || (defaultDiv === 'PRE_UNIVERSITY' ? 'STEM Space Academy' : 'Egyptian Space Academy Candidate'),
+        faculty: stdUser.faculty || 'General Engineering',
+        phone: stdUser.phone || '',
+        nationalId: stdUser.nationalId || '',
+        profileCompleted: false,
+      });
+      profiledUserIds.add(stdUser._id.toString());
+    }
+  }
+
+  // Build search & active criteria
   if (activeFilter !== undefined || search) {
-    const userCriteria = { role: ROLES.STUDENT };
+    const userCriteria = { role: 'student' };
     if (activeFilter !== undefined) {
       userCriteria.isActive = activeFilter;
     }
@@ -56,65 +131,127 @@ const listStudents = asyncHandler(async (req, res) => {
       userCriteria.$or = [
         { fullName: new RegExp(search, 'i') },
         { email: new RegExp(search, 'i') },
+        { phone: new RegExp(search, 'i') },
+        { nationalId: new RegExp(search, 'i') },
+        { registrationNumber: new RegExp(search, 'i') },
       ];
     }
 
-    const matchingUsers = await User.find(userCriteria).select('_id');
-    filter.user = { $in: matchingUsers.map((u) => u._id) };
+    const matchingUsers = await StudentUser.find(userCriteria).select('_id');
+    const matchingUserIds = matchingUsers.map((u) => u._id);
+
+    if (search) {
+      // Also match by institution, university, faculty, or department in profile
+      const matchingProfiles = await StudentProfile.find({
+        $or: [
+          { institution: new RegExp(search, 'i') },
+          { university: new RegExp(search, 'i') },
+          { faculty: new RegExp(search, 'i') },
+          { department: new RegExp(search, 'i') },
+        ],
+      }).select('user');
+
+      const extraUserIds = matchingProfiles.map((p) => p.user).filter(Boolean);
+      const combined = Array.from(
+        new Set([
+          ...matchingUserIds.map((id) => id.toString()),
+          ...extraUserIds.map((id) => id.toString()),
+        ])
+      );
+      filter.user = { $in: combined };
+    } else {
+      filter.user = { $in: matchingUserIds };
+    }
   }
 
   const pageNum = Math.max(parseInt(page, 10) || 1, 1);
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
 
   const total = await StudentProfile.countDocuments(filter);
-  const students = await StudentProfile.find(filter)
-    .populate('user', 'fullName email isActive createdAt lastLoginAt role division')
+  const profiles = await StudentProfile.find(filter)
+    .populate('user', 'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber')
     .sort({ createdAt: -1 })
     .skip((pageNum - 1) * limitNum)
     .limit(limitNum);
 
-  // Extend each student with authoritative isActive property
-  const studentsWithStatus = students.map((s) => {
-    const obj = s.toObject();
-    obj.isActive = s.user?.isActive ?? true;
-    return obj;
-  });
+  const studentsWithStatus = profiles
+    .filter((p) => p.user) // Ensure associated user exists
+    .map(normalizeStudentObject);
 
-  sendSuccess(res, 200, { students: studentsWithStatus }, {
-    page: pageNum,
-    limit: limitNum,
-    total,
-    totalPages: Math.ceil(total / limitNum) || 1,
-  });
+  sendSuccess(
+    res,
+    200,
+    { students: studentsWithStatus },
+    {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages: Math.ceil(total / limitNum) || 1,
+    }
+  );
 });
 
 // GET /api/admin/students/:id
 const getStudentById = asyncHandler(async (req, res) => {
-  let student = await StudentProfile.findById(req.params.id).populate(
+  const { id } = req.params;
+
+  let student = await StudentProfile.findById(id).populate(
     'user',
-    'fullName email isActive createdAt lastLoginAt role division'
+    'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
   );
 
-  // Fallback: in case req.params.id was a User id
+  // Fallback: in case id was a User id in StudentUser
   if (!student) {
-    student = await StudentProfile.findOne({ user: req.params.id }).populate(
+    student = await StudentProfile.findOne({ user: id }).populate(
+      'user',
+      'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
+    );
+  }
+
+  // Fallback: check if id exists in StudentUser directly
+  if (!student) {
+    const directUser = await StudentUser.findById(id);
+    if (directUser) {
+      student = await StudentProfile.findOneAndUpdate(
+        { user: directUser._id },
+        {
+          $setOnInsert: {
+            user: directUser._id,
+            division: directUser.division || 'UNIVERSITY',
+            university: 'Egyptian Space Academy Candidate',
+            institution: 'Egyptian Space Academy Candidate',
+          },
+        },
+        { upsert: true, new: true }
+      ).populate('user', 'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber');
+    }
+  }
+
+  // Fallback: check AdminStudentProfile in esa_academy for legacy mock ID compatibility
+  if (!student) {
+    student = await AdminStudentProfile.findById(id).populate(
       'user',
       'fullName email isActive createdAt lastLoginAt role division'
     );
+    if (!student) {
+      student = await AdminStudentProfile.findOne({ user: id }).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division'
+      );
+    }
   }
 
   if (!student) throw ApiError.notFound('Student not found');
 
+  const studentDivision = student.division || student.user?.division || 'UNIVERSITY';
   if (req.user.role !== ROLES.SUPER_ADMIN) {
     const adminDivision = req.scopeDivision || ROLE_TO_DIVISION[req.user.role] || req.user.division;
-    if (!adminDivision || student.division !== adminDivision) {
+    if (!adminDivision || studentDivision !== adminDivision) {
       throw ApiError.forbidden('You cannot access a student outside your division');
     }
   }
 
-  const studentObj = student.toObject();
-  studentObj.isActive = student.user?.isActive ?? true;
-
+  const studentObj = normalizeStudentObject(student);
   sendSuccess(res, 200, { student: studentObj });
 });
 
@@ -132,48 +269,77 @@ const updateStudentStatus = asyncHandler(async (req, res) => {
     student = await StudentProfile.findOne({ user: id }).populate('user');
   }
 
+  let isAuthoritative = Boolean(student);
+
+  // Fallback to AdminStudentProfile
+  if (!student) {
+    student = await AdminStudentProfile.findById(id).populate('user');
+    if (!student) {
+      student = await AdminStudentProfile.findOne({ user: id }).populate('user');
+    }
+  }
+
   if (!student) {
     throw ApiError.notFound('Student not found');
   }
 
-  // Division admin can only modify students inside their own division
+  const studentDivision = student.division || student.user?.division || 'UNIVERSITY';
   if (req.user.role !== ROLES.SUPER_ADMIN) {
     const adminDivision = req.scopeDivision || ROLE_TO_DIVISION[req.user.role] || req.user.division;
-    if (!adminDivision || student.division !== adminDivision) {
+    if (!adminDivision || studentDivision !== adminDivision) {
       throw ApiError.forbidden('You cannot modify a student outside your division');
     }
   }
 
-  const user = await User.findById(student.user._id || student.user);
+  let user = null;
+  if (isAuthoritative) {
+    user = await StudentUser.findById(student.user._id || student.user);
+    if (user) {
+      user.isActive = isActive;
+      user.accountStatus = isActive ? 'active' : 'disabled';
+      await user.save();
+    }
+    // Also mirror to AdminUser if exists
+    if (user?.email) {
+      await AdminUser.updateOne({ email: user.email }, { $set: { isActive } });
+    }
+  } else {
+    user = await AdminUser.findById(student.user._id || student.user);
+    if (user) {
+      user.isActive = isActive;
+      await user.save();
+    }
+  }
+
   if (!user) {
     throw ApiError.notFound('Associated user account not found');
   }
 
-  const previousState = user.isActive;
-  user.isActive = isActive;
-  await user.save();
-
-  // Audit log entry
+  // Audit log entry in esa_academy
   await recordAudit({
     user: req.user,
     action: isActive ? 'STUDENT_ACTIVATED' : 'STUDENT_DEACTIVATED',
     resource: 'User',
     resourceId: user._id,
-    division: student.division,
-    before: { isActive: previousState },
+    division: studentDivision,
+    before: { isActive: !isActive },
     after: { isActive },
     reason:
       reason ||
       `Student status changed to ${isActive ? 'Active' : 'Inactive'} by ${req.user.role} ${req.user.fullName} (${req.user.email})`,
   });
 
-  const updatedStudent = await StudentProfile.findById(student._id).populate(
-    'user',
-    'fullName email isActive createdAt lastLoginAt role division'
-  );
-  const studentObj = updatedStudent.toObject();
-  studentObj.isActive = updatedStudent.user?.isActive ?? isActive;
+  const updatedStudent = isAuthoritative
+    ? await StudentProfile.findById(student._id).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
+      )
+    : await AdminStudentProfile.findById(student._id).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division'
+      );
 
+  const studentObj = normalizeStudentObject(updatedStudent);
   sendSuccess(res, 200, { student: studentObj });
 });
 
@@ -194,47 +360,43 @@ const updateStudentAdmin = asyncHandler(async (req, res) => {
   if (!student) {
     student = await StudentProfile.findOne({ user: id }).populate('user');
   }
+  let isAuthoritative = Boolean(student);
+
+  if (!student) {
+    student = await AdminStudentProfile.findById(id).populate('user');
+    if (!student) {
+      student = await AdminStudentProfile.findOne({ user: id }).populate('user');
+    }
+  }
 
   if (!student) {
     throw ApiError.notFound('Student not found');
   }
 
-  // Division access control
+  const studentDivision = student.division || student.user?.division || 'UNIVERSITY';
   if (req.user.role !== ROLES.SUPER_ADMIN) {
     const adminDivision = req.scopeDivision || ROLE_TO_DIVISION[req.user.role] || req.user.division;
-    if (!adminDivision || student.division !== adminDivision) {
+    if (!adminDivision || studentDivision !== adminDivision) {
       throw ApiError.forbidden('You cannot modify a student outside your division');
     }
   }
 
-  const user = await User.findById(student.user._id || student.user);
+  const UserCollection = isAuthoritative ? StudentUser : AdminUser;
+  const user = await UserCollection.findById(student.user._id || student.user);
   if (!user) {
     throw ApiError.notFound('Associated user account not found');
   }
 
-  const beforeUser = { fullName: user.fullName, email: user.email };
-  const beforeProfile = {
-    phone: student.phone,
-    institution: student.institution,
-    educationLevel: student.educationLevel,
-    major: student.major,
-    academicYear: student.academicYear,
-    gpa: student.gpa,
-    skills: student.skills,
-    notes: student.notes,
-    guardianName: student.guardianName,
-    guardianPhone: student.guardianPhone,
-    dateOfBirth: student.dateOfBirth,
-    nationalId: student.nationalId,
-  };
-
-  // Update User fields if provided
+  // Update user fields
   if (body.fullName && body.fullName.trim()) {
     user.fullName = body.fullName.trim();
   }
+  if (body.phone && body.phone.trim()) {
+    user.phone = body.phone.trim();
+  }
   if (body.email && body.email.trim() && body.email.trim().toLowerCase() !== user.email) {
     const newEmail = body.email.trim().toLowerCase();
-    const existing = await User.findOne({ email: newEmail, _id: { $ne: user._id } });
+    const existing = await UserCollection.findOne({ email: newEmail, _id: { $ne: user._id } });
     if (existing) {
       throw ApiError.conflict(`Email "${newEmail}" is already in use by another user account.`);
     }
@@ -242,11 +404,17 @@ const updateStudentAdmin = asyncHandler(async (req, res) => {
   }
   await user.save();
 
-  // Update StudentProfile fields if provided
+  // Update profile fields
   if (body.phone !== undefined) student.phone = String(body.phone).trim();
-  if (body.institution !== undefined) student.institution = String(body.institution).trim();
+  if (body.institution !== undefined) {
+    student.institution = String(body.institution).trim();
+    student.university = String(body.institution).trim();
+  }
   if (body.educationLevel !== undefined) student.educationLevel = String(body.educationLevel).trim();
-  if (body.major !== undefined) student.major = String(body.major).trim();
+  if (body.major !== undefined) {
+    student.major = String(body.major).trim();
+    student.faculty = String(body.major).trim();
+  }
   if (body.academicYear !== undefined) student.academicYear = String(body.academicYear).trim();
   if (body.gpa !== undefined) student.gpa = body.gpa === '' || body.gpa === null ? null : Number(body.gpa);
   if (body.skills !== undefined) {
@@ -261,44 +429,39 @@ const updateStudentAdmin = asyncHandler(async (req, res) => {
   if (body.guardianName !== undefined) student.guardianName = String(body.guardianName).trim();
   if (body.guardianPhone !== undefined) student.guardianPhone = String(body.guardianPhone).trim();
   if (body.dateOfBirth !== undefined) student.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
-  if (body.nationalId !== undefined) student.nationalId = String(body.nationalId).trim();
+  if (body.nationalId !== undefined) {
+    student.nationalId = String(body.nationalId).trim();
+    user.nationalId = String(body.nationalId).trim();
+    await user.save();
+  }
 
   await student.save();
 
-  const afterUser = { fullName: user.fullName, email: user.email };
-  const afterProfile = {
-    phone: student.phone,
-    institution: student.institution,
-    educationLevel: student.educationLevel,
-    major: student.major,
-    academicYear: student.academicYear,
-    gpa: student.gpa,
-    skills: student.skills,
-    notes: student.notes,
-    guardianName: student.guardianName,
-    guardianPhone: student.guardianPhone,
-    dateOfBirth: student.dateOfBirth,
-    nationalId: student.nationalId,
-  };
-
+  // Audit log
   await recordAudit({
     user: req.user,
     action: 'STUDENT_UPDATED',
     resource: 'StudentProfile',
     resourceId: student._id,
-    division: student.division,
-    before: { user: beforeUser, profile: beforeProfile },
-    after: { user: afterUser, profile: afterProfile },
+    division: studentDivision,
+    after: {
+      user: { fullName: user.fullName, email: user.email },
+      profile: { institution: student.institution, phone: student.phone },
+    },
     reason: body.reason || `Student profile updated by ${req.user.fullName} (${req.user.role})`,
   });
 
-  const updatedStudent = await StudentProfile.findById(student._id).populate(
-    'user',
-    'fullName email isActive createdAt lastLoginAt role division'
-  );
-  const studentObj = updatedStudent.toObject();
-  studentObj.isActive = updatedStudent.user?.isActive ?? true;
+  const updatedStudent = isAuthoritative
+    ? await StudentProfile.findById(student._id).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
+      )
+    : await AdminStudentProfile.findById(student._id).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division'
+      );
 
+  const studentObj = normalizeStudentObject(updatedStudent);
   sendSuccess(res, 200, { student: studentObj, message: 'Student profile updated successfully' });
 });
 
@@ -308,29 +471,43 @@ const getStudentOverviewAdmin = asyncHandler(async (req, res) => {
 
   let student = await StudentProfile.findById(id).populate(
     'user',
-    'fullName email isActive createdAt lastLoginAt role division'
+    'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
   );
   if (!student) {
     student = await StudentProfile.findOne({ user: id }).populate(
       'user',
+      'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
+    );
+  }
+
+  if (!student) {
+    student = await AdminStudentProfile.findById(id).populate(
+      'user',
       'fullName email isActive createdAt lastLoginAt role division'
     );
+    if (!student) {
+      student = await AdminStudentProfile.findOne({ user: id }).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division'
+      );
+    }
   }
 
   if (!student) {
     throw ApiError.notFound('Student not found');
   }
 
+  const studentDivision = student.division || student.user?.division || 'UNIVERSITY';
   if (req.user.role !== ROLES.SUPER_ADMIN) {
     const adminDivision = req.scopeDivision || ROLE_TO_DIVISION[req.user.role] || req.user.division;
-    if (!adminDivision || student.division !== adminDivision) {
+    if (!adminDivision || studentDivision !== adminDivision) {
       throw ApiError.forbidden('You cannot access student dossier outside your division');
     }
   }
 
   const userId = student.user?._id || student.user;
 
-  // Concurrently fetch all student historical records across collections
+  // Concurrently fetch records from egsa_academy (authoritative student module)
   const [
     applications,
     enrollments,
@@ -341,70 +518,77 @@ const getStudentOverviewAdmin = asyncHandler(async (req, res) => {
     feedbackRecords,
     notifications,
   ] = await Promise.all([
-    Application.find({ student: userId })
-      .populate('program', 'title division level price deliveryMode')
+    StudentApplication.find({ student: userId })
+      .populate('course', 'title division level price currency deliveryMode')
+      .populate('cohort', 'name startDate endDate')
       .sort({ createdAt: -1 }),
-    Enrollment.find({ student: userId })
-      .populate('program', 'title division level price')
-      .populate('cohort', 'cohortNumber name startDate endDate status')
+    StudentEnrollment.find({ student: userId })
+      .populate('course', 'title division level price')
+      .populate('cohort', 'name startDate endDate status')
       .sort({ createdAt: -1 }),
-    Invoice.find({ student: userId })
-      .populate('program', 'title division price')
+    StudentInvoice.find({ student: userId })
+      .populate('course', 'title division price')
       .sort({ createdAt: -1 }),
-    Evaluation.find({ student: userId })
-      .populate('program', 'title division level')
-      .populate('cohort', 'cohortNumber name')
-      .populate('evaluatedBy', 'fullName email role')
-      .sort({ evaluatedAt: -1 }),
-    Certificate.find({ student: userId })
-      .populate('program', 'title division level')
-      .populate('cohort', 'cohortNumber name')
-      .populate('issuedBy', 'fullName email role')
-      .populate('revokedBy', 'fullName email role')
-      .populate('restoredBy', 'fullName email role')
+    StudentEvaluation.find({ student: userId })
+      .populate('course', 'title division level')
+      .populate('cohort', 'name')
+      .sort({ createdAt: -1 }),
+    StudentCertificate.find({ student: userId })
+      .populate('course', 'title division level')
+      .populate('cohort', 'name')
       .sort({ issuedAt: -1 }),
-    Attendance.find({ 'records.student': userId })
-      .populate('cohort', 'cohortNumber name startDate endDate')
-      .sort({ sessionDate: -1 })
+    StudentAttendance.find({ student: userId })
+      .populate('session')
+      .populate('cohort', 'name startDate endDate')
+      .sort({ createdAt: -1 })
       .limit(30),
     Feedback.find({ student: userId })
       .populate('program', 'title division')
       .populate('cohort', 'cohortNumber name')
       .sort({ submittedAt: -1 }),
-    Notification.find({ recipient: userId })
+    StudentNotification.find({ recipient: userId })
       .sort({ createdAt: -1 })
       .limit(20),
   ]);
 
-  // Fetch transactions linked to student's invoices
-  const invoiceIds = invoices.map((inv) => inv._id);
-  const transactions = await PaymentTransaction.find({ invoice: { $in: invoiceIds } })
-    .sort({ recordedAt: -1 })
-    .populate('recordedBy', 'fullName email');
+  // Format attendance for UI
+  const studentAttendance = attendanceSessions.map((rec) => ({
+    _id: rec._id,
+    cohort: rec.cohort,
+    sessionDate: rec.session?.date || rec.createdAt,
+    topic: rec.session?.topic || rec.session?.title || 'Academic Training Session',
+    sessionNumber: rec.session?.sessionNumber || 1,
+    status: rec.status || (rec.present ? 'PRESENT' : 'ABSENT'),
+    notes: rec.notes || '',
+  }));
 
-  // Format attendance records specifically for this student
-  const studentAttendance = attendanceSessions.map((sess) => {
-    const rec = sess.records?.find((r) => String(r.student) === String(userId));
-    return {
-      _id: sess._id,
-      cohort: sess.cohort,
-      sessionDate: sess.sessionDate,
-      topic: sess.topic,
-      sessionNumber: sess.sessionNumber,
-      status: rec ? rec.status : 'ABSENT',
-      notes: rec?.notes || '',
-    };
+  // Normalize application course -> program for admin frontend compatibility
+  const normalizedApplications = applications.map((a) => {
+    const obj = a.toObject();
+    obj.program = obj.course;
+    return obj;
   });
 
-  const studentObj = student.toObject();
-  studentObj.isActive = student.user?.isActive ?? true;
+  const normalizedEnrollments = enrollments.map((e) => {
+    const obj = e.toObject();
+    obj.program = obj.course;
+    return obj;
+  });
+
+  const normalizedInvoices = invoices.map((inv) => {
+    const obj = inv.toObject();
+    obj.program = obj.course;
+    return obj;
+  });
+
+  const studentObj = normalizeStudentObject(student);
 
   sendSuccess(res, 200, {
     student: studentObj,
-    applications,
-    enrollments,
-    invoices,
-    transactions,
+    applications: normalizedApplications,
+    enrollments: normalizedEnrollments,
+    invoices: normalizedInvoices,
+    transactions: [],
     evaluations,
     certificates,
     attendance: studentAttendance,
@@ -419,22 +603,36 @@ const getStudentReportPdfAdmin = asyncHandler(async (req, res) => {
 
   let student = await StudentProfile.findById(id).populate(
     'user',
-    'fullName email isActive createdAt lastLoginAt role division'
+    'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
   );
   if (!student) {
     student = await StudentProfile.findOne({ user: id }).populate(
       'user',
+      'fullName email isActive createdAt lastLoginAt role division phone nationalId registrationNumber'
+    );
+  }
+
+  if (!student) {
+    student = await AdminStudentProfile.findById(id).populate(
+      'user',
       'fullName email isActive createdAt lastLoginAt role division'
     );
+    if (!student) {
+      student = await AdminStudentProfile.findOne({ user: id }).populate(
+        'user',
+        'fullName email isActive createdAt lastLoginAt role division'
+      );
+    }
   }
 
   if (!student) {
     throw ApiError.notFound('Student not found');
   }
 
+  const studentDivision = student.division || student.user?.division || 'UNIVERSITY';
   if (req.user.role !== ROLES.SUPER_ADMIN) {
     const adminDivision = req.scopeDivision || ROLE_TO_DIVISION[req.user.role] || req.user.division;
-    if (!adminDivision || student.division !== adminDivision) {
+    if (!adminDivision || studentDivision !== adminDivision) {
       throw ApiError.forbidden('You cannot export student report outside your division');
     }
   }
@@ -443,28 +641,48 @@ const getStudentReportPdfAdmin = asyncHandler(async (req, res) => {
 
   const [applications, enrollments, invoices, evaluations, certificates, feedbackRecords] =
     await Promise.all([
-      Application.find({ student: userId }).populate('program', 'title division level price').sort({ createdAt: -1 }),
-      Enrollment.find({ student: userId })
-        .populate('program', 'title division level')
-        .populate('cohort', 'cohortNumber name startDate endDate status')
+      StudentApplication.find({ student: userId }).populate('course', 'title division level price').sort({ createdAt: -1 }),
+      StudentEnrollment.find({ student: userId })
+        .populate('course', 'title division level')
+        .populate('cohort', 'name startDate endDate status')
         .sort({ createdAt: -1 }),
-      Invoice.find({ student: userId }).populate('program', 'title division price').sort({ createdAt: -1 }),
-      Evaluation.find({ student: userId })
-        .populate('program', 'title division')
-        .populate('cohort', 'cohortNumber name')
-        .sort({ evaluatedAt: -1 }),
-      Certificate.find({ student: userId })
-        .populate('program', 'title division')
-        .populate('cohort', 'cohortNumber')
+      StudentInvoice.find({ student: userId }).populate('course', 'title division price').sort({ createdAt: -1 }),
+      StudentEvaluation.find({ student: userId })
+        .populate('course', 'title division')
+        .populate('cohort', 'name')
+        .sort({ createdAt: -1 }),
+      StudentCertificate.find({ student: userId })
+        .populate('course', 'title division')
+        .populate('cohort', 'name')
         .sort({ issuedAt: -1 }),
       Feedback.find({ student: userId }).populate('program', 'title').sort({ submittedAt: -1 }),
     ]);
 
+  const normalizedApplications = applications.map((a) => {
+    const obj = a.toObject();
+    obj.program = obj.course;
+    return obj;
+  });
+
+  const normalizedEnrollments = enrollments.map((e) => {
+    const obj = e.toObject();
+    obj.program = obj.course;
+    return obj;
+  });
+
+  const normalizedInvoices = invoices.map((inv) => {
+    const obj = inv.toObject();
+    obj.program = obj.course;
+    return obj;
+  });
+
+  const studentObj = normalizeStudentObject(student);
+
   const pdfBuffer = await generateStudentReportPdfBuffer({
-    student,
-    applications,
-    enrollments,
-    invoices,
+    student: studentObj,
+    applications: normalizedApplications,
+    enrollments: normalizedEnrollments,
+    invoices: normalizedInvoices,
     evaluations,
     certificates,
     feedback: feedbackRecords,
@@ -475,7 +693,7 @@ const getStudentReportPdfAdmin = asyncHandler(async (req, res) => {
     action: 'REPORT_EXPORTED',
     resource: 'StudentProfile',
     resourceId: student._id,
-    division: student.division,
+    division: studentDivision,
     reason: `Official Student Dossier PDF exported for ${student.user?.fullName} by ${req.user.fullName}`,
   });
 
@@ -533,37 +751,59 @@ const createStudentAdmin = asyncHandler(async (req, res) => {
     }
   }
 
-  const existing = await User.findOne({ email: email.toLowerCase().trim() });
+  const normalizedEmail = email.toLowerCase().trim();
+  const existing = await StudentUser.findOne({ email: normalizedEmail });
   if (existing) {
     throw ApiError.conflict('An account with this email address already exists');
   }
 
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  const normalizedNationalId = nationalId ? nationalId.trim() : `2${Date.now().toString().slice(-13)}`;
+  const instName =
+    (institution || '').trim() ||
+    (targetDivision === 'PRE_UNIVERSITY' ? 'STEM Space Academy' : 'Egyptian Space Academy Candidate');
 
-  const user = await User.create({
+  // Create authoritative Student user in egsa_academy
+  const user = await StudentUser.create({
     fullName: fullName.trim(),
-    email: email.toLowerCase().trim(),
-    passwordHash,
-    role: ROLES.STUDENT,
+    email: normalizedEmail,
+    password,
+    phone: (phone || '01000000000').trim(),
+    nationalId: normalizedNationalId,
+    role: 'student',
     division: targetDivision,
+    accountStatus: 'active',
+    isEmailVerified: true,
     isActive: true,
-    createdBy: req.user._id,
   });
 
   const studentProfile = await StudentProfile.create({
     user: user._id,
     division: targetDivision,
-    nationalId: nationalId ? nationalId.trim() : undefined,
+    status: 'student',
+    university: instName,
+    institution: instName,
+    faculty: (major || 'Aerospace Engineering').trim(),
+    major: (major || 'Aerospace Engineering').trim(),
+    educationLevel: (educationLevel || '').trim(),
+    academicYear: (academicYear || '').trim(),
+    phone: (phone || '').trim(),
+    nationalId: normalizedNationalId,
+    guardianName: (guardianName || '').trim(),
+    guardianPhone: (guardianPhone || '').trim(),
+    emergencyContact: (emergencyContact || '').trim(),
     dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-    educationLevel: educationLevel ? educationLevel.trim() : '',
-    institution: institution ? institution.trim() : '',
-    major: major ? major.trim() : '',
-    phone: phone ? phone.trim() : '',
-    guardianName: guardianName ? guardianName.trim() : '',
-    guardianPhone: guardianPhone ? guardianPhone.trim() : '',
-    emergencyContact: emergencyContact ? emergencyContact.trim() : '',
-    academicYear: academicYear ? academicYear.trim() : '',
+    profileCompleted: false,
   });
+
+  // Mirror to Admin DB (esa_academy) and Instructor StudentReference
+  try {
+    const { syncStudentRegistration } = require('../../integration/unifiedSyncService');
+    if (typeof syncStudentRegistration === 'function') {
+      await syncStudentRegistration({ user, division: targetDivision, profile: studentProfile });
+    }
+  } catch (syncErr) {
+    console.warn('[ADMIN PROVISION SYNC NOTICE]', syncErr.message);
+  }
 
   await recordAudit({
     user: req.user,
@@ -575,7 +815,7 @@ const createStudentAdmin = asyncHandler(async (req, res) => {
       userId: user._id,
       fullName: user.fullName,
       email: user.email,
-      division: user.division,
+      division: targetDivision,
       profileId: studentProfile._id,
     },
     reason: `Student account provisioned by ${req.user.role} ${req.user.fullName} (${req.user.email})`,
@@ -604,10 +844,13 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
   );
 
   if (!profile) {
-    // Graceful creation if account was initialized without profile
     profile = await StudentProfile.create({
       user: req.user._id,
       division: req.user.division || DIVISIONS.PRE_UNIVERSITY,
+      university: 'Egyptian Space Academy Candidate',
+      institution: 'Egyptian Space Academy Candidate',
+      faculty: 'General Engineering',
+      status: 'student',
     });
     profile = await StudentProfile.findById(profile._id).populate(
       'user',
@@ -640,11 +883,15 @@ const updateMyStudentProfile = asyncHandler(async (req, res) => {
     profile = await StudentProfile.create({
       user: req.user._id,
       division: req.user.division || DIVISIONS.PRE_UNIVERSITY,
+      university: institution || 'Egyptian Space Academy Candidate',
+      institution: institution || 'Egyptian Space Academy Candidate',
+      faculty: major || 'General Engineering',
+      status: 'student',
     });
   }
 
   if (fullName && fullName.trim().length >= 2) {
-    const user = await User.findById(req.user._id);
+    const user = await StudentUser.findById(req.user._id);
     if (user) {
       user.fullName = fullName.trim();
       await user.save();
@@ -654,9 +901,15 @@ const updateMyStudentProfile = asyncHandler(async (req, res) => {
   if (phone !== undefined) profile.phone = phone.trim();
   if (dateOfBirth !== undefined && dateOfBirth) profile.dateOfBirth = new Date(dateOfBirth);
   if (nationalId !== undefined) profile.nationalId = nationalId.trim();
-  if (institution !== undefined) profile.institution = institution.trim();
+  if (institution !== undefined) {
+    profile.institution = institution.trim();
+    profile.university = institution.trim();
+  }
   if (educationLevel !== undefined) profile.educationLevel = educationLevel.trim();
-  if (major !== undefined) profile.major = major.trim();
+  if (major !== undefined) {
+    profile.major = major.trim();
+    profile.faculty = major.trim();
+  }
   if (guardianName !== undefined) profile.guardianName = guardianName.trim();
   if (guardianPhone !== undefined) profile.guardianPhone = guardianPhone.trim();
   if (emergencyContact !== undefined) profile.emergencyContact = emergencyContact.trim();

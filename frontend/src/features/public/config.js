@@ -4,7 +4,15 @@ export const config = {
   academyPortalUrl: import.meta.env.VITE_ACADEMY_PORTAL_URL || '',
   contactEndpoint: import.meta.env.VITE_CONTACT_ENDPOINT || '',
   languages: [{code:'en',label:'English',dir:'ltr',available:true},{code:'ar',label:'العربية',dir:'rtl',available:false}],
-  nav: [{to:'/',label:'Home'},{to:'/about',label:'About'},{to:'/programs',label:'Programs'},{to:'/training',label:'Training'},{to:'/research',label:'Research'},{to:'/news',label:'News'},{to:'/contact',label:'Contact'}],
+  nav: [
+    { to: '/', label: 'Home' },
+    { to: '/about', label: 'About', title: 'About EGSA' },
+    { to: '/programs', label: 'Programs', title: 'Explore Space Programs' },
+    { to: '/training', label: 'Training', title: 'Training & Education' },
+    { to: '/research', label: 'Research', title: 'Research & Innovation' },
+    { to: '/news', label: 'News', title: 'Press & Media Center' },
+    { to: '/contact', label: 'Contact', title: 'Contact Egyptian Space Agency' }
+  ],
   contact: {
     org:'Egyptian Space Agency', address:'Middle Ring Road, KM, New Cairo, Egypt.', email:'info@egsa.gov.eg',
     phones:['+20221297950, 994','+20221297993'], // kept exactly as supplied; confirm completeness

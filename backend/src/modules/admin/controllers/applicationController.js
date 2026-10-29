@@ -264,6 +264,13 @@ const updateApplicationDecision = asyncHandler(async (req, res) => {
     reason: reason.trim() || `Decision ${decision} applied by ${req.user.role} ${req.user.fullName}`,
   });
 
+  try {
+    const { syncDecisionFromAdmin } = require('../../integration/unifiedSyncService');
+    await syncDecisionFromAdmin(application);
+  } catch (syncErr) {
+    console.warn('[APPLICATION CONTROLLER] syncDecisionFromAdmin warning:', syncErr.message);
+  }
+
   // Phase 14: Notification side-effect (failure-safe, non-blocking)
   try {
     const course = await Course.findById(application.program).select('title');

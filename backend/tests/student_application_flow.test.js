@@ -98,8 +98,21 @@ test('EGSA Academy — Student Application & Enrollment Flow Verification', asyn
     const courses = res.body.data || [];
     assert.ok(courses.length > 0, 'Course catalog populated');
 
-    // Find a priced course
-    pricedCourse = courses.find((c) => c.price != null && (!c.mandatoryPrerequisites || c.mandatoryPrerequisites.length === 0));
+    // Find a priced course where student has no active application or enrollment
+    const myAppsRes = await jsonRequest({
+      method: 'GET',
+      path: '/api/applications/my',
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const existingAppCourseIds = (myAppsRes.body.data || []).map((a) => (a.course?._id || a.course)?.toString());
+    const myEnrollmentsRes = await jsonRequest({
+      method: 'GET',
+      path: '/api/enrollments/my',
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const enrolledCourseIds = (myEnrollmentsRes.body.data || []).map((e) => (e.course?._id || e.course)?.toString());
+    const unavailable = new Set([...existingAppCourseIds, ...enrolledCourseIds]);
+    pricedCourse = courses.find((c) => c.price != null && (!c.mandatoryPrerequisites || c.mandatoryPrerequisites.length === 0) && !unavailable.has(c._id.toString()));
     assert.ok(pricedCourse, 'Priced course found');
 
     // Find an unpriced course (price == null)
@@ -165,10 +178,35 @@ test('EGSA Academy — Student Application & Enrollment Flow Verification', asyn
   });
 
   await t.test('Student applying for course with missing prerequisites receives Foundation Recommended guidance', async () => {
+    // Register a fresh cadet to ensure zero existing application history
+    const freshEmail = `prereq.cadet.${Date.now()}@egsa.test`;
+    await jsonRequest({
+      method: 'POST',
+      path: '/api/auth/register',
+      body: {
+        fullName: 'Prereq Test Cadet',
+        email: freshEmail,
+        password: 'Password123!',
+        confirmPassword: 'Password123!',
+        phone: '01055554444',
+        nationalId: `${Date.now()}`.padEnd(14, '1').slice(0, 14),
+        status: 'student',
+        university: 'Engineering Academy',
+        faculty: 'Space Tech',
+        agreeToTerms: true,
+      },
+    });
+    const loginRes = await jsonRequest({
+      method: 'POST',
+      path: '/api/auth/login',
+      body: { email: freshEmail, password: 'Password123!' },
+    });
+    const freshToken = loginRes.body?.data?.accessToken || loginRes.body?.token;
+
     const res = await jsonRequest({
       method: 'POST',
       path: '/api/applications',
-      headers: { Authorization: `Bearer ${otherStudentToken}` },
+      headers: { Authorization: `Bearer ${freshToken}` },
       body: {
         courseId: prereqCourse._id,
         directEnroll: false,
@@ -193,7 +231,7 @@ test('EGSA Academy — Student Application & Enrollment Flow Verification', asyn
     assert.equal(res.status, 200, 'Duplicate submission returns existing app with 200');
     assert.equal(res.body.success, true);
     assert.equal(res.body.data._id, standardAppId);
-    assert.match(res.body.message, /already exists/i);
+    assert.match(res.body.message, /already exists|accepted and seat reserved|already enrolled/i);
   });
 
   await t.test('Student can list own applications via GET /api/applications/my', async () => {

@@ -163,14 +163,73 @@ async function unifiedUploadsHandler(req, res, next) {
         return res.sendFile(fullDiskPath);
       }
 
+      const studentId = String(auth.user._id || auth.user.id);
       const studentConn = getStudentConn();
+
+      // Check if student owns this submission file
       const StudentSubmission = studentConn.models.StudentSubmission;
       if (StudentSubmission) {
-        const submission = await StudentSubmission.findOne({ 'file.fileName': filename });
-        if (submission && String(submission.student) === String(auth.user._id || auth.user.id)) {
+        const submission = await StudentSubmission.findOne({
+          $or: [
+            { 'file.fileName': filename },
+            { 'file.fileUrl': { $regex: filename } },
+            { 'history.file.fileName': filename },
+          ],
+        });
+        if (submission && String(submission.student) === studentId) {
           return res.sendFile(fullDiskPath);
         }
       }
+
+      // Check if file is an attachment of an assessment for which student is enrolled
+      const Assessment = studentConn.models.Assessment;
+      if (Assessment) {
+        const assessment = await Assessment.findOne({
+          $or: [
+            { 'attachments.fileName': filename },
+            { 'attachments.originalName': filename },
+            { 'attachments.fileUrl': { $regex: filename } },
+          ],
+        });
+        if (assessment) {
+          const Enrollment = studentConn.models.Enrollment;
+          if (Enrollment) {
+            const isEnrolled = await Enrollment.findOne({
+              student: studentId,
+              $or: [{ cohort: assessment.cohort }, { course: assessment.course }],
+              status: { $in: ['Active', 'Confirmed', 'Completed'] },
+            });
+            if (isEnrolled) {
+              return res.sendFile(fullDiskPath);
+            }
+          }
+        }
+      }
+
+      // Also check instructor database assessment attachments
+      try {
+        const { getInstructorConn } = require('../config/database');
+        const instConn = getInstructorConn();
+        const InstAssessment = instConn.models.Assessment;
+        if (InstAssessment) {
+          const instAssess = await InstAssessment.findOne({
+            $or: [
+              { 'attachments.name': filename },
+              { 'attachments.url': { $regex: filename } },
+            ],
+          });
+          if (instAssess) {
+            const Enrollment = studentConn.models.Enrollment;
+            const isEnrolled = await Enrollment.findOne({
+              student: studentId,
+              status: { $in: ['Active', 'Confirmed', 'Completed'] },
+            });
+            if (isEnrolled) {
+              return res.sendFile(fullDiskPath);
+            }
+          }
+        }
+      } catch (_) {}
 
       return res.status(403).json({ success: false, message: 'Access denied to this academic assessment file.' });
     }

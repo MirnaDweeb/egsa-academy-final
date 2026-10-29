@@ -1,0 +1,657 @@
+/* ========================================================
+   Egyptian Space Agency Academy — Students Directory Page
+   ======================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* ========================================================
+   Egyptian Space Agency Academy — Metric Summary Cards
+   ======================================================== */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 991.98px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+}
+
+.metricCard {
+  background: #ffffff;
+  border: 1px solid #dce5ea;
+  border-radius: 8px;
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  min-height: 122px;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 575.98px) {
+  .metricCard {
+    padding: 0.85rem 0.95rem;
+    min-height: 110px;
+  }
+}
+
+.metricCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  border-color: #cbd5e1;
+}
+
+/* Restrained Top Accent Border (3px) */
+.cardNavy {
+  border-top: 3px solid #3a6985;
+}
+
+.cardEmerald {
+  border-top: 3px solid #1c7c4d;
+}
+
+.cardCoral {
+  border-top: 3px solid #df4f4c;
+}
+
+.cardSlate {
+  border-top: 3px solid #94a3b8;
+}
+
+.cardGold {
+  border-top: 3px solid #c49838;
+}
+
+/* Card Header: Label on Left, Icon on Right */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #526773;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.cardIconWrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 575.98px) {
+  .cardIconWrap {
+    width: 30px;
+    height: 30px;
+    font-size: 0.8rem;
+  }
+}
+
+.iconNavy {
+  background: #edf5fa;
+  color: #275573;
+}
+
+.iconEmerald {
+  background: #eaf7ee;
+  color: #166534;
+}
+
+.iconCoral {
+  background: #fdf1f0;
+  color: #b91c1c;
+}
+
+.iconSlate {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.iconGold {
+  background: #fbf8f0;
+  color: #785614;
+}
+
+/* Card Body: Number Value */
+.cardBody {
+  margin: 0.35rem 0 0.15rem 0;
+  display: flex;
+  align-items: center;
+  min-height: 2.1rem;
+}
+
+.cardNumber {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 575.98px) {
+  .cardNumber {
+    font-size: 1.45rem;
+  }
+}
+
+.cardTextValue {
+  font-size: clamp(0.95rem, 2vw, 1.2rem);
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Card Footer: Subtitle */
+.cardSubtitle {
+  font-size: 0.75rem;
+  color: #526773;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 575.98px) {
+  .cardSubtitle {
+    font-size: 0.7rem;
+  }
+}
+
+.subDot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #94a3b8;
+  flex-shrink: 0;
+}
+
+.dotEmerald {
+  background: #1c7c4d;
+}
+
+.dotCoral {
+  background: #df4f4c;
+}
+
+.dotNavy {
+  background: #3a6985;
+}
+
+.dotGold {
+  background: #c49838;
+}
+
+/* Institutional Filter Toolbar */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #ffffff;
+  padding: 1rem 1.25rem;
+  border-radius: var(--esa-radius-md, 8px);
+  border: 1px solid #dce5ea;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.searchBox {
+  flex: 1;
+  min-width: 280px;
+  max-width: 480px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.85rem;
+  color: #7b93a4;
+  font-size: 0.8125rem;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 2.2rem 0 2.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid #dce5ea;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #1e293b;
+  outline: none;
+  transition: all 140ms ease;
+}
+
+.searchInput:focus {
+  border-color: #3a6985;
+  box-shadow: 0 0 0 3px rgba(58, 105, 133, 0.15);
+}
+
+.clearSearchBtn {
+  position: absolute;
+  right: 0.65rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  padding: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 120ms ease;
+}
+
+.clearSearchBtn:hover {
+  color: #334155;
+}
+
+.filterControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.selectInput {
+  height: 38px;
+  padding: 0 2rem 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid #dce5ea;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #1e293b;
+  outline: none;
+  transition: all 140ms ease;
+  cursor: pointer;
+}
+
+.selectInput:focus {
+  border-color: #3a6985;
+  box-shadow: 0 0 0 3px rgba(58, 105, 133, 0.15);
+}
+
+.resetFilterBtn {
+  height: 38px;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #dce5ea;
+  background: #f8fafc;
+  color: #526773;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.resetFilterBtn:hover {
+  background: #edf5fa;
+  border-color: #c8e0f0;
+  color: #172b36;
+}
+
+.resultsCountBadge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #526773;
+  background: #f4f7f9;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #dce5ea;
+  white-space: nowrap;
+}
+
+/* Student Identity Cell in Table */
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0f1f2c 0%, #1e7c85 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(30, 124, 133, 0.25);
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 2px rgba(15, 31, 44, 0.12);
+}
+
+.studentMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studentName {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.studentNameLink {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.studentNameLink:hover,
+.studentNameLink:focus-visible {
+  color: #3a6985;
+  text-decoration: underline;
+}
+
+.studentEmail {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studentSubtext {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 0.1rem;
+}
+
+/* Affiliation Cell */
+.affiliationCell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.institutionName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.majorYear {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.divisionTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.tagPreUni {
+  background: #e6f6f8;
+  color: #0e6973;
+  border: 1px solid #b3e6ec;
+}
+
+.tagUni {
+  background: #fdf8ec;
+  color: #855f15;
+  border: 1px solid #f2dfa8;
+}
+
+.dateCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* Actions in Table */
+.actionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.28rem 0.65rem;
+  border-radius: 5px;
+  color: #3a6985;
+  background: #edf5fa;
+  border: 1px solid #c8e0f0;
+  text-decoration: none;
+  transition: all 130ms ease;
+  white-space: nowrap;
+}
+
+.viewBtn:hover {
+  background: #3a6985;
+  border-color: #3a6985;
+  color: #ffffff;
+}
+
+.deactivateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.28rem 0.65rem;
+  border-radius: 5px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+  transition: all 130ms ease;
+  white-space: nowrap;
+}
+
+.deactivateBtn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+.activateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.28rem 0.65rem;
+  border-radius: 5px;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  cursor: pointer;
+  transition: all 130ms ease;
+  white-space: nowrap;
+}
+
+.activateBtn:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+}
+
+/* Modal Form Layout */
+.formSection {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.formSectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.formLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  border: 1px solid #dce5ea;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  transition: all 140ms ease;
+}
+
+.formInput:focus {
+  border-color: #3a6985;
+  box-shadow: 0 0 0 3px rgba(58, 105, 133, 0.15);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.refreshBtn {
+  height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid #dce5ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #3a6985;
+  color: #172b36;
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.addBtn {
+  height: 32px;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid #3a6985;
+  border-radius: 6px;
+  background: #3a6985;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.addBtn:hover {
+  background: #2e546b;
+  border-color: #2e546b;
+  color: #ffffff;
+}

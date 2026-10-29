@@ -15,6 +15,12 @@ const UserSchema = new mongoose.Schema(
       match: [/^\d{14}$/, 'National ID must be exactly 14 digits.'],
     },
     role: { type: String, enum: ['student', 'admin', 'instructor'], default: 'student' },
+    division: {
+      type: String,
+      enum: ['PRE_UNIVERSITY', 'UNIVERSITY'],
+      default: 'UNIVERSITY',
+      index: true,
+    },
     isEmailVerified: { type: Boolean, default: true },
     accountStatus: {
       type: String,
@@ -77,6 +83,8 @@ UserSchema.methods.toSafeObject = function toSafeObject() {
     phone: this.phone,
     nationalId: this.nationalId,
     role: this.role,
+    division: this.division || 'UNIVERSITY',
+    isActive: this.isActive !== false,
     accountStatus: this.accountStatus || (this.isEmailVerified ? 'active' : 'unverified'),
     isEmailVerified: !!this.isEmailVerified,
     createdAt: this.createdAt,

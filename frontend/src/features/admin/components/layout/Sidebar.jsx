@@ -1,15 +1,31 @@
 import { useState, useEffect, useId } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
+import { ROLES } from '../../constants/roles';
 import styles from './Sidebar.module.css';
 
-// sections: [{
-//   title: string,
-//   collapsible?: boolean,
-//   defaultOpen?: boolean,
-//   icon?: string,
-//   items?: [{ to, icon, label, end }]
-// }]
-export default function Sidebar({ items, sections, label, isMobileOpen, onCloseMobile, topAction }) {
+/**
+ * Egyptian Space Agency Academy — Institutional Admin Sidebar
+ * Primary navigation system supporting:
+ * - Fixed Brand Header with official logo and active division badge
+ * - Hierarchical, collapsible navigation groups with Font Awesome icons
+ * - High-contrast active route recognition with glowing indicators
+ * - Desktop Compact Rail Mode (persisted) with accessible tooltips
+ * - Mobile & Tablet Off-Canvas Drawer with accessible backdrop and dismiss controls
+ * - Fixed Bottom Utility area with administrator profile snippet and rail toggle
+ */
+export default function Sidebar({
+  items,
+  sections,
+  label,
+  activeDivision,
+  isMobileOpen,
+  onCloseMobile,
+  isCollapsed = false,
+  onToggleCollapse,
+  onBackToGateway,
+  isSuperAdmin = false,
+  user,
+}) {
   const location = useLocation();
   const idPrefix = useId();
 
@@ -22,9 +38,6 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
     });
     return initial;
   });
-
-  // Track collapsed sidebar rail mode on desktop (expanded by default)
-  const [isRailCollapsed, setIsRailCollapsed] = useState(false);
 
   // Handle escape key to close mobile drawer
   useEffect(() => {
@@ -48,7 +61,7 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
     }
   }, [isMobileOpen]);
 
-  // Automatically expand the relevant parent group when navigating to a nested page
+  // Automatically expand the relevant parent group when navigating to a nested route
   useEffect(() => {
     if (!sections || sections.length === 0) return;
 
@@ -79,77 +92,114 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
   };
 
   const handleLinkClick = () => {
-    // Automatically close mobile drawer when user selects a destination
+    // Automatically close mobile drawer when user navigates
     if (isMobileOpen && onCloseMobile) {
       onCloseMobile();
     }
   };
 
-  // If sections are provided (hierarchical navigation)
-  if (sections && sections.length > 0) {
-    return (
-      <>
-        {/* Mobile Backdrop Overlay */}
-        {isMobileOpen && (
-          <div
-            className={styles.mobileBackdrop}
-            onClick={onCloseMobile}
-            aria-hidden="true"
-          />
-        )}
+  // Division badge configuration
+  const divisionTag = activeDivision === 'PRE_UNIVERSITY'
+    ? { label: 'Pre-University', class: styles.badgePreUni, icon: 'fa-school' }
+    : activeDivision === 'UNIVERSITY'
+    ? { label: 'University', class: styles.badgeUni, icon: 'fa-graduation-cap' }
+    : isSuperAdmin
+    ? { label: 'Super Admin', class: styles.badgeSuperAdmin, icon: 'fa-shield-halved' }
+    : null;
 
-        <aside
-          className={`${styles.sidebar} ${isRailCollapsed ? styles.sidebarRail : ''} ${
-            isMobileOpen ? styles.sidebarMobileOpen : ''
-          }`}
-          aria-label="Navigation Sidebar"
-        >
-          {/* Top Header / Rail & Mobile Toggles */}
-          <div className={styles.topBar}>
-            {!isRailCollapsed && label && (
-              <div className={styles.sectionLabel}>
-                <span className={styles.labelPulseDot} aria-hidden="true"></span>
-                <span>{label}</span>
+  return (
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isMobileOpen && (
+        <div
+          className={styles.mobileBackdrop}
+          onClick={onCloseMobile}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`${styles.sidebar} ${isCollapsed ? styles.sidebarRail : ''} ${
+          isMobileOpen ? styles.sidebarMobileOpen : ''
+        }`}
+        aria-label="Admin Navigation Sidebar"
+      >
+        {/* 1. Brand Header (Fixed at top) */}
+        <div className={styles.brandHeader}>
+          <Link
+            to={isSuperAdmin ? '/admin' : `/admin/${activeDivision || ''}`}
+            className={styles.brandLink}
+            onClick={handleLinkClick}
+            title="Egyptian Space Agency Academy"
+          >
+            <img
+              src="/egsa-logo.png"
+              alt="EGSA Logo"
+              className={styles.brandLogoImg}
+            />
+            {!isCollapsed && (
+              <div className={styles.brandMeta}>
+                <span className={styles.brandTitle}>EGSA ACADEMY</span>
+                <span className={styles.brandAgency}>EGYPTIAN SPACE AGENCY</span>
               </div>
             )}
+          </Link>
 
-            {/* Mobile close button (visible only in mobile drawer mode) */}
-            {isMobileOpen && (
-              <button
-                type="button"
-                className={styles.mobileCloseBtn}
-                onClick={onCloseMobile}
-                title="Close Navigation"
-                aria-label="Close Navigation Menu"
-              >
-                <i className="fa-solid fa-xmark" aria-hidden="true"></i>
-              </button>
-            )}
-
-            {/* Desktop Rail Toggle (hidden on mobile) */}
+          {/* Mobile Drawer Close Button */}
+          {isMobileOpen && (
             <button
               type="button"
-              className={styles.railToggleBtn}
-              onClick={() => setIsRailCollapsed(!isRailCollapsed)}
-              title={isRailCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-              aria-label={isRailCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+              className={styles.mobileCloseBtn}
+              onClick={onCloseMobile}
+              title="Close Navigation"
+              aria-label="Close Navigation Menu"
             >
-              <i
-                className={`fa-solid ${isRailCollapsed ? 'fa-angles-right' : 'fa-angles-left'}`}
-                aria-hidden="true"
-              ></i>
+              <i className="fa-solid fa-xmark" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        {/* Workspace Tag Sub-bar */}
+        {!isCollapsed && divisionTag && (
+          <div className={styles.workspaceTagBar}>
+            <span className={`${styles.workspaceBadge} ${divisionTag.class}`}>
+              <i className={`fa-solid ${divisionTag.icon}`} aria-hidden="true" />
+              <span>{divisionTag.label}</span>
+            </span>
+            <span className="text-white-50 small" style={{ fontSize: '0.62rem' }}>
+              WORKSPACE
+            </span>
+          </div>
+        )}
+
+        {/* Top Action (Super Admin Gateway return button) */}
+        {isSuperAdmin && onBackToGateway && (
+          <div className={styles.topActionWrap}>
+            <button
+              type="button"
+              className={styles.gatewayReturnBtn}
+              onClick={() => {
+                handleLinkClick();
+                onBackToGateway();
+              }}
+              title="Return to Administration Gateway"
+              aria-label="Back to Administration Gateway"
+            >
+              <i className="fa-solid fa-server me-1.5" aria-hidden="true" />
+              {!isCollapsed && <span>Administration Gateway</span>}
             </button>
           </div>
+        )}
 
-          {!isRailCollapsed && topAction}
-
-          <div className={styles.sectionsContainer}>
-            {sections.map((section, sIdx) => {
+        {/* 2. Scrollable Middle Navigation Region */}
+        <div className={styles.sectionsContainer}>
+          {sections && sections.length > 0 ? (
+            sections.map((section, sIdx) => {
               const isOpen = openSections[section.title] !== false;
               const isCollapsible = section.collapsible !== false && section.items && section.items.length > 0;
               const sectionId = `${idPrefix}-sec-${sIdx}`;
 
-              // Check if any child item is active to highlight parent section
+              // Highlight group if any child is active
               const containsActive = section.items?.some((item) => {
                 if (item.end) return location.pathname === item.to;
                 return location.pathname === item.to || location.pathname.startsWith(item.to + '/');
@@ -157,8 +207,8 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
 
               return (
                 <div key={section.title} className={styles.sectionGroup}>
-                  {/* Section Header */}
-                  {!isRailCollapsed && isCollapsible ? (
+                  {/* Collapsible Section Header */}
+                  {!isCollapsed && isCollapsible ? (
                     <button
                       type="button"
                       id={`btn-${sectionId}`}
@@ -169,7 +219,7 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
                     >
                       <span className={styles.sectionTitleWrap}>
                         {section.icon && (
-                          <i className={`fa-solid ${section.icon} ${styles.headerIcon}`} aria-hidden="true"></i>
+                          <i className={`fa-solid ${section.icon} ${styles.headerIcon}`} aria-hidden="true" />
                         )}
                         <span>{section.title}</span>
                       </span>
@@ -178,25 +228,29 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
                           isOpen ? styles.chevronOpen : styles.chevronClosed
                         }`}
                         aria-hidden="true"
-                      ></i>
+                      />
                     </button>
-                  ) : !isRailCollapsed && section.title ? (
-                    <div className={styles.sectionLabelStatic}>
-                      {section.icon && <i className={`fa-solid ${section.icon} me-1.5`} aria-hidden="true"></i>}
-                      {section.title}
+                  ) : !isCollapsed && section.title ? (
+                    <div className={styles.sectionHeader}>
+                      <span className={styles.sectionTitleWrap}>
+                        {section.icon && (
+                          <i className={`fa-solid ${section.icon} ${styles.headerIcon}`} aria-hidden="true" />
+                        )}
+                        <span>{section.title}</span>
+                      </span>
                     </div>
                   ) : (
                     <div className={styles.railDivider} title={section.title} />
                   )}
 
-                  {/* Section Body with CSS transition */}
+                  {/* Section Links */}
                   {section.items && section.items.length > 0 && (
                     <div
                       id={sectionId}
                       role="region"
                       aria-labelledby={`btn-${sectionId}`}
                       className={`${styles.sectionBody} ${
-                        !isOpen && !isRailCollapsed ? styles.sectionBodyCollapsed : ''
+                        !isOpen && !isCollapsed ? styles.sectionBodyCollapsed : ''
                       }`}
                     >
                       <div className={styles.sectionInner}>
@@ -205,18 +259,18 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
                             key={`${section.title}-${item.label}-${item.to}`}
                             to={item.to}
                             end={item.end}
-                            title={isRailCollapsed ? item.label : undefined}
+                            title={isCollapsed ? item.label : undefined}
                             onClick={handleLinkClick}
                             className={({ isActive }) =>
-                              `${styles.link} ${isCollapsible ? styles.subLink : ''} ${
+                              `${styles.link} ${isCollapsible && !isCollapsed ? styles.subLink : ''} ${
                                 isActive ? styles.linkActive : ''
-                              } ${isRailCollapsed ? styles.linkRail : ''}`
+                              } ${isCollapsed ? styles.linkRail : ''}`
                             }
                           >
                             <span className={styles.linkIconWrap}>
-                              <i className={`fa-solid ${item.icon} ${styles.linkIcon}`} aria-hidden="true"></i>
+                              <i className={`fa-solid ${item.icon} ${styles.linkIcon}`} aria-hidden="true" />
                             </span>
-                            {!isRailCollapsed && <span className={styles.linkLabel}>{item.label}</span>}
+                            {!isCollapsed && <span className={styles.linkLabel}>{item.label}</span>}
                           </NavLink>
                         ))}
                       </div>
@@ -224,38 +278,9 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
                   )}
                 </div>
               );
-            })}
-          </div>
-        </aside>
-      </>
-    );
-  }
-
-  // Fallback for simple items array
-  return (
-    <>
-      {isMobileOpen && (
-        <div className={styles.mobileBackdrop} onClick={onCloseMobile} aria-hidden="true" />
-      )}
-      <aside
-        className={`${styles.sidebar} ${isMobileOpen ? styles.sidebarMobileOpen : ''}`}
-        aria-label="Navigation Sidebar"
-      >
-        <div className={styles.topBar}>
-          {label && <div className={styles.sectionLabel}>{label}</div>}
-          {isMobileOpen && (
-            <button
-              type="button"
-              className={styles.mobileCloseBtn}
-              onClick={onCloseMobile}
-              aria-label="Close Navigation"
-            >
-              <i className="fa-solid fa-xmark" aria-hidden="true"></i>
-            </button>
-          )}
-        </div>
-        <div className={styles.sectionsContainer}>
-          {items &&
+            })
+          ) : (
+            items &&
             items.map((item) => (
               <NavLink
                 key={`${item.label}-${item.to}`}
@@ -263,13 +288,49 @@ export default function Sidebar({ items, sections, label, isMobileOpen, onCloseM
                 end={item.end}
                 onClick={handleLinkClick}
                 className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+                title={isCollapsed ? item.label : undefined}
               >
                 <span className={styles.linkIconWrap}>
-                  <i className={`fa-solid ${item.icon}`} aria-hidden="true"></i>
+                  <i className={`fa-solid ${item.icon} ${styles.linkIcon}`} aria-hidden="true" />
                 </span>
-                <span>{item.label}</span>
+                {!isCollapsed && <span className={styles.linkLabel}>{item.label}</span>}
               </NavLink>
-            ))}
+            ))
+          )}
+        </div>
+
+        {/* 3. Bottom Utility Area (Fixed at bottom) */}
+        <div className={styles.bottomUtility}>
+          {user && !isCollapsed && (
+            <div className={styles.userSnippet}>
+              <div className={styles.userAvatar}>
+                {user.fullName ? user.fullName.charAt(0).toUpperCase() : <i className="fa-solid fa-user-shield" />}
+              </div>
+              <div className={styles.userInfo}>
+                <span className={styles.userName}>{user.fullName || 'Administrator'}</span>
+                <span className={styles.userRole}>
+                  {(user.role || 'ADMIN').replace(/_/g, ' ')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Rail Expand / Collapse Toggle Button */}
+          {onToggleCollapse && (
+            <button
+              type="button"
+              className={styles.collapseToggleBtn}
+              onClick={onToggleCollapse}
+              title={isCollapsed ? 'Expand Sidebar (Ctrl+B)' : 'Collapse Sidebar (Ctrl+B)'}
+              aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <i
+                className={`fa-solid ${isCollapsed ? 'fa-angles-right' : 'fa-angles-left'}`}
+                aria-hidden="true"
+              />
+              {!isCollapsed && <span>Collapse Sidebar</span>}
+            </button>
+          )}
         </div>
       </aside>
     </>

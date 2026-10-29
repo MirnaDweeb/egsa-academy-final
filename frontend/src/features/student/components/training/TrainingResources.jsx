@@ -17,7 +17,7 @@ export default function TrainingResources({ course }) {
           <i className="fa-solid fa-photo-film text-primary-egsa"></i>
           Authorized Training Materials & Tools
         </h6>
-        <Link to="/student/media" className="small text-decoration-none">
+        <Link to="/student/learning-hub" className="small text-decoration-none">
           Full Media Library <i className="fa-solid fa-chevron-right small"></i>
         </Link>
       </div>
@@ -61,7 +61,7 @@ export default function TrainingResources({ course }) {
       )}
 
       <div className="d-grid">
-        <Link to="/student/media" className="btn btn-outline-secondary btn-sm">
+        <Link to="/student/learning-hub" className="btn btn-outline-secondary btn-sm">
           <i className="fa-solid fa-folder-open me-1"></i> Access Media & Documents
         </Link>
       </div>

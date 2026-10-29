@@ -1,0 +1,604 @@
+/* =========================================================================
+   EGSA Academy — Student Course & Instructor Evaluation Styles
+   Aerospace-Grade EdTech UI with Purposeful Micro-Interactions
+   ========================================================================= */
+
+:root {
+  --egsa-navy: #0f172a;
+  --egsa-dark-space: #090d16;
+  --egsa-slate-800: #1e293b;
+  --egsa-slate-700: #334155;
+  --egsa-slate-600: #475569;
+  --egsa-slate-400: #94a3b8;
+  --egsa-slate-200: #e2e8f0;
+  --egsa-slate-100: #f1f5f9;
+  --egsa-slate-50: #f8fafc;
+  --egsa-gold: #d97706;
+  --egsa-gold-light: #fef3c7;
+  --egsa-emerald: #059669;
+  --egsa-emerald-light: #ecfdf5;
+  --egsa-emerald-border: #a7f3d0;
+  --egsa-blue: #0284c7;
+  --egsa-blue-light: #e0f2fe;
+  --egsa-transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Page Container Animation */
+.pageContainer {
+  max-width: 1400px;
+  margin: 0 auto;
+  animation: pageFadeIn 0.35s ease-out forwards;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Confidentiality & Academic Context Banner */
+.contextBanner {
+  background: #ffffff;
+  border: 1px solid var(--egsa-slate-200);
+  border-radius: 16px;
+  padding: 1.15rem 1.5rem;
+  margin-bottom: 1.75rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.contextCadet {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cadetAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+  flex-shrink: 0;
+}
+
+.cadetName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--egsa-navy);
+  margin-bottom: 0.15rem;
+}
+
+.cadetMeta {
+  font-size: 0.8rem;
+  color: var(--egsa-slate-600);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.anonymityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  background: var(--egsa-emerald-light);
+  border: 1px solid var(--egsa-emerald-border);
+  color: #065f46;
+  font-size: 0.785rem;
+  line-height: 1.4;
+  max-width: 460px;
+}
+
+/* Graduation Requirement Summary Card */
+.summaryCard {
+  background: #ffffff;
+  border: 1px solid var(--egsa-slate-200);
+  border-radius: 20px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.summaryCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, #0284c7, #059669);
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+}
+
+.summaryHeaderBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.summaryTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--egsa-navy);
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.summaryDescription {
+  font-size: 0.875rem;
+  color: var(--egsa-slate-600);
+  line-height: 1.55;
+  margin-bottom: 1rem;
+}
+
+.summaryStatsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--egsa-slate-700);
+}
+
+.statPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem;
+  background: var(--egsa-slate-50);
+  border: 1px solid var(--egsa-slate-200);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.statPill strong {
+  font-weight: 700;
+  color: var(--egsa-navy);
+}
+
+/* Progress Gauge Box */
+.progressPanel {
+  background: var(--egsa-slate-50);
+  border: 1px solid var(--egsa-slate-200);
+  border-radius: 14px;
+  padding: 1.25rem 1.4rem;
+}
+
+.progressLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.progressLabel {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--egsa-slate-700);
+}
+
+.progressPercent {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  color: var(--egsa-navy);
+}
+
+.progressBarTrack {
+  height: 10px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fillComplete {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+}
+
+.fillPartial {
+  background: linear-gradient(90deg, #3b82f6 0%, #0284c7 100%);
+}
+
+.fillInitial {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+}
+
+.progressFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--egsa-slate-600);
+}
+
+/* Section Header */
+.sectionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.sectionHeading {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--egsa-navy);
+  margin-bottom: 0.2rem;
+}
+
+.sectionSubheading {
+  font-size: 0.85rem;
+  color: var(--egsa-slate-600);
+}
+
+/* Evaluation Program Card */
+.evalCard {
+  background: #ffffff;
+  border: 1px solid var(--egsa-slate-200);
+  border-radius: 18px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: var(--egsa-transition);
+  display: flex;
+  flex-column: column;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.evalCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  border-color: #cbd5e1;
+}
+
+/* State Modifiers for Cards */
+.cardCompleted {
+  border-color: var(--egsa-emerald-border);
+}
+
+.cardCompleted::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.cardInProgress {
+  border-color: #fde68a;
+}
+
+.cardInProgress::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.cardLocked {
+  opacity: 0.78;
+  background: #fafafa;
+}
+
+/* Card Header */
+.cardHeader {
+  padding: 1.35rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid var(--egsa-slate-100);
+}
+
+.cardHeaderTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.codePill {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: var(--egsa-navy);
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.cohortPill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: var(--egsa-slate-100);
+  border: 1px solid var(--egsa-slate-200);
+  color: var(--egsa-slate-700);
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--egsa-navy);
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardFaculty {
+  font-size: 0.8rem;
+  color: var(--egsa-slate-600);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Card Workflows Body */
+.cardBody {
+  padding: 1.25rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-grow: 1;
+  gap: 0.85rem;
+}
+
+/* Workflow Row */
+.workflowRow {
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--egsa-slate-200);
+  background: var(--egsa-slate-50);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: var(--egsa-transition);
+}
+
+@media (min-width: 576px) {
+  .workflowRow {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+}
+
+.workflowRowCompleted {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.workflowLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.workflowIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  transition: var(--egsa-transition);
+}
+
+.iconPending {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.iconCompleted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.workflowTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--egsa-navy);
+  margin-bottom: 0.15rem;
+}
+
+.workflowDesc {
+  font-size: 0.75rem;
+  color: var(--egsa-slate-600);
+}
+
+/* Action Buttons & Status Badges */
+.workflowRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.badgeCompleted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.btnEvaluate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  background: var(--egsa-navy);
+  color: #ffffff;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--egsa-transition);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.12);
+}
+
+.btnEvaluate:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.16);
+  color: #ffffff;
+}
+
+.btnReview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--egsa-slate-200);
+  color: var(--egsa-slate-700);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--egsa-transition);
+}
+
+.btnReview:hover {
+  background: var(--egsa-slate-50);
+  border-color: #cbd5e1;
+  color: var(--egsa-navy);
+}
+
+/* Certificate Unlock Banner on Card */
+.certBadgeUnlock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: var(--egsa-transition);
+}
+
+.certBadgeUnlock:hover {
+  background: #d1fae5;
+  color: #047857;
+  transform: translateY(-1px);
+}
+
+.certBadgeLocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Rating Interactive Stars in Modal */
+.starRatingGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.starBtn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 1.35rem;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.starBtn:hover:not(:disabled) {
+  transform: scale(1.2);
+}
+
+.starFilled {
+  color: #f59e0b;
+}
+
+.ratingValueBadge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  background: var(--egsa-slate-100);
+  color: var(--egsa-slate-800);
+  margin-left: 0.5rem;
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .pageContainer,
+  .evalCard,
+  .evalCard:hover,
+  .workflowRow,
+  .btnEvaluate,
+  .starBtn,
+  .progressBarFill {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

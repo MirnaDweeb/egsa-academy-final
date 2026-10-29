@@ -32,7 +32,7 @@ async function checkCourseFit(studentProfile, course) {
     return { result, reasons, requiresReadiness: false };
   }
 
-  // Rule 2: required experience (soft check -> conditionally eligible / manual review)
+  // Rule 2: recommended experience (informational guidance, does not block eligibility)
   const requiredExperience = course.requiredExperience || [];
   const studentExperience = (studentProfile.experience || []).map((e) => e.toLowerCase());
   const missingExperience = requiredExperience.filter(
@@ -40,24 +40,23 @@ async function checkCourseFit(studentProfile, course) {
   );
 
   if (missingExperience.length > 0) {
-    result = 'Conditionally Eligible';
     reasons.push({
-      code: 'MISSING_EXPERIENCE',
-      message: `Recommended experience not confirmed: ${missingExperience.join(', ')}`,
+      code: 'RECOMMENDED_EXPERIENCE_NOTE',
+      message: `Recommended background experience: ${missingExperience.join(', ')} (Informational guidance)`,
     });
   }
 
-  // Rule 3: graduate-only advanced courses (example academic rule)
-  if (course.level === 'Advanced' && studentProfile.status === 'student' && !studentProfile.academicYear) {
-    result = result === 'Eligible' ? 'Manual Review' : result;
+  // Rule 3: Division alignment check (genuine exception requiring admissions review)
+  if (course.division && studentProfile.division && course.division !== studentProfile.division) {
+    result = 'Manual Review';
     reasons.push({
-      code: 'ACADEMIC_STATUS_REVIEW',
-      message: 'Academic year not specified for an Advanced-level course. Manual review recommended.',
+      code: 'DIVISION_ALIGNMENT_EXCEPTION',
+      message: `Division alignment exception: Course belongs to ${course.division} while student is registered under ${studentProfile.division}. Admissions review required.`,
     });
   }
 
   if (reasons.length === 0) {
-    reasons.push({ code: 'OK', message: 'All prerequisite and experience checks passed.' });
+    reasons.push({ code: 'OK', message: 'All prerequisite and eligibility checks passed.' });
   }
 
   let hasQuestions = true;

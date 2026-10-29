@@ -30,7 +30,17 @@ export default function App() {
       <Route path="/academy" element={<Navigate to="/student/dashboard" replace />} />
       <Route path="/portal" element={<Navigate to="/student/dashboard" replace />} />
 
-      {/* Student Portal and Auth Routes */}
+      {/* Student Portal and Auth Routes (Serving /student/* and /portal/*) */}
+      <Route
+        path="/portal/*"
+        element={
+          <ErrorBoundary>
+            <StudentAuthProvider>
+              <StudentApp />
+            </StudentAuthProvider>
+          </ErrorBoundary>
+        }
+      />
       <Route
         path="/student/*"
         element={

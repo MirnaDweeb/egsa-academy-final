@@ -141,7 +141,7 @@ async function acceptApplication(req, res, next) {
       return res.json({
         success: true,
         message: 'Application is already confirmed and enrolled.',
-        data: { application, enrollment },
+        data: { application, enrollment, invoice: null },
       });
     }
 

@@ -317,6 +317,62 @@
   border-color: #388BFD;
 }
 
+.controlWithIcon::placeholder {
+  color: #6E7681 !important;
+  opacity: 0.9 !important;
+}
+
+.formCard :global(.form-label) {
+  color: #C9D1D9 !important;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.formCard :global(.form-control) {
+  background-color: #0D1117 !important;
+  border: 1px solid #30363D !important;
+  color: #F0F6FC !important;
+  border-radius: 6px;
+}
+
+.formCard :global(.form-control):focus {
+  border-color: #58A6FF !important;
+  outline: 2px solid #58A6FF !important;
+  box-shadow: none !important;
+  background-color: #0D1117 !important;
+  color: #F0F6FC !important;
+}
+
+.formCard :global(.form-control)::placeholder {
+  color: #6E7681 !important;
+  opacity: 0.9 !important;
+}
+
+.formCard a {
+  color: #58A6FF !important;
+  text-decoration: none;
+}
+
+.formCard a:hover {
+  text-decoration: underline;
+  color: #79B8FF !important;
+}
+
+.panel ::selection,
+.hero ::selection,
+.formCard ::selection {
+  background: rgba(88, 166, 255, 0.4) !important;
+  color: #FFFFFF !important;
+}
+
+.panel ::-moz-selection,
+.hero ::-moz-selection,
+.formCard ::-moz-selection {
+  background: rgba(88, 166, 255, 0.4) !important;
+  color: #FFFFFF !important;
+}
+
 .formFooter {
   margin-top: 1.5rem;
   text-align: center;

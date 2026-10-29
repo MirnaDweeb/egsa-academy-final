@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
-import { SKINS } from '../data';
+import { SKINS, getCoursePricing } from '../data';
 
 export const MAX_PLANETS = 6;
 
@@ -11,6 +11,7 @@ export default function PlanetSystem({ items = [] }) {
   const [sel, setSel] = useState(0);
   const root = useRef(null);
   const cur = featured[Math.min(sel, Math.max(0, featured.length - 1))];
+  const pricing = getCoursePricing(cur);
 
   useEffect(() => {
     setSel(0);
@@ -177,6 +178,44 @@ export default function PlanetSystem({ items = [] }) {
                 </span>
               </div>
             )}
+          </div>
+
+          {/* Tuition & Pricing Block */}
+          <div className="system-detail-pricing" aria-label="Course Tuition">
+            <div className="system-pricing-card">
+              <div className="system-price-item">
+                <span className="system-price-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v12M8 10h8M8 14h6" />
+                  </svg>
+                  Course Fee
+                </span>
+                <span className={`system-price-val ${!pricing.hasPrice ? 'unavailable' : ''}`}>
+                  {pricing.baseFeeText}
+                </span>
+              </div>
+
+              {pricing.hasTransportation && (
+                <>
+                  <div className="system-price-divider" aria-hidden="true" />
+                  <div className="system-price-item transportation">
+                    <span className="system-price-label">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <rect x="3" y="6" width="18" height="12" rx="2" />
+                        <circle cx="7" cy="18" r="2" />
+                        <circle cx="17" cy="18" r="2" />
+                        <path d="M3 11h18M9 6v5M15 6v5" />
+                      </svg>
+                      With Transportation
+                    </span>
+                    <span className="system-price-val transport">
+                      {pricing.transportFeeText}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="system-detail-actions">

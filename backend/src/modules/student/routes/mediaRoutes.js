@@ -17,6 +17,7 @@ router.post('/admin/:id/publish', protect, authorize('admin', 'superadmin'), med
 router.post('/admin/:id/unpublish', protect, authorize('admin', 'superadmin'), mediaCtrl.adminUnpublish);
 
 // Student Authenticated Endpoints
+router.get('/resources', protect, mediaCtrl.getAcademicResources);
 router.get('/my', protect, mediaCtrl.getMyMedia);
 router.post('/upload', protect, upload.single('file'), mediaCtrl.uploadMedia);
 router.get('/:id', protect, mediaCtrl.getMediaDetails);

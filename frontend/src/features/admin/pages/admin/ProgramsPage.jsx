@@ -58,7 +58,17 @@ export default function ProgramsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [divisionFilter, setDivisionFilter] = useState(isSuperAdmin ? routeDivision || '' : currentDivision);
+  const [instructorFilter, setInstructorFilter] = useState('');
+  const [instructors, setInstructors] = useState([]);
   const [page, setPage] = useState(1);
+
+  // Assign Instructor Modal State
+  const [assigningProgram, setAssigningProgram] = useState(null);
+  const [selectedInstructorId, setSelectedInstructorId] = useState('');
+  const [assignReason, setAssignReason] = useState('');
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState('');
+  const [assignSuccess, setAssignSuccess] = useState('');
 
   // Create / Edit Modal State
   const [modalMode, setModalMode] = useState(null); // 'create' | 'edit' | null
@@ -84,6 +94,7 @@ export default function ProgramsPage() {
     prerequisites: '',
     targetMajors: '',
     requiredEducation: '',
+    assignedInstructor: '',
   });
 
   // Delete / Archive Program State
@@ -241,6 +252,54 @@ export default function ProgramsPage() {
     }
   };
 
+  const loadInstructors = useCallback(async () => {
+    try {
+      const activeDiv = isSuperAdmin ? divisionFilter : currentDivision;
+      const res = await adminService.listInstructors(activeDiv && activeDiv !== 'all' ? activeDiv : undefined);
+      setInstructors(res.data?.instructors || res.instructors || res.data || []);
+    } catch (_) {}
+  }, [currentDivision, divisionFilter, isSuperAdmin]);
+
+  useEffect(() => {
+    loadInstructors();
+  }, [loadInstructors]);
+
+  const handleOpenAssignModal = (prog) => {
+    setAssigningProgram(prog);
+    const currId = prog.assignedInstructor?._id || prog.assignedInstructor?.id || prog.assignedInstructor || (prog.assignedInstructors && (prog.assignedInstructors[0]?._id || prog.assignedInstructors[0]?.id)) || (prog.assignedInstructors && prog.assignedInstructors[0]) || '';
+    setSelectedInstructorId(currId);
+    setAssignReason('');
+    setAssignError('');
+    setAssignSuccess('');
+  };
+
+  const handleAssignInstructorSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedInstructorId) {
+      setAssignError('Please select an instructor');
+      return;
+    }
+    setAssignLoading(true);
+    setAssignError('');
+    setAssignSuccess('');
+    try {
+      await programService.assignInstructor(
+        assigningProgram._id || assigningProgram.id,
+        selectedInstructorId,
+        assignReason.trim()
+      );
+      setAssignSuccess(`Instructor assigned to ${assigningProgram.title} successfully!`);
+      fetchPrograms();
+      setTimeout(() => {
+        setAssigningProgram(null);
+      }, 1000);
+    } catch (err) {
+      setAssignError(err.message || 'Failed to assign instructor');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
   const fetchPrograms = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -248,6 +307,7 @@ export default function ProgramsPage() {
       const params = { page, limit: 10 };
       if (search.trim()) params.search = search.trim();
       if (statusFilter) params.status = statusFilter;
+      if (instructorFilter) params.instructorId = instructorFilter;
 
       const activeDivision = isSuperAdmin ? divisionFilter : currentDivision;
       if (activeDivision && activeDivision !== 'all') {
@@ -262,7 +322,7 @@ export default function ProgramsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentDivision, divisionFilter, isSuperAdmin, page, search, statusFilter]);
+  }, [currentDivision, divisionFilter, instructorFilter, isSuperAdmin, page, search, statusFilter]);
 
   useEffect(() => {
     fetchPrograms();
@@ -281,6 +341,7 @@ export default function ProgramsPage() {
       deliveryMode: DELIVERY_MODE.ONSITE,
       category: 'Space Engineering',
       transportationOption: 'NONE',
+      status: 'DRAFT',
       registrationStartDate: '',
       registrationEndDate: '',
       startDate: '',
@@ -289,6 +350,7 @@ export default function ProgramsPage() {
       prerequisites: '',
       targetMajors: '',
       requiredEducation: '',
+      assignedInstructor: '',
     });
     setEditingProgramId(null);
     setFormError('');
@@ -308,6 +370,7 @@ export default function ProgramsPage() {
       deliveryMode: prog.deliveryMode || DELIVERY_MODE.ONSITE,
       category: prog.category || 'Space Engineering',
       transportationOption: prog.transportationOption || 'NONE',
+      status: prog.status || 'DRAFT',
       registrationStartDate: prog.registrationStartDate ? prog.registrationStartDate.split('T')[0] : '',
       registrationEndDate: prog.registrationEndDate ? prog.registrationEndDate.split('T')[0] : '',
       startDate: prog.startDate ? prog.startDate.split('T')[0] : '',
@@ -316,6 +379,7 @@ export default function ProgramsPage() {
       prerequisites: prog.prerequisites || '',
       targetMajors: prog.targetMajors || '',
       requiredEducation: prog.requiredEducation || '',
+      assignedInstructor: prog.assignedInstructor?._id || prog.assignedInstructor || (prog.assignedInstructors && prog.assignedInstructors[0]?._id) || (prog.assignedInstructors && prog.assignedInstructors[0]) || '',
     });
     setEditingProgramId(prog.id || prog._id);
     setFormError('');
@@ -395,7 +459,12 @@ export default function ProgramsPage() {
     if (!confirmAction) return;
     setActionLoading(true);
     try {
-      const targetStatus = confirmAction.type === 'PUBLISH' ? 'ACTIVE' : 'ARCHIVED';
+      const targetStatus =
+        confirmAction.type === 'PUBLISH'
+          ? 'ACTIVE'
+          : confirmAction.type === 'UNPUBLISH'
+          ? 'DRAFT'
+          : 'ARCHIVED';
       await programService.updateStatus(confirmAction.program.id || confirmAction.program._id, targetStatus);
       setConfirmAction(null);
       fetchPrograms();
@@ -471,13 +540,38 @@ export default function ProgramsPage() {
       ),
     },
     {
+      key: 'instructor',
+      label: 'Assigned Instructor',
+      render: (row) => {
+        const inst = row.assignedInstructor || (row.assignedInstructors && row.assignedInstructors[0]);
+        if (!inst) {
+          return (
+            <span className="badge bg-light text-muted border">
+              <i className="fa-solid fa-user-xmark me-1" aria-hidden="true"></i>Unassigned
+            </span>
+          );
+        }
+        const name = typeof inst === 'object' ? (inst.fullName || inst.name) : 'Assigned';
+        const email = typeof inst === 'object' ? inst.email : '';
+        return (
+          <div>
+            <div className="fw-semibold text-dark" style={{ fontSize: '0.85rem' }}>
+              <i className="fa-solid fa-user-astronaut text-primary me-1" aria-hidden="true"></i>
+              {name}
+            </div>
+            {email && <div className="text-muted" style={{ fontSize: '0.75rem' }}>{email}</div>}
+          </div>
+        );
+      },
+    },
+    {
       key: 'capacity',
-      label: 'Capacity & Fee',
+      label: 'Enrollment / Capacity',
       render: (row) => (
         <div>
           <div className="fw-semibold text-dark" style={{ fontSize: '0.85rem' }}>
             <i className="fa-solid fa-users text-secondary me-1" aria-hidden="true"></i>
-            {row.capacity} seats
+            {row.enrolledCount !== undefined ? row.enrolledCount : (row.occupiedSeats || 0)} / {row.capacity} enrolled
           </div>
           <div className="text-secondary" style={{ fontSize: '0.78rem' }}>
             {row.price > 0 ? `EGP ${row.price.toLocaleString()}` : 'Free / Sponsored'}
@@ -513,6 +607,16 @@ export default function ProgramsPage() {
             <i className="fa-solid fa-users me-1" aria-hidden="true"></i> Enrollments
           </button>
 
+          <button
+            type="button"
+            className="btn btn-outline-warning btn-sm"
+            onClick={() => handleOpenAssignModal(row)}
+            title="Assign or reassign course instructor"
+            id={`btn-assign-inst-${row._id}`}
+          >
+            <i className="fa-solid fa-user-plus me-1" aria-hidden="true"></i> Instructor
+          </button>
+
           {row.status !== 'ARCHIVED' && (
             <button
               type="button"
@@ -528,8 +632,20 @@ export default function ProgramsPage() {
               type="button"
               className="btn btn-outline-success btn-sm"
               onClick={() => setConfirmAction({ type: 'PUBLISH', program: row })}
+              title="Publish program and open applications"
             >
-              Publish
+              <i className="fa-solid fa-rocket me-1" aria-hidden="true"></i> Publish
+            </button>
+          )}
+
+          {(row.status === 'ACTIVE' || row.status === 'PUBLISHED') && (
+            <button
+              type="button"
+              className="btn btn-outline-warning btn-sm"
+              onClick={() => setConfirmAction({ type: 'UNPUBLISH', program: row })}
+              title="Pause admissions and return program to Draft"
+            >
+              <i className="fa-solid fa-pause me-1" aria-hidden="true"></i> Pause
             </button>
           )}
 
@@ -669,6 +785,21 @@ export default function ProgramsPage() {
                 },
                 options: STATUS_OPTIONS,
               },
+              {
+                name: 'instructor',
+                value: instructorFilter,
+                onChange: (val) => {
+                  setInstructorFilter(val);
+                  setPage(1);
+                },
+                options: [
+                  { value: '', label: 'All Instructors' },
+                  ...instructors.map((ins) => ({
+                    value: ins.user?._id || ins.user?.id || ins.userId || ins._id || ins.id,
+                    label: ins.user?.fullName || ins.fullName || ins.name || 'Instructor',
+                  })),
+                ],
+              },
             ]}
           />
         </div>
@@ -804,7 +935,7 @@ export default function ProgramsPage() {
           </div>
 
           <div className="row g-3 mb-3">
-            <div className="col-sm-4">
+            <div className="col-sm-6">
               <label className="form-label fw-semibold" style={{ fontSize: '0.85rem' }}>
                 Capacity (Seats) <span className="text-danger">*</span>
               </label>
@@ -820,7 +951,7 @@ export default function ProgramsPage() {
               />
             </div>
 
-            <div className="col-sm-4">
+            <div className="col-sm-6">
               <label className="form-label fw-semibold" style={{ fontSize: '0.85rem' }}>
                 Price (EGP)
               </label>
@@ -834,7 +965,31 @@ export default function ProgramsPage() {
               />
             </div>
 
-            <div className="col-sm-4">
+          </div>
+
+          <div className="row g-3 mb-3">
+            <div className="col-sm-6">
+              <label className="form-label fw-semibold" style={{ fontSize: '0.85rem' }}>
+                Application & Enrollment Status <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select"
+                value={formData.status || 'DRAFT'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              >
+                <option value="DRAFT">Draft — Applications Closed (In Preparation)</option>
+                <option value="ACTIVE">Active — Applications Open (Accepting Enrollees)</option>
+                <option value="PUBLISHED">Published — Applications Open (Accepting Enrollees)</option>
+                {modalMode === 'edit' && <option value="ARCHIVED">Archived — Permanently Closed</option>}
+              </select>
+              <div className="form-text" style={{ fontSize: '0.78rem' }}>
+                {formData.status === 'ACTIVE' || formData.status === 'PUBLISHED'
+                  ? 'Active / Published programs allow students to view tuition and submit enrollment applications.'
+                  : 'Draft programs keep applications closed to students while curriculum and schedules are prepared.'}
+              </div>
+            </div>
+
+            <div className="col-sm-6">
               <label className="form-label fw-semibold" style={{ fontSize: '0.85rem' }}>
                 Delivery Format
               </label>
@@ -849,6 +1004,37 @@ export default function ProgramsPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold" style={{ fontSize: '0.85rem' }}>
+              Assigned Course Instructor
+            </label>
+            <select
+              className="form-select"
+              value={formData.assignedInstructor || ''}
+              onChange={(e) => setFormData({ ...formData, assignedInstructor: e.target.value })}
+            >
+              <option value="">— Select Instructor (Optional / TBD) —</option>
+              {instructors
+                .filter((inst) => {
+                  const instDiv = inst.user?.division || inst.division;
+                  return isSuperAdmin || !instDiv || instDiv === formData.division;
+                })
+                .map((inst) => {
+                  const instId = inst.user?._id || inst.user?.id || inst.userId || inst._id || inst.id;
+                  const instName = inst.user?.fullName || inst.fullName || inst.name || 'Instructor';
+                  const instEmail = inst.user?.email || inst.email || '';
+                  return (
+                    <option key={instId} value={instId}>
+                      {instName} ({instEmail}) {inst.title ? `— ${inst.title}` : ''}
+                    </option>
+                  );
+                })}
+            </select>
+            <div className="form-text" style={{ fontSize: '0.78rem' }}>
+              Authoritative instructor assigned to lead this course and receive enrolled student cohorts.
             </div>
           </div>
 
@@ -1153,13 +1339,19 @@ export default function ProgramsPage() {
         ) : null}
       </Modal>
 
-      {/* CONFIRM STATUS ACTION MODAL (PUBLISH OR ARCHIVE) */}
+      {/* CONFIRM STATUS ACTION MODAL (PUBLISH, PAUSE OR ARCHIVE) */}
       {confirmAction && (
         <ConfirmModal
           isOpen={!!confirmAction}
           onClose={() => !actionLoading && setConfirmAction(null)}
           onConfirm={handleConfirmAction}
-          title={confirmAction.type === 'PUBLISH' ? 'Publish Program' : 'Archive Program'}
+          title={
+            confirmAction.type === 'PUBLISH'
+              ? 'Publish Program'
+              : confirmAction.type === 'UNPUBLISH'
+              ? 'Pause Admissions (Return to Draft)'
+              : 'Archive Program'
+          }
           message={
             confirmAction.type === 'PUBLISH' ? (
               <>
@@ -1168,6 +1360,14 @@ export default function ProgramsPage() {
                 <span className="text-success mt-2 d-block" style={{ fontSize: '0.85rem' }}>
                   This will transition status from <strong>Draft</strong> to <strong>Active</strong>, allowing
                   students to discover and submit applications for this program.
+                </span>
+              </>
+            ) : confirmAction.type === 'UNPUBLISH' ? (
+              <>
+                Are you sure you want to pause admissions for <strong>{confirmAction.program.title}</strong>?
+                <br />
+                <span className="text-warning mt-2 d-block" style={{ fontSize: '0.85rem' }}>
+                  This will return the program status to <strong>Draft</strong>, closing student applications until published again.
                 </span>
               </>
             ) : (
@@ -1182,10 +1382,28 @@ export default function ProgramsPage() {
               </>
             )
           }
-          confirmText={confirmAction.type === 'PUBLISH' ? 'Publish Program' : 'Archive Program'}
-          confirmTone={confirmAction.type === 'PUBLISH' ? 'success' : 'danger'}
+          confirmText={
+            confirmAction.type === 'PUBLISH'
+              ? 'Publish Program'
+              : confirmAction.type === 'UNPUBLISH'
+              ? 'Pause Admissions'
+              : 'Archive Program'
+          }
+          confirmTone={
+            confirmAction.type === 'PUBLISH'
+              ? 'success'
+              : confirmAction.type === 'UNPUBLISH'
+              ? 'warning'
+              : 'danger'
+          }
           loading={actionLoading}
-          icon={confirmAction.type === 'PUBLISH' ? 'fa-rocket' : 'fa-box-archive'}
+          icon={
+            confirmAction.type === 'PUBLISH'
+              ? 'fa-rocket'
+              : confirmAction.type === 'UNPUBLISH'
+              ? 'fa-pause'
+              : 'fa-box-archive'
+          }
         />
       )}
 
@@ -1214,6 +1432,113 @@ export default function ProgramsPage() {
           loading={deleteLoading}
           icon="fa-trash-can"
         />
+      )}
+
+      {/* ASSIGN / REASSIGN INSTRUCTOR MODAL */}
+      {assigningProgram && (
+        <Modal
+          isOpen={!!assigningProgram}
+          onClose={() => !assignLoading && setAssigningProgram(null)}
+          title={`Assign Instructor — ${assigningProgram.title}`}
+          subtitle="Authoritative course instructor assignment across Student, Instructor, and Admin portals."
+          size="md"
+        >
+          <form onSubmit={handleAssignInstructorSubmit}>
+            <div className="alert alert-info py-2 px-3 mb-3" style={{ fontSize: '0.85rem' }}>
+              <i className="fa-solid fa-circle-info me-1"></i>
+              Assigning or reassigning an instructor synchronizes the course curriculum and active student rosters across all portals.
+            </div>
+
+            {assignError && (
+              <div className="alert alert-danger py-2 px-3 mb-3" style={{ fontSize: '0.84rem' }}>
+                <i className="fa-solid fa-triangle-exclamation me-1"></i> {assignError}
+              </div>
+            )}
+
+            {assignSuccess && (
+              <div className="alert alert-success py-2 px-3 mb-3" style={{ fontSize: '0.84rem' }}>
+                <i className="fa-solid fa-circle-check me-1"></i> {assignSuccess}
+              </div>
+            )}
+
+            <div className="mb-3">
+              <label htmlFor="assign-inst-select" className="form-label small fw-semibold">
+                Select Instructor *
+              </label>
+              <select
+                id="assign-inst-select"
+                className="form-select form-select-sm"
+                value={selectedInstructorId}
+                onChange={(e) => setSelectedInstructorId(e.target.value)}
+                disabled={assignLoading}
+                required
+              >
+                <option value="">— Choose Instructor —</option>
+                {instructors
+                  .filter((inst) => {
+                    const instDiv = inst.user?.division || inst.division;
+                    return isSuperAdmin || !instDiv || instDiv === assigningProgram.division;
+                  })
+                  .map((inst) => {
+                    const instId = inst.user?._id || inst.user?.id || inst.userId || inst._id || inst.id;
+                    const instName = inst.user?.fullName || inst.fullName || inst.name || 'Instructor';
+                    const instEmail = inst.user?.email || inst.email || '';
+                    return (
+                      <option key={instId} value={instId}>
+                        {instName} ({instEmail}) {inst.title ? `— ${inst.title}` : ''}
+                      </option>
+                    );
+                  })}
+              </select>
+              <div className="form-text" style={{ fontSize: '0.78rem' }}>
+                Eligible instructors for the <strong>{assigningProgram.division}</strong> division.
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label htmlFor="assign-reason" className="form-label small fw-semibold">
+                Assignment Reason / Notes
+              </label>
+              <input
+                type="text"
+                id="assign-reason"
+                className="form-control form-control-sm"
+                placeholder="e.g. Lead faculty assignment, Semester rotation"
+                value={assignReason}
+                onChange={(e) => setAssignReason(e.target.value)}
+                disabled={assignLoading}
+              />
+            </div>
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setAssigningProgram(null)}
+                disabled={assignLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary btn-sm d-flex align-items-center gap-1"
+                disabled={assignLoading || !selectedInstructorId}
+                id="btn-confirm-assign-instructor"
+              >
+                {assignLoading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-user-check me-1" aria-hidden="true"></i> Confirm Assignment
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* PHASE 9: PROGRAM ENROLLMENTS & CAPACITY MODAL */}

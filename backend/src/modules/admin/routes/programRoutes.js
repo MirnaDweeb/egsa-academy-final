@@ -4,6 +4,8 @@ const {
   listPrograms,
   getProgramById,
   updateProgram,
+  assignInstructorToProgram,
+  getProgramEnrollments,
   updateProgramStatus,
   deleteOrArchiveProgram,
 } = require('../controllers/programController');
@@ -22,10 +24,13 @@ const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.PRE_UNIVERSITY_ADMIN, ROLES.UNIVER
 // scope is still applied so division admins only see their own division's programs.
 router.get('/', protect, resolveDivisionScope, listPrograms);
 router.get('/:id', protect, resolveDivisionScope, getProgramById);
+router.get('/:id/enrollments', protect, resolveDivisionScope, requirePermission(PERMISSIONS.ENROLLMENTS_VIEW), getProgramEnrollments);
 
-// Only admins can create/update/archive programs.
+// Only admins can create/update/archive programs or assign instructors.
 router.post('/', protect, authorize(...ADMIN_ROLES), requirePermission(PERMISSIONS.PROGRAMS_MANAGE), resolveDivisionScope, createProgram);
 router.put('/:id', protect, authorize(...ADMIN_ROLES), requirePermission(PERMISSIONS.PROGRAMS_MANAGE), resolveDivisionScope, updateProgram);
+router.post('/:id/assign-instructor', protect, authorize(...ADMIN_ROLES), requirePermission(PERMISSIONS.PROGRAMS_MANAGE), resolveDivisionScope, assignInstructorToProgram);
+router.put('/:id/instructor', protect, authorize(...ADMIN_ROLES), requirePermission(PERMISSIONS.PROGRAMS_MANAGE), resolveDivisionScope, assignInstructorToProgram);
 router.patch('/:id/status', protect, authorize(...ADMIN_ROLES), requirePermission(PERMISSIONS.PROGRAMS_MANAGE), resolveDivisionScope, updateProgramStatus);
 router.delete('/:id', protect, authorize(...ADMIN_ROLES), requirePermission(PERMISSIONS.PROGRAMS_MANAGE), resolveDivisionScope, deleteOrArchiveProgram);
 

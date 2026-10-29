@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationBell from './NotificationBell';
 import styles from './Navbar.module.css';
@@ -21,24 +21,55 @@ const DIVISION_OPTIONS = [
   },
 ];
 
+const ROUTE_TITLES = {
+  programs: 'Programs & Courses',
+  cohorts: 'Cohorts & Delivery',
+  sessions: 'Live Session Monitoring',
+  assessments: 'Assessments & Exams',
+  applications: 'Student Applications',
+  students: 'Students Directory',
+  instructors: 'Faculty Instructors',
+  payments: 'Manual Payment Reviews',
+  certificates: 'Issued Certificates',
+  feedback: 'Student Feedback',
+  messages: 'Support & Messaging',
+  notifications: 'Broadcast Notifications',
+  reports: 'Reports & Analytics',
+  'audit-logs': 'Security Audit Logs',
+  administrators: 'Platform Administrators',
+};
+
+/**
+ * Egyptian Space Agency Academy — Institutional Admin Header
+ * Provides:
+ * - Mobile navigation drawer toggle
+ * - Desktop sidebar compact rail toggle
+ * - Operational breadcrumbs indicating current hierarchy
+ * - Division Workspace switcher with Super Admin dropdown and role-based isolation
+ * - Real-time notification center
+ * - Administrator profile account menu
+ */
 export default function Navbar({
   onToggleMobileMenu,
   isMobileMenuOpen,
+  isSidebarCollapsed,
+  onToggleSidebarCollapse,
   workspaceSwitcher,
 }) {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
-  // Relocated Workspace Switcher dropdown state
+  // Division Workspace Switcher dropdown state
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const workspaceRef = useRef(null);
 
-  // Compact Profile Menu state
+  // Profile Menu state
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const profileBtnRef = useRef(null);
 
-  // Close workspace dropdown on click outside
+  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (workspaceRef.current && !workspaceRef.current.contains(event.target)) {
@@ -56,18 +87,14 @@ export default function Navbar({
     };
   }, [isWorkspaceOpen, isProfileOpen]);
 
-  // Handle escape key to close workspace and profile dropdowns
+  // Handle escape key to close dropdowns
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (isWorkspaceOpen) {
-          setIsWorkspaceOpen(false);
-        }
+        if (isWorkspaceOpen) setIsWorkspaceOpen(false);
         if (isProfileOpen) {
           setIsProfileOpen(false);
-          if (profileBtnRef.current) {
-            profileBtnRef.current.focus();
-          }
+          if (profileBtnRef.current) profileBtnRef.current.focus();
         }
       }
     };
@@ -78,6 +105,12 @@ export default function Navbar({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isWorkspaceOpen, isProfileOpen]);
+
+  // Close dropdowns on route changes
+  useEffect(() => {
+    setIsWorkspaceOpen(false);
+    setIsProfileOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -94,11 +127,41 @@ export default function Navbar({
       }
     : null;
 
+  // Compute breadcrumbs dynamically from current pathname
+  const breadcrumbData = useMemo(() => {
+    const path = location.pathname;
+    const parts = path.split('/').filter(Boolean);
+
+    // E.g. /admin -> parts: ['admin']
+    // E.g. /admin/administrators -> parts: ['admin', 'administrators']
+    // E.g. /admin/PRE_UNIVERSITY/programs -> parts: ['admin', 'PRE_UNIVERSITY', 'programs']
+    const isGateway = path === '/admin';
+    const isAdmins = path === '/admin/administrators';
+    const divisionPart = parts[1] === 'PRE_UNIVERSITY' || parts[1] === 'UNIVERSITY' ? parts[1] : null;
+    const subRoutePart = divisionPart ? parts[2] : (parts[1] !== 'PRE_UNIVERSITY' && parts[1] !== 'UNIVERSITY' ? parts[1] : null);
+
+    let screenTitle = 'Division Dashboard';
+    if (isGateway) screenTitle = 'Administration Gateway';
+    else if (isAdmins) screenTitle = 'Platform Administrators';
+    else if (subRoutePart && ROUTE_TITLES[subRoutePart]) {
+      screenTitle = ROUTE_TITLES[subRoutePart];
+    } else if (subRoutePart) {
+      screenTitle = subRoutePart.charAt(0).toUpperCase() + subRoutePart.slice(1);
+    }
+
+    return {
+      isGateway,
+      divisionPart,
+      screenTitle,
+    };
+  }, [location.pathname]);
+
   return (
     <header className={styles.navHeader}>
-      <nav className={styles.nav} aria-label="Main Navigation">
+      <nav className={styles.nav} aria-label="Administration Header">
+        {/* Left Area: Toggles & Operational Breadcrumbs */}
         <div className={styles.left}>
-          {/* Mobile hamburger menu toggle button */}
+          {/* Mobile Navigation Drawer Toggle */}
           {user && onToggleMobileMenu && (
             <button
               type="button"
@@ -108,59 +171,81 @@ export default function Navbar({
               aria-label={isMobileMenuOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
               aria-expanded={isMobileMenuOpen}
             >
-              <i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'}`} aria-hidden="true"></i>
+              <i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'}`} aria-hidden="true" />
             </button>
           )}
 
-          <a href="/" className={styles.brand} aria-label="Egyptian Space Agency Academy Home">
-            <img
-              src="/egsa-logo.png"
-              alt="Egyptian Space Agency Academy Logo"
-              className={styles.brandLogoImg}
-            />
-            <span className={styles.brandText}>
-              Egyptian Space Agency
-              <small>Academy Training Management Platform</small>
+          {/* Desktop Compact Sidebar Rail Toggle */}
+          {user && onToggleSidebarCollapse && (
+            <button
+              type="button"
+              className={styles.desktopToggle}
+              onClick={onToggleSidebarCollapse}
+              title={isSidebarCollapsed ? 'Expand Sidebar (Ctrl+B)' : 'Collapse Sidebar (Ctrl+B)'}
+              aria-label={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <i
+                className={`fa-solid ${isSidebarCollapsed ? 'fa-angles-right' : 'fa-bars-staggered'}`}
+                aria-hidden="true"
+              />
+            </button>
+          )}
+
+          {/* Operational Breadcrumbs Hierarchy */}
+          <div className={styles.breadcrumbs} aria-label="Breadcrumb">
+            <Link
+              to={workspaceSwitcher?.isSuperAdmin ? '/admin' : `/admin/${workspaceSwitcher?.activeDivision || ''}`}
+              className={styles.crumbLink}
+              title="EGSA Academy Governance"
+            >
+              <i className="fa-solid fa-server me-1 text-muted" aria-hidden="true" />
+              <span>Academy</span>
+            </Link>
+
+            {breadcrumbData.divisionPart && (
+              <>
+                <i className={`fa-solid fa-chevron-right ${styles.crumbSeparator}`} aria-hidden="true" />
+                <span
+                  className={`${styles.crumbBadge} ${
+                    breadcrumbData.divisionPart === 'PRE_UNIVERSITY'
+                      ? styles.crumbBadgePreUni
+                      : styles.crumbBadgeUni
+                  }`}
+                >
+                  <i
+                    className={`fa-solid ${
+                      breadcrumbData.divisionPart === 'PRE_UNIVERSITY' ? 'fa-school' : 'fa-graduation-cap'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {breadcrumbData.divisionPart === 'PRE_UNIVERSITY' ? 'Pre-University' : 'University'}
+                  </span>
+                </span>
+              </>
+            )}
+
+            <i className={`fa-solid fa-chevron-right ${styles.crumbSeparator}`} aria-hidden="true" />
+            <span className={styles.crumbCurrent} aria-current="page">
+              {breadcrumbData.screenTitle}
             </span>
-          </a>
+          </div>
         </div>
 
+        {/* Right Area: Workspace Switcher, Notifications, Profile Menu */}
         {user && (
           <div className={styles.right}>
-            {user.role === 'STUDENT' && (
-              <div className={styles.navShortcuts}>
-                <Link to="/student/cohorts" className="btn btn-sm btn-outline-info text-white border-white-50">
-                  <i className="fa-solid fa-graduation-cap me-1" aria-hidden="true"></i>
-                  <span className="d-none d-sm-inline">My Classes</span>
-                </Link>
-                <Link to="/student/invoices" className="btn btn-sm btn-outline-info text-white border-white-50">
-                  <i className="fa-solid fa-file-invoice me-1" aria-hidden="true"></i>
-                  <span className="d-none d-sm-inline">My Invoices</span>
-                </Link>
-                <Link to="/student/certificates" className="btn btn-sm btn-outline-info text-white border-white-50">
-                  <i className="fa-solid fa-award me-1" aria-hidden="true"></i>
-                  <span className="d-none d-sm-inline">My Certificates</span>
-                </Link>
-              </div>
-            )}
-
-            {user.role === 'INSTRUCTOR' && (
-              <div className={styles.navShortcuts}>
-                <Link to="/instructor/cohorts" className="btn btn-sm btn-outline-info text-white border-white-50">
-                  <i className="fa-solid fa-chalkboard-user me-1" aria-hidden="true"></i>
-                  <span className="d-none d-sm-inline">My Cohorts</span>
-                </Link>
-              </div>
-            )}
-
-            {/* Division Workspace Indicator (Admin only) */}
+            {/* Division Workspace Switcher (Admin exclusive) */}
             {workspaceSwitcher && (
               <div className={styles.workspaceIndicatorWrap} ref={workspaceRef}>
                 {workspaceSwitcher.isGateway ? (
                   <>
                     <span className={styles.workspaceLabel}>Platform Mode</span>
-                    <div className={styles.workspaceStaticGateway} title="Administration Gateway: Select division workspace">
-                      <i className="fa-solid fa-server" aria-hidden="true"></i>
+                    <div
+                      className={styles.workspaceStaticGateway}
+                      title="Administration Gateway: Super Admin Platform Mode"
+                    >
+                      <i className="fa-solid fa-server text-info" aria-hidden="true" />
                       <span className={styles.workspaceName}>Administration Gateway</span>
                     </div>
                   </>
@@ -178,14 +263,14 @@ export default function Navbar({
                         aria-label={`Current Workspace: ${currentDivisionMeta.name}. Click to switch division.`}
                         title="Switch Academy Division Workspace"
                       >
-                        <i className={`fa-solid ${currentDivisionMeta.icon} ${styles.workspaceIcon}`} aria-hidden="true"></i>
+                        <i className={`fa-solid ${currentDivisionMeta.icon} ${styles.workspaceIcon}`} aria-hidden="true" />
                         <span className={styles.workspaceName}>{currentDivisionMeta.name}</span>
                         <i
                           className={`fa-solid fa-chevron-down ${styles.workspaceChevron} ${
                             isWorkspaceOpen ? styles.workspaceChevronOpen : ''
                           }`}
                           aria-hidden="true"
-                        ></i>
+                        />
                       </button>
                     ) : (
                       <div
@@ -193,12 +278,12 @@ export default function Navbar({
                         title={`Assigned Workspace: ${currentDivisionMeta.name}`}
                         aria-label={`Current Workspace: ${currentDivisionMeta.name}`}
                       >
-                        <i className={`fa-solid ${currentDivisionMeta.icon} ${styles.workspaceIcon}`} aria-hidden="true"></i>
+                        <i className={`fa-solid ${currentDivisionMeta.icon} ${styles.workspaceIcon}`} aria-hidden="true" />
                         <span className={styles.workspaceName}>{currentDivisionMeta.name}</span>
                       </div>
                     )}
 
-                    {/* Dropdown for Super Admin */}
+                    {/* Division Switcher Dropdown (Super Admin) */}
                     {workspaceSwitcher.isSuperAdmin && isWorkspaceOpen && (
                       <div
                         className={styles.workspaceDropdown}
@@ -221,10 +306,10 @@ export default function Navbar({
                               }}
                             >
                               <div className={styles.optionHeader}>
-                                <i className={`fa-solid ${div.icon} ${styles.optionIcon} me-2`} aria-hidden="true"></i>
+                                <i className={`fa-solid ${div.icon} ${styles.optionIcon} me-2`} aria-hidden="true" />
                                 <span className={styles.optionTitle}>{div.name}</span>
                                 {isActive && (
-                                  <i className="fa-solid fa-check ms-auto text-primary" aria-hidden="true"></i>
+                                  <i className="fa-solid fa-check ms-auto text-info" aria-hidden="true" />
                                 )}
                               </div>
                               <div className={styles.optionDesc}>{div.desc}</div>
@@ -232,7 +317,7 @@ export default function Navbar({
                           );
                         })}
 
-                        <div className={styles.dropdownDivider} aria-hidden="true"></div>
+                        <div className={styles.dropdownDivider} aria-hidden="true" />
 
                         <button
                           type="button"
@@ -248,7 +333,7 @@ export default function Navbar({
                           }}
                         >
                           <div className={styles.optionHeader}>
-                            <i className="fa-solid fa-server me-2" aria-hidden="true"></i>
+                            <i className="fa-solid fa-server me-2" aria-hidden="true" />
                             <span className={styles.optionTitle}>Administration Gateway</span>
                           </div>
                           <div className={styles.optionDesc}>Exit workspace to division selection</div>
@@ -260,11 +345,12 @@ export default function Navbar({
               </div>
             )}
 
+            {/* Notification Center */}
             <div className={styles.bellWrap}>
               <NotificationBell />
             </div>
 
-            {/* Compact Profile Account Menu */}
+            {/* Administrator Profile Account Menu */}
             <div className={styles.profileMenuWrap} ref={profileMenuRef}>
               <button
                 ref={profileBtnRef}
@@ -278,10 +364,13 @@ export default function Navbar({
                 title={`Account: ${user.fullName} (${user.role.replace(/_/g, ' ')})`}
               >
                 <div className={styles.profileAvatarIcon}>
-                  <i className="fa-solid fa-user" aria-hidden="true" />
+                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : <i className="fa-solid fa-user" />}
                 </div>
+                <span className={styles.profileLabelName}>{user.fullName || 'Admin'}</span>
                 <i
-                  className={`fa-solid fa-chevron-down ${styles.profileChevron} ${isProfileOpen ? styles.chevronRotated : ''}`}
+                  className={`fa-solid fa-chevron-down ${styles.profileChevron} ${
+                    isProfileOpen ? styles.chevronRotated : ''
+                  }`}
                   aria-hidden="true"
                 />
               </button>

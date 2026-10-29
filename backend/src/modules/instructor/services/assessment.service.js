@@ -7,7 +7,9 @@ const activity = require('./activity.service');
 let unifiedSyncService;
 try {
   unifiedSyncService = require('../../integration/unifiedSyncService');
-} catch (_) {}
+} catch (err) {
+  console.warn('[ASSESSMENT SERVICE] Failed to load unifiedSyncService:', err);
+}
 
 const A_FIELDS = ['title', 'description', 'instructions', 'startDate', 'dueDate', 'attachments', 'gradingConfig'];
 function checkDates(a) { if (a.startDate && a.dueDate && new Date(a.dueDate) < new Date(a.startDate)) throw ApiError.badRequest('Due date must be after start date'); }
@@ -36,6 +38,13 @@ async function publish(instructorId, id) {
   a.status = ASSESSMENT_STATUS.PUBLISHED; a.publishedAt = new Date();
   await a.save();
   await activity.log(instructorId, 'assessment.published', 'Assessment', a._id, `Published "${a.title}"`);
+  if (unifiedSyncService?.syncAssessmentFromInstructor) {
+    const syncRes = await unifiedSyncService.syncAssessmentFromInstructor({ instructorId, assessmentDoc: a })
+      .catch((err) => { console.warn('[INSTRUCTOR ASSESS] Failed to sync published assessment to student portal:', err); return null; });
+    console.log('[PUBLISH SYNC RESULT]:', syncRes);
+  } else {
+    console.warn('[PUBLISH WARNING] unifiedSyncService.syncAssessmentFromInstructor not available!');
+  }
   return a;
 }
 
@@ -123,7 +132,7 @@ async function grade(instructorId, id, body) {
   s.status = SUBMISSION_STATUS.EVALUATED; await s.save();
   await activity.log(instructorId, 'submission.graded', 'AssessmentSubmission', s._id, `Saved evaluation for "${assessment.title}"`);
   if (unifiedSyncService?.syncGradeFromInstructor) {
-    unifiedSyncService.syncGradeFromInstructor({ submissionId: s._id, resultDoc: doc })
+    await unifiedSyncService.syncGradeFromInstructor({ submissionId: s._id, resultDoc: doc })
       .catch((err) => console.warn('[INSTRUCTOR ASSESS] Failed to sync grade to student portal:', err.message));
   }
   return doc;
@@ -138,7 +147,7 @@ async function publishResult(instructorId, id) {
   s.status = SUBMISSION_STATUS.RESULT_PUBLISHED; await s.save();
   await activity.log(instructorId, 'result.published', 'AssessmentSubmission', s._id, 'Published an assessment result');
   if (unifiedSyncService?.syncGradeFromInstructor) {
-    unifiedSyncService.syncGradeFromInstructor({ submissionId: s._id, resultDoc: r })
+    await unifiedSyncService.syncGradeFromInstructor({ submissionId: s._id, resultDoc: r })
       .catch((err) => console.warn('[INSTRUCTOR ASSESS] Failed to sync published result to student portal:', err.message));
   }
   return r;

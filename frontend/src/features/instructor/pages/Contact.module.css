@@ -1,0 +1,395 @@
+/* =========================================================
+   EGSA Instructor Portal — Contact Administration (Simple & Clean)
+   ========================================================= */
+
+.contactWorkspace {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 165px);
+  min-height: 560px;
+  max-width: 1060px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chatConsole {
+  display: flex;
+  flex-direction: column;
+  background: var(--egsa-surface, #ffffff);
+  border: 1px solid var(--egsa-border, #dce5ea);
+  border-radius: var(--r-lg, 12px);
+  box-shadow: 0 4px 16px rgba(16, 30, 38, 0.05);
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Console Header */
+.consoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 1.4rem;
+  background: #ffffff;
+  border-bottom: 1px solid var(--egsa-border, #dce5ea);
+  z-index: 2;
+  gap: 1rem;
+}
+
+.headerIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.adminAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #172b36 0%, #1e7c85 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.headerText {
+  min-width: 0;
+}
+
+.channelTitle {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--egsa-dark, #101e26);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.officialBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(30, 124, 133, 0.1);
+  color: #1e7c85;
+  border: 1px solid rgba(30, 124, 133, 0.25);
+}
+
+.channelMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--egsa-muted, #526773);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.onlinePulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+.connectingPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  display: inline-block;
+}
+
+/* Message Feed */
+.messageFeed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: #fafcfd;
+}
+
+.dateSeparator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.75rem 0;
+  position: relative;
+}
+
+.dateSeparator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--egsa-border, #dce5ea);
+  z-index: 0;
+}
+
+.dateSeparator span {
+  position: relative;
+  z-index: 1;
+  background: #fafcfd;
+  padding: 0.2rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #526773;
+  border-radius: 12px;
+  border: 1px solid var(--egsa-border, #dce5ea);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Message Rows */
+.messageRow {
+  display: flex;
+  flex-direction: column;
+  max-width: 76%;
+}
+
+.messageRow.instructor {
+  align-self: flex-end;
+}
+
+.messageRow.admin {
+  align-self: flex-start;
+}
+
+.messageBubble {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  word-break: break-word;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(16, 30, 38, 0.05);
+}
+
+.messageRow.instructor .messageBubble {
+  background: #172b36;
+  color: #ffffff;
+  border-bottom-right-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.messageRow.admin .messageBubble {
+  background: #ffffff;
+  color: #101e26;
+  border: 1px solid var(--egsa-border, #dce5ea);
+  border-bottom-left-radius: 3px;
+}
+
+.messageSender {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.messageRow.instructor .messageSender {
+  color: #54bac5;
+  justify-content: flex-end;
+}
+
+.messageRow.admin .messageSender {
+  color: #1e7c85;
+}
+
+.messageText {
+  white-space: pre-wrap;
+}
+
+.messageMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  font-family: var(--font-mono, monospace);
+}
+
+.messageRow.instructor .messageMeta {
+  justify-content: flex-end;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.messageRow.admin .messageMeta {
+  justify-content: flex-start;
+  color: #6e828e;
+}
+
+.readReceipt {
+  font-size: 0.72rem;
+}
+
+/* Empty State */
+.emptyFeed {
+  margin: auto;
+  text-align: center;
+  max-width: 380px;
+  padding: 2.5rem 1.5rem;
+}
+
+.emptyFeedIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(30, 124, 133, 0.1);
+  color: #1e7c85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin: 0 auto 1rem;
+}
+
+/* Composer */
+.composer {
+  padding: 0.95rem 1.4rem;
+  background: #ffffff;
+  border-top: 1px solid var(--egsa-border, #dce5ea);
+  position: relative;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.5rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-bottom: 0.65rem;
+}
+
+.composerForm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 28px;
+  padding: 0.35rem 0.65rem 0.35rem 1.15rem;
+  transition: all 0.15s ease;
+}
+
+[dir="rtl"] .composerForm {
+  padding: 0.35rem 1.15rem 0.35rem 0.65rem;
+}
+
+.composerForm:focus-within {
+  border-color: #1e7c85;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(30, 124, 133, 0.15);
+}
+
+.textareaWrap {
+  flex: 1;
+  position: relative;
+}
+
+.textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.9rem;
+  resize: none;
+  max-height: 120px;
+  padding: 0.4rem 0;
+  color: #101e26;
+  line-height: 1.45;
+  font-family: inherit;
+}
+
+.textarea::placeholder {
+  color: #6e828e;
+  opacity: 1;
+}
+
+.sendButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #1e7c85;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(30, 124, 133, 0.25);
+}
+
+.sendButton:hover:not(:disabled) {
+  background: #165d64;
+  transform: scale(1.06);
+  box-shadow: 0 4px 10px rgba(30, 124, 133, 0.35);
+}
+
+.sendButton:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.sendButton:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .contactWorkspace {
+    height: calc(100vh - 120px);
+    max-width: 100%;
+  }
+
+  .consoleHeader {
+    padding: 0.85rem 1rem;
+  }
+
+  .messageFeed {
+    padding: 1rem;
+  }
+
+  .messageRow {
+    max-width: 88%;
+  }
+
+  .composer {
+    padding: 0.85rem 1rem;
+  }
+}

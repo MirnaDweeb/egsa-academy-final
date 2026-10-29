@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 
 const AssessmentSchema = new mongoose.Schema(
   {
+    externalAssessmentId: {
+      type: String,
+      index: true,
+    },
     title: {
       type: String,
       required: true,

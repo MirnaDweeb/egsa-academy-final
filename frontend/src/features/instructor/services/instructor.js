@@ -3,6 +3,7 @@ const B = '/instructor';
 export const instructorApi = {
   dashboard: () => get(`${B}/dashboard`),
   courses: () => get(`${B}/courses`), course: (id) => get(`${B}/courses/${id}`),
+  courseEvaluations: (id) => get(`${B}/courses/${id}/evaluations`),
   cohorts: (q) => get(`${B}/cohorts`, q), cohort: (id) => get(`${B}/cohorts/${id}`),
   cohortStudents: (id) => get(`${B}/cohorts/${id}/students`), cohortSessions: (id) => get(`${B}/cohorts/${id}/sessions`),
   cohortAttendance: (id) => get(`${B}/cohorts/${id}/attendance`), cohortAssessments: (id) => get(`${B}/cohorts/${id}/assessments`),

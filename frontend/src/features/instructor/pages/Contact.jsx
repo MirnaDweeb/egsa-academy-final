@@ -5,7 +5,22 @@ import { PageHeader } from '../components/ui.jsx';
 import { instructorApi } from '../services/instructor.js';
 import { useI18n } from '../i18n/index.jsx';
 import { useRealTimeSocket } from '../../../shared/socket/socketClient';
-import s from './messages.module.css';
+import s from './Contact.module.css';
+
+function formatDateSeparator(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return 'Today';
+  }
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function ContactPage() {
   const { conversationId } = useParams();
@@ -200,51 +215,56 @@ export default function ContactPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Governance & Support"
+        eyebrow="Governance & Faculty Support"
         title="Contact Administration"
         subtitle="Direct official communications and faculty support with EGSA Academy Administration"
       />
 
-      <div className={s.messagingContainer} data-active-chat="true" style={{ gridTemplateColumns: '1fr' }}>
+      <div className={s.contactWorkspace}>
         {/* Main: Admin Support Chat Thread */}
-        <section className={s.chatPanel} aria-label="Faculty Admin Communication Thread" style={{ borderRadius: '12px' }}>
+        <section className={s.chatConsole} aria-label="Faculty Admin Communication Thread">
           {/* Header */}
-          <div className={s.threadHeader}>
-            <div className="d-flex align-items-center gap-3">
-              <div
-                className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle shadow-sm"
-                style={{ width: '46px', height: '46px' }}
-              >
-                <i className="fa-solid fa-shield-halved fa-lg" />
+          <div className={s.consoleHeader}>
+            <div className={s.headerIdentity}>
+              <div className={s.adminAvatar} title="Egyptian Space Agency Administration">
+                <i className="fa-solid fa-shield-halved" />
               </div>
 
-              <div>
-                <div className="d-flex align-items-center gap-2">
-                  <span className="fw-bold text-dark" style={{ fontSize: '1.05rem' }}>
-                    EGSA Academy Administration & Support
-                  </span>
-                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle small px-2 py-0">
-                    Official Channel
-                  </span>
+              <div className={s.headerText}>
+                <div className={s.channelTitle}>
+                  <span>EGSA Academy Administration & Governance</span>
+                  <span className={s.officialBadge}>Official Channel</span>
                 </div>
-                <div className={s.headerSubtitle}>
-                  <span className={s.onlinePulse} />
+                <div className={s.channelMeta}>
                   <span>support@egsa.gov.eg</span>
-                  <span>· Faculty Operations & Academic Governance</span>
+                  <span>·</span>
+                  <span>Faculty Operations Desk</span>
+                  {conversation?.supportStatus && (
+                    <>
+                      <span>·</span>
+                      <span className="text-capitalize fw-semibold text-primary">
+                        Status: {conversation.supportStatus.replace('_', ' ')}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="d-flex align-items-center gap-2">
-              {connected ? (
-                <span className="badge bg-success-subtle text-success border border-success-subtle small px-2 py-1">
-                  <i className="fa-solid fa-bolt me-1" />Live Real-Time
-                </span>
-              ) : (
-                <span className="badge bg-warning-subtle text-warning border border-warning-subtle small px-2 py-1">
-                  Connecting...
-                </span>
-              )}
+              <div className={s.statusIndicator}>
+                {connected ? (
+                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 d-flex align-items-center gap-2">
+                    <span className={s.onlinePulse} />
+                    <span>Real-Time Gateway</span>
+                  </span>
+                ) : (
+                  <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 d-flex align-items-center gap-2">
+                    <span className={s.connectingPulse} />
+                    <span>Connecting...</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -257,35 +277,66 @@ export default function ContactPage() {
               </div>
             ) : messages.length === 0 ? (
               <div className={s.emptyFeed}>
-                <i className="fa-regular fa-comment-dots text-muted mb-2" style={{ fontSize: '2.5rem', opacity: 0.3 }} />
-                <h5 className="fw-semibold text-dark mb-1">No messages exchanged yet</h5>
-                <p className="small text-muted mb-0">Type below to reach EGSA Academy Administration directly.</p>
+                <div className={s.emptyFeedIcon}>
+                  <i className="fa-solid fa-comments" />
+                </div>
+                <h5 className="fw-bold text-dark mb-1">Administrative Support Channel Ready</h5>
+                <p className="small text-muted mb-0">
+                  You are connected to the official EGSA Academy Governance Desk. Type your inquiry below to initiate communications.
+                </p>
               </div>
             ) : (
               messages.map((m, idx) => {
                 const isInstructor = m.senderRole === 'instructor';
+                const showDateSep =
+                  idx === 0 ||
+                  new Date(m.createdAt).toDateString() !== new Date(messages[idx - 1].createdAt).toDateString();
+
                 return (
-                  <div
-                    key={m._id || `msg-${idx}`}
-                    className={`${s.messageRow} ${isInstructor ? s.sent : s.received}`}
-                  >
-                    <div className={s.messageBubble}>
-                      <div className={s.messageSenderRole}>
-                        {m.senderName || (isInstructor ? 'Instructor (You)' : 'EGSA Administrator')}
+                  <React.Fragment key={m._id || `msg-${idx}`}>
+                    {showDateSep && (
+                      <div className={s.dateSeparator}>
+                        <span>{formatDateSeparator(m.createdAt)}</span>
                       </div>
-                      <div className={s.messageText}>{m.body}</div>
-                      <div className={s.messageMeta}>
-                        <span>
-                          {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
-                        {isInstructor && (
-                          <span className={s.readIndicator} title={m.read ? 'Read by Admin' : 'Delivered'}>
-                            <i className={`fa-solid ${m.read ? 'fa-check-double text-info' : 'fa-check text-muted'}`} />
+                    )}
+                    <div className={`${s.messageRow} ${isInstructor ? s.instructor : s.admin}`}>
+                      <div className={s.messageBubble}>
+                        <div className={s.messageSender}>
+                          {isInstructor ? (
+                            <>
+                              <span>Instructor (You)</span>
+                              <i className="fa-solid fa-user-tie" />
+                            </>
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-building-columns text-primary" />
+                              <span>{m.senderName || 'EGSA Administrator'}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className={s.messageText}>{m.body}</div>
+                        <div className={s.messageMeta}>
+                          <span>
+                            {m.createdAt
+                              ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : ''}
                           </span>
-                        )}
+                          {isInstructor && (
+                            <span
+                              className={s.readReceipt}
+                              title={m.read ? 'Read by Administration' : 'Delivered to Gateway'}
+                            >
+                              <i
+                                className={`fa-solid ${
+                                  m.read ? 'fa-check-double text-info' : 'fa-check text-muted'
+                                }`}
+                              />
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })
             )}
@@ -295,28 +346,40 @@ export default function ContactPage() {
           {/* Composer */}
           <div className={s.composer}>
             {sendError && (
-              <div className="alert alert-danger py-1 px-2 mb-2 small d-flex align-items-center justify-content-between">
-                <span>{sendError}</span>
+              <div className={s.errorBanner}>
+                <div className="d-flex align-items-center gap-2">
+                  <i className="fa-solid fa-circle-exclamation" />
+                  <span>{sendError}</span>
+                </div>
                 <button
                   type="button"
-                  className="btn-close small"
+                  className="btn-close btn-close-sm"
                   onClick={() => setSendError(null)}
                   aria-label="Dismiss error"
                 />
               </div>
             )}
             <form onSubmit={handleSendMessage} className={s.composerForm}>
-              <textarea
-                ref={textareaRef}
-                className={s.textarea}
-                placeholder="Type your message to Academy Administration (Enter to send)..."
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={sending || loading}
-                rows={1}
-                aria-label="Message draft"
-              />
+              <div className={s.textareaWrap}>
+                <textarea
+                  ref={textareaRef}
+                  className={s.textarea}
+                  placeholder="Type your official inquiry to Academy Administration (Enter to send)..."
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={sending || loading}
+                  rows={2}
+                  aria-label="Official message draft"
+                />
+                <div className={s.composerHint}>
+                  <span>
+                    <i className="fa-solid fa-lock text-muted me-1" />
+                    Encrypted channel for official faculty governance
+                  </span>
+                  <span>Enter to send · Shift + Enter for new line</span>
+                </div>
+              </div>
               <button
                 type="submit"
                 className={s.sendButton}

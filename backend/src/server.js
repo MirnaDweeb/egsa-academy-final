@@ -19,6 +19,14 @@ async function start() {
       console.warn('[Server] Student readiness questions init warning:', initErr.message);
     }
 
+    try {
+      const { syncAuthoritativeCoursesToAdmin } = require('./modules/integration/unifiedSyncService');
+      const syncRes = await syncAuthoritativeCoursesToAdmin();
+      console.log(`[Server] Authoritative program catalog synchronized to Admin DB (${syncRes.count || 0} programs).`);
+    } catch (syncErr) {
+      console.warn('[Server] Catalog sync warning:', syncErr.message);
+    }
+
     let invoiceExpiryInterval = null;
 
     // Create unified HTTP server and attach Socket.IO

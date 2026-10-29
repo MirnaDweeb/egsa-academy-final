@@ -270,6 +270,7 @@
   display: flex;
   flex-direction: column;
   background-color: #F4F7F9;
+  color: #172B36;
 }
 
 .top {
@@ -384,6 +385,7 @@
   margin-inline: auto;
   min-width: 0;
   box-sizing: border-box;
+  color: #172B36;
 }
 
 .page {
@@ -415,8 +417,8 @@
 }
 
 .offcanvas {
-  background: var(--egsa-dark);
-  color: #cfdbe2;
+  background: #172B36 !important;
+  color: #D5E2E9 !important;
   width: 290px;
 }
 

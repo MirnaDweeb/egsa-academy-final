@@ -17,6 +17,9 @@ export const quality = [
 export const programs = [
   {
     slug: 'space-fundamentals',
+    price: 700,
+    transportationPrice: 500,
+    currency: 'EGP',
     status: 'published',
     category: 'Introductory',
     planetSkin: 'earth',
@@ -75,6 +78,9 @@ export const programs = [
   },
   {
     slug: 'space-systems',
+    price: 1600,
+    transportationPrice: 500,
+    currency: 'EGP',
     status: 'published',
     category: 'Technology',
     planetSkin: 'mars',
@@ -127,6 +133,9 @@ export const programs = [
   },
   {
     slug: 'remote-sensing',
+    price: 1200,
+    transportationPrice: 500,
+    currency: 'EGP',
     status: 'published',
     category: 'Engineering',
     planetSkin: 'neptune',
@@ -189,6 +198,9 @@ export const programs = [
   },
   {
     slug: 'satellite-ops',
+    price: 3500,
+    transportationPrice: 500,
+    currency: 'EGP',
     status: 'published',
     category: 'Technology',
     planetSkin: 'europa',
@@ -261,6 +273,9 @@ export const programs = [
   },
   {
     slug: 'gnss',
+    price: 3000,
+    transportationPrice: 500,
+    currency: 'EGP',
     status: 'published',
     category: 'Engineering',
     planetSkin: 'uranus',
@@ -343,6 +358,9 @@ export const programs = [
   },
   {
     slug: 'cybersecurity',
+    price: null,
+    transportationPrice: null,
+    currency: 'EGP',
     status: 'published',
     category: 'Technology',
     planetSkin: 'saturn',
@@ -405,6 +423,9 @@ export const programs = [
   },
   {
     slug: 'mission-design',
+    price: 4000,
+    transportationPrice: null,
+    currency: 'EGP',
     status: 'published',
     category: 'Engineering',
     planetSkin: 'mars',
@@ -477,6 +498,9 @@ export const programs = [
   },
   {
     slug: 'electronics-training-pending',
+    price: null,
+    transportationPrice: null,
+    currency: 'EGP',
     status: 'draft',
     category: 'Electronics',
     planetSkin: 'neptune',
@@ -586,3 +610,69 @@ export const pressGuidelines = {
   officialPortalNews: 'https://egsa.gov.eg/activities/Media/News'
 };
 
+
+/**
+ * Helper to extract standardized pricing information for public course display.
+ * Handles single price, tiered transportation price, free courses, and unpriced/pending courses.
+ */
+export function getCoursePricing(course) {
+  if (!course) {
+    return {
+      hasPrice: false,
+      isFree: false,
+      baseFeeText: 'Price unavailable',
+      hasTransportation: false,
+      transportFeeText: null,
+      currency: 'EGP'
+    };
+  }
+
+  const currency = course.currency || 'EGP';
+  const isFree = course.isFree === true || course.price === 0;
+
+  if (isFree) {
+    return {
+      hasPrice: true,
+      isFree: true,
+      baseFeeText: 'Free',
+      hasTransportation: false,
+      transportFeeText: null,
+      currency
+    };
+  }
+
+  const rawBase = course.price != null ? Number(course.price) : null;
+  const hasBasePrice = rawBase !== null && !isNaN(rawBase);
+
+  if (!hasBasePrice) {
+    return {
+      hasPrice: false,
+      isFree: false,
+      baseFeeText: 'Price unavailable',
+      hasTransportation: false,
+      transportFeeText: null,
+      currency
+    };
+  }
+
+  const baseFeeText = `${rawBase.toLocaleString('en-US')} ${currency}`;
+
+  let transportTotal = null;
+  if (course.priceWithTransportation != null && !isNaN(Number(course.priceWithTransportation))) {
+    transportTotal = Number(course.priceWithTransportation);
+  } else if (course.transportationPrice != null && !isNaN(Number(course.transportationPrice)) && Number(course.transportationPrice) > 0) {
+    transportTotal = rawBase + Number(course.transportationPrice);
+  }
+
+  const hasTransportation = transportTotal !== null && transportTotal > rawBase;
+  const transportFeeText = hasTransportation ? `${transportTotal.toLocaleString('en-US')} ${currency}` : null;
+
+  return {
+    hasPrice: true,
+    isFree: false,
+    baseFeeText,
+    hasTransportation,
+    transportFeeText,
+    currency
+  };
+}

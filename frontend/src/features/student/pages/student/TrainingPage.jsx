@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { enrollmentService, applicationService, notificationService } from '../../services/cycleServices';
 import {
   attendanceService,
@@ -47,9 +47,28 @@ export default function TrainingPage() {
   const [notifications, setNotifications] = useState([]);
 
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState(null);
+  const navigate = useNavigate();
   const [showCockpit, setShowCockpit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [workspaceNotice, setWorkspaceNotice] = useState(null);
+
+  // Safe Program Navigation with Fallback
+  const handleGoToProgram = (program, course) => {
+    const courseId = course?._id || course?.id || program?.courseId || program?.course || program?.id;
+    if (!courseId) {
+      setWorkspaceNotice({
+        title: course?.title || 'Program Workspace',
+        message: 'Program workspace is being prepared. Opening course materials...',
+      });
+      setTimeout(() => {
+        setWorkspaceNotice(null);
+        navigate('/student/learning-hub');
+      }, 1800);
+      return;
+    }
+    navigate(`/portal/training/${courseId}`);
+  };
 
   // QR Modal State
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
@@ -526,6 +545,13 @@ export default function TrainingPage() {
                         {course.deliveryMode}
                       </span>
                     )}
+                  
+                    {course.instructor && course.instructor !== 'TBD' && (
+                      <span className="program-meta-item" data-testid={`training-instructor-${course._id || program.id}`}>
+                        <i className="fa-solid fa-chalkboard-user"></i>
+                        {course.instructor}
+                      </span>
+                    )}
                   </div>
 
                   {/* State A: In Progress / Running */}
@@ -595,23 +621,24 @@ export default function TrainingPage() {
 
                 {/* Footer Actions */}
                 <div className="program-card-footer">
-                  {/* State A Footer */}
+                  {/* State A Footer: Single Primary Action + Subtle Secondary */}
                   {(program.lifecycleState === 'IN_PROGRESS' || program.lifecycleState === 'UPCOMING') && (
-                    <>
+                    <div className="d-flex align-items-center justify-content-between w-100 gap-2">
+                      <Link
+                        to={`/student/media?courseId=${course?._id || course?.id || ''}`}
+                        className="btn-card-outline text-decoration-none"
+                        title="View Course Materials"
+                      >
+                        <i className="fa-solid fa-book-open me-1"></i> View Materials
+                      </Link>
                       <button
                         type="button"
-                        className="btn-card-outline"
-                        onClick={() => {
-                          setSelectedEnrollmentId(program.id);
-                          setShowCockpit(true);
-                        }}
+                        className="btn-card-primary"
+                        onClick={() => handleGoToProgram(program, course)}
                       >
-                        <i className="fa-solid fa-gauge-high"></i> Open Cockpit
+                        <i className="fa-solid fa-arrow-right-to-bracket me-1"></i> Go to Program
                       </button>
-                      <Link to="/student/media" className="btn-card-primary">
-                        <i className="fa-solid fa-book-open"></i> View Materials
-                      </Link>
-                    </>
+                    </div>
                   )}
 
                   {/* State B Footer */}
@@ -794,6 +821,31 @@ export default function TrainingPage() {
         onSuccess={() => loadAllTrainingData()}
         initialSession={selectedSessionForQR}
       />
+
+      {/* Safety Fallback Toast / Notice */}
+      {workspaceNotice && (
+        <div
+          className="position-fixed bottom-0 end-0 p-3"
+          style={{ zIndex: 1080 }}
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="toast show bg-dark text-white border-0 shadow-lg rounded-3 p-2">
+            <div className="d-flex align-items-center p-2">
+              <i className="fa-solid fa-satellite text-info fs-4 me-3"></i>
+              <div className="flex-grow-1">
+                <div className="fw-bold small text-info">{workspaceNotice.title}</div>
+                <div className="small opacity-90">{workspaceNotice.message}</div>
+              </div>
+              <button
+                type="button"
+                className="btn-close btn-close-white ms-2"
+                onClick={() => setWorkspaceNotice(null)}
+              ></button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,4 +9,5 @@ module.exports = conn.models.Course || conn.model('Course', new Schema({
   description: { type: String, trim: true },
   durationWeeks: { type: Number, min: 0 },
   status: { type: String, enum: Object.values(COURSE_STATUS), default: COURSE_STATUS.ACTIVE },
+  assignedInstructor: { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true }));

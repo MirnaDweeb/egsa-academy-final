@@ -47,8 +47,11 @@ async function submitEvaluation(req, res, next) {
       throw new AppError('You must have an active or completed enrollment in this course to submit an evaluation.', 403);
     }
 
-    // Existing evaluation check for agency status
+    // Existing evaluation check for immutability
     const existing = await Evaluation.findOne({ student: req.user._id, course: courseId });
+    if (existing && existing.courseFeedbackCompleted) {
+      throw new AppError('Course and instructor feedback has already been submitted and is final. Modifications are not permitted.', 409);
+    }
     const isAgencyDone = Boolean(existing?.agencyFeedbackCompleted);
 
     const evaluation = await Evaluation.findOneAndUpdate(
@@ -179,6 +182,9 @@ async function submitAgencyEvaluation(req, res, next) {
     }
 
     const existing = await Evaluation.findOne({ student: req.user._id, course: courseId });
+    if (existing && existing.agencyFeedbackCompleted) {
+      throw new AppError('Egyptian Space Agency experience feedback has already been submitted and is final. Modifications are not permitted.', 409);
+    }
     const isCourseDone = Boolean(existing?.courseFeedbackCompleted || existing?.ratings?.content);
 
     const evaluation = await Evaluation.findOneAndUpdate(
@@ -301,7 +307,7 @@ async function getEvaluationStatusForCourse(req, res, next) {
 async function getMyEvaluations(req, res, next) {
   try {
     const evaluations = await Evaluation.find({ student: req.user._id })
-      .populate('course', 'title category level')
+      .populate('course', 'title code category level instructor')
       .populate('cohort', 'name startDate endDate')
       .sort({ createdAt: -1 });
 
@@ -323,7 +329,7 @@ async function getEvaluationForCourse(req, res, next) {
     const evaluation = await Evaluation.findOne({
       student: req.user._id,
       course: req.params.courseId,
-    }).populate('course', 'title category level');
+    }).populate('course', 'title code category level instructor');
 
     res.json({
       success: true,
@@ -335,7 +341,7 @@ async function getEvaluationForCourse(req, res, next) {
 }
 
 /**
- * Admin: List and aggregate evaluations across all courses.
+ * Admin: List and aggregate evaluations across all courses with strict student anonymity protection.
  * GET /api/evaluations/admin
  */
 async function adminListEvaluations(req, res, next) {
@@ -346,37 +352,91 @@ async function adminListEvaluations(req, res, next) {
     if (cohortId) filter.cohort = cohortId;
 
     const evaluations = await Evaluation.find(filter)
-      .populate('student', 'fullName email')
       .populate('course', 'title code level')
       .populate('cohort', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     // Compute aggregated averages
     let avgContent = 0;
     let avgInstructor = 0;
     let avgLabs = 0;
     let avgOrg = 0;
+    let avgEnv = 0;
+    let avgFac = 0;
+    let avgStaff = 0;
+    let avgPlatform = 0;
+    let avgOverallSat = 0;
+    let recommendYesCount = 0;
+    let agencyCount = 0;
+
     const count = evaluations.length;
 
-    if (count > 0) {
-      avgContent = (evaluations.reduce((acc, e) => acc + (e.ratings?.content || 0), 0) / count).toFixed(2);
-      avgInstructor = (evaluations.reduce((acc, e) => acc + (e.ratings?.instructor || 0), 0) / count).toFixed(2);
-      avgLabs = (evaluations.reduce((acc, e) => acc + (e.ratings?.labs || 0), 0) / count).toFixed(2);
-      avgOrg = (evaluations.reduce((acc, e) => acc + (e.ratings?.organization || 0), 0) / count).toFixed(2);
-    }
+    evaluations.forEach((e) => {
+      avgContent += e.ratings?.content || 0;
+      avgInstructor += e.ratings?.instructor || 0;
+      avgLabs += e.ratings?.labs || 0;
+      avgOrg += e.ratings?.organization || 0;
+
+      if (e.agencyFeedbackCompleted && e.agencyFeedback) {
+        agencyCount++;
+        avgEnv += e.agencyFeedback.trainingEnvironment || 0;
+        avgFac += e.agencyFeedback.facilitiesAndLabs || 0;
+        avgStaff += e.agencyFeedback.organizationAndStaff || 0;
+        avgPlatform += e.agencyFeedback.platformExperience || 0;
+        avgOverallSat += e.agencyFeedback.overallSatisfaction || 0;
+        if (e.agencyFeedback.recommendAgency !== false) recommendYesCount++;
+      }
+    });
+
+    // Anonymized evaluations without student personal info (fullName/email/token/DB _id)
+    const sanitizedEvaluations = evaluations.map((e, idx) => ({
+      _id: `anon-eval-${idx + 1}`,
+      course: e.course,
+      cohort: e.cohort,
+      anonymousCadetTag: `Cadet #${idx + 1}`,
+      ratings: e.ratings,
+      comments: count >= 3 ? e.comments : {
+        highlights: e.comments?.highlights ? 'Withheld for small-cohort privacy' : '',
+        improvements: e.comments?.improvements ? 'Withheld for small-cohort privacy' : '',
+      },
+      courseFeedbackCompleted: e.courseFeedbackCompleted,
+      agencyFeedback: e.agencyFeedback ? {
+        trainingEnvironment: e.agencyFeedback.trainingEnvironment,
+        facilitiesAndLabs: e.agencyFeedback.facilitiesAndLabs,
+        organizationAndStaff: e.agencyFeedback.organizationAndStaff,
+        platformExperience: e.agencyFeedback.platformExperience,
+        overallSatisfaction: e.agencyFeedback.overallSatisfaction,
+        recommendAgency: e.agencyFeedback.recommendAgency,
+        comments: count >= 3 ? e.agencyFeedback.comments : (e.agencyFeedback.comments ? 'Withheld for small-cohort privacy' : ''),
+      } : null,
+      agencyFeedbackCompleted: e.agencyFeedbackCompleted,
+      submittedDate: (e.submittedAt || e.createdAt)
+        ? new Date(e.submittedAt || e.createdAt).toISOString().split('T')[0]
+        : null,
+    }));
 
     res.json({
       success: true,
       data: {
         totalEvaluations: count,
-        averages: {
-          content: Number(avgContent),
-          instructor: Number(avgInstructor),
-          labs: Number(avgLabs),
-          organization: Number(avgOrg),
-          overall: count > 0 ? Number(((Number(avgContent) + Number(avgInstructor) + Number(avgLabs) + Number(avgOrg)) / 4).toFixed(2)) : 0,
+        courseAverages: {
+          content: count > 0 ? Number((avgContent / count).toFixed(2)) : 0,
+          instructor: count > 0 ? Number((avgInstructor / count).toFixed(2)) : 0,
+          labs: count > 0 ? Number((avgLabs / count).toFixed(2)) : 0,
+          organization: count > 0 ? Number((avgOrg / count).toFixed(2)) : 0,
+          overall: count > 0 ? Number(((avgContent + avgInstructor + avgLabs + avgOrg) / (4 * count)).toFixed(2)) : 0,
         },
-        evaluations,
+        agencyAverages: agencyCount > 0 ? {
+          trainingEnvironment: Number((avgEnv / agencyCount).toFixed(2)),
+          facilitiesAndLabs: Number((avgFac / agencyCount).toFixed(2)),
+          organizationAndStaff: Number((avgStaff / agencyCount).toFixed(2)),
+          platformExperience: Number((avgPlatform / agencyCount).toFixed(2)),
+          overallSatisfaction: Number((avgOverallSat / agencyCount).toFixed(2)),
+          recommendPercentage: Math.round((recommendYesCount / agencyCount) * 100),
+        } : null,
+        evaluations: sanitizedEvaluations,
+        privacyNotice: 'Student identities are protected: responses are compiled and presented anonymously.',
       },
     });
   } catch (err) {

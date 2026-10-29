@@ -15,7 +15,7 @@
   --egsa-black: #000000;
 
   /* Instructor Academic Workspace Mapping */
-  --egsa-dark: #edf3f6;          /* Academic Heading / Command Slate */
+  --egsa-dark: #101E26;          /* Academic Heading / Command Slate (High Contrast 14:1) */
   --egsa-navy: #172B36;          /* Navigation Dark Surface */
   --egsa-navy-dark: #101E26;     /* Deep Navigation Surface */
   --egsa-navy-light: #203A48;    /* Nav Hover Surface */
@@ -111,6 +111,10 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 0;
 }
 
+p, span, li, td, th, dt, dd {
+  color: inherit;
+}
+
 a {
   color: var(--egsa-primary);
   text-decoration: none;
@@ -128,9 +132,47 @@ a:hover {
   letter-spacing: -0.01em;
 }
 
+/* -------------------------------------------------------------
+   Text Selection: Accessible Dual-Surface Contrast
+   ------------------------------------------------------------- */
 ::selection {
-  background: rgba(212, 184, 124, 0.35);
-  color: var(--egsa-dark);
+  background: rgba(30, 124, 133, 0.28) !important;
+  color: #101E26 !important;
+}
+
+::-moz-selection {
+  background: rgba(30, 124, 133, 0.28) !important;
+  color: #101E26 !important;
+}
+
+input::selection,
+textarea::selection,
+[contenteditable]::selection {
+  background: rgba(30, 124, 133, 0.32) !important;
+  color: #101E26 !important;
+}
+
+/* High contrast selection on dark aerospace surfaces */
+.sidebar ::selection,
+aside ::selection,
+[class*="sidebar"] ::selection,
+[class*="Sidebar"] ::selection,
+.offcanvas ::selection,
+[data-theme="dark"] ::selection,
+.bg-dark ::selection,
+.text-white ::selection,
+[class*="hero"] ::selection,
+[class*="Hero"] ::selection,
+[style*="gradient"] ::selection {
+  background: rgba(84, 186, 197, 0.5) !important;
+  color: #FFFFFF !important;
+}
+
+.sidebar ::-moz-selection,
+aside ::-moz-selection,
+.offcanvas ::-moz-selection {
+  background: rgba(84, 186, 197, 0.5) !important;
+  color: #FFFFFF !important;
 }
 
 /* -------------------------------------------------------------
@@ -211,7 +253,7 @@ a:hover {
 }
 
 .btn-outline-secondary {
-  --bs-btn-color: #334155;
+  --bs-btn-color: #172B36;
   --bs-btn-border-color: var(--egsa-border);
   --bs-btn-hover-bg: #f1f5f9;
   --bs-btn-hover-color: var(--egsa-dark);
@@ -220,6 +262,7 @@ a:hover {
   --bs-btn-active-color: var(--egsa-dark);
   --bs-btn-active-border-color: #94a3b8;
   background: #ffffff;
+  color: #172B36;
   box-shadow: var(--sh-1);
 }
 
@@ -250,7 +293,7 @@ a:hover {
 .form-label {
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--egsa-text-secondary);
+  color: var(--egsa-text);
   margin-bottom: 0.4rem;
 }
 
@@ -265,20 +308,39 @@ a:hover {
   transition: border-color var(--dur-norm) var(--ease), box-shadow var(--dur-norm) var(--ease);
 }
 
+.form-control::placeholder,
+textarea::placeholder {
+  color: #6E828E !important;
+  opacity: 1 !important;
+}
+
+.form-select option {
+  background-color: #ffffff;
+  color: var(--egsa-text);
+}
+
+.form-check-label {
+  color: var(--egsa-text);
+  font-size: var(--fs-sm);
+}
+
 .form-control:hover:not(:disabled), .form-select:hover:not(:disabled) {
   border-color: var(--egsa-border-strong);
 }
 
 .form-control:focus, .form-select:focus {
   border-color: var(--egsa-secondary);
-  box-shadow: 0 0 0 3px rgba(30, 124, 133, 0.18);
+  background-color: #ffffff;
+  color: #101E26;
+  box-shadow: 0 0 0 3px rgba(30, 124, 133, 0.2);
   outline: none;
 }
 
 .form-control:disabled, .form-select:disabled {
   background-color: #f1f5f9;
-  color: #94a3b8;
+  color: #64748b;
   cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .form-text {
@@ -307,10 +369,14 @@ a:hover {
    Tables: Scientific Data Readouts
    ------------------------------------------------------------- */
 .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--egsa-text);
+  --bs-table-hover-color: var(--egsa-text);
   --bs-table-hover-bg: #f8fafc;
   margin-bottom: 0;
   border-collapse: separate;
   border-spacing: 0;
+  color: var(--egsa-text);
 }
 
 .table > :not(caption) > * > * {
@@ -324,7 +390,7 @@ a:hover {
   font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--egsa-muted);
+  color: #526773;
   font-weight: 700;
   border-bottom: 1px solid var(--egsa-border);
   background: #f8fafc;
@@ -339,14 +405,56 @@ a:hover {
 
 .table tbody tr {
   transition: background-color var(--dur-fast) var(--ease);
+  color: var(--egsa-text);
 }
 
 .table tbody tr:hover {
   background-color: #f1f5f9;
+  color: var(--egsa-dark);
 }
 
 .table tbody tr:last-child > * {
   border-bottom: 0;
+}
+
+/* -------------------------------------------------------------
+   Pagination Controls
+   ------------------------------------------------------------- */
+.pagination {
+  margin-bottom: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.pagination .page-link {
+  color: var(--egsa-text);
+  background-color: #ffffff;
+  border: 1px solid var(--egsa-border);
+  border-radius: var(--r-sm);
+  padding: 0.4rem 0.75rem;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.pagination .page-link:hover {
+  color: var(--egsa-primary);
+  background-color: #f1f5f9;
+  border-color: var(--egsa-border-strong);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--egsa-primary);
+  border-color: var(--egsa-primary);
+  color: #ffffff;
+  box-shadow: var(--sh-1);
+}
+
+.pagination .page-item.disabled .page-link {
+  color: #94a3b8;
+  background-color: #f8fafc;
+  border-color: var(--egsa-border-soft);
+  cursor: not-allowed;
 }
 
 /* -------------------------------------------------------------
@@ -388,6 +496,7 @@ a:hover {
   padding: var(--sp-1);
   font-size: var(--fs-sm);
   background: #ffffff;
+  color: var(--egsa-text);
   overflow: hidden;
 }
 
@@ -413,21 +522,45 @@ a:hover {
   color: #ffffff;
 }
 
+.dropdown-header {
+  color: #6E828E;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 0.85rem 0.25rem;
+}
+
+.dropdown-divider {
+  border-top: 1px solid var(--egsa-border-soft);
+  margin: 0.35rem 0;
+}
+
 .modal-content {
   border: 1px solid var(--egsa-border);
   border-radius: var(--r-lg);
   box-shadow: var(--sh-3);
   overflow: hidden;
+  background: #ffffff;
+  color: var(--egsa-text);
 }
 
 .modal-header {
   border-bottom: 1px solid var(--egsa-border-soft);
   padding: 1.15rem 1.5rem;
   background: #ffffff;
+  color: var(--egsa-dark);
+}
+
+.modal-title {
+  color: var(--egsa-dark);
+  font-weight: 700;
 }
 
 .modal-body {
   padding: 1.5rem;
+  background: #ffffff;
+  color: var(--egsa-text);
 }
 
 .modal-footer {
@@ -446,8 +579,8 @@ a:hover {
 }
 
 .modal-backdrop.show {
-  opacity: 0.55;
-  background: var(--egsa-dark);
+  opacity: 0.65;
+  background: #0E1A22;
 }
 
 .toast {

@@ -248,24 +248,15 @@ export default function SessionMonitoringPage() {
         if (!row.attendance) return <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>—</span>;
         const { presentCount = 0, totalStudents = 0, attendanceRate = 0 } = row.attendance;
         return (
-          <div style={{ fontSize: '0.82rem' }}>
-            <div style={{ fontWeight: 600, color: 'var(--esa-navy-800, #12223d)' }}>
+          <div className={styles.attendanceCell}>
+            <div className={styles.attendanceText}>
               {presentCount} / {totalStudents} ({attendanceRate}%)
             </div>
-            <div
-              style={{
-                width: '60px',
-                height: '4px',
-                background: '#e2e8f0',
-                borderRadius: '2px',
-                marginTop: '4px',
-                overflow: 'hidden',
-              }}
-            >
+            <div className={styles.attendanceProgress}>
               <div
+                className={styles.attendanceFill}
                 style={{
                   width: `${Math.min(100, attendanceRate)}%`,
-                  height: '100%',
                   background: attendanceRate > 75 ? 'var(--esa-success, #1c7c4d)' : 'var(--esa-warning, #a3660c)',
                 }}
               />
@@ -302,7 +293,7 @@ export default function SessionMonitoringPage() {
         title="Live Session Monitoring"
         subtitle="Real-time academy session operational dashboard, tracking instructor transitions, attendance, and delivery mode."
         actions={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className={styles.headerActionsWrap}>
             <label className={styles.autoRefreshToggle} title="Poll backend every 10 seconds">
               <input
                 type="checkbox"

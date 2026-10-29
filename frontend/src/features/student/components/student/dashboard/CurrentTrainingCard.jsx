@@ -353,7 +353,7 @@ export default function CurrentTrainingCard({
                 <Link to="/student/attendance" className="btn btn-outline-primary btn-sm flex-grow-1 flex-sm-grow-0">
                   <i className="fa-solid fa-calendar-check me-1"></i> Attendance
                 </Link>
-                <Link to="/student/media" className="btn btn-outline-secondary btn-sm flex-grow-1 flex-sm-grow-0" title="Course Materials">
+                <Link to="/student/learning-hub" className="btn btn-outline-secondary btn-sm flex-grow-1 flex-sm-grow-0" title="Learning Hub & Materials">
                   <i className="fa-solid fa-folder-open me-1"></i> Media
                 </Link>
               </div>

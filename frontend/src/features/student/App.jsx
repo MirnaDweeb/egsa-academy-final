@@ -109,6 +109,7 @@ export default function App() {
           <Route path="payments" element={<PaymentsPage />} />
 
           {/* 10. My Media */}
+          <Route path="learning-hub" element={<MediaPage />} />
           <Route path="media" element={<MediaPage />} />
 
           {/* 11. Certificate */}

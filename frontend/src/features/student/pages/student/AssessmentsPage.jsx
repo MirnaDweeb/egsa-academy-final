@@ -106,20 +106,40 @@ export default function AssessmentsPage() {
     });
   };
 
-  const upcomingList = filterList(assessmentsData.sections?.upcoming || []);
-  const submittedList = filterList(assessmentsData.sections?.submitted || []);
-  const evaluatedList = filterList(assessmentsData.sections?.evaluated || []);
+  const now = new Date();
   const allList = filterList(assessmentsData.assessments || []);
+  const notSubmittedList = filterList(
+    (assessmentsData.assessments || []).filter(
+      (a) => a.status === 'Upcoming' && (!a.dueDate || new Date(a.dueDate) >= now)
+    )
+  );
+  const overdueList = filterList(
+    (assessmentsData.assessments || []).filter(
+      (a) => a.status === 'Upcoming' && a.dueDate && new Date(a.dueDate) < now
+    )
+  );
+  const submittedList = filterList(
+    (assessmentsData.assessments || []).filter(
+      (a) => a.status === 'Submitted' || a.status === 'Pending Evaluation'
+    )
+  );
+  const evaluatedList = filterList(
+    (assessmentsData.assessments || []).filter((a) => a.status === 'Evaluated')
+  );
 
-  const totalUpcoming = assessmentsData.sections?.upcoming?.length || 0;
-  const totalSubmitted = assessmentsData.sections?.submitted?.length || 0;
-  const totalEvaluated = assessmentsData.sections?.evaluated?.length || 0;
+  const totalAll = assessmentsData.assessments?.length || 0;
+  const totalNotSubmitted = notSubmittedList.length;
+  const totalOverdue = overdueList.length;
+  const totalSubmitted = submittedList.length;
+  const totalEvaluated = evaluatedList.length;
 
   // Determine current active list
-  let currentDisplayList = upcomingList;
-  if (activeSection === 'submitted') currentDisplayList = submittedList;
-  if (activeSection === 'evaluated') currentDisplayList = evaluatedList;
-  if (activeSection === 'all') currentDisplayList = allList;
+  let currentDisplayList = allList;
+  if (activeSection === 'upcoming' || activeSection === 'not_submitted') currentDisplayList = notSubmittedList;
+  else if (activeSection === 'overdue') currentDisplayList = overdueList;
+  else if (activeSection === 'submitted') currentDisplayList = submittedList;
+  else if (activeSection === 'evaluated' || activeSection === 'graded') currentDisplayList = evaluatedList;
+  else if (activeSection === 'all') currentDisplayList = allList;
 
   // Distinct courses from enrollments for filter dropdown
   const uniqueEnrolledCourses = [];
@@ -236,70 +256,96 @@ export default function AssessmentsPage() {
         /* Tab: Course Training Assessments */
         <>
           {/* Section Summary Metrics Cards */}
-          <div className="egsa-grid-cols-4 mb-4">
-            <div
-              className={`egsa-card p-3 h-100 border-start border-4 border-secondary cursor-pointer transition-all ${
-                activeSection === 'upcoming' ? 'shadow-sm bg-light' : ''
-              }`}
-              onClick={() => handleSectionChange('upcoming')}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
-                <span className="text-uppercase fw-semibold">{t.upcomingTab}</span>
-                <i className="fa-solid fa-calendar-day text-secondary"></i>
+          <div className="row g-3 mb-4">
+            <div className="col-12 col-sm-6 col-lg">
+              <div
+                className={`egsa-card p-3 h-100 border-start border-4 border-primary cursor-pointer transition-all ${
+                  activeSection === 'all' ? 'shadow-sm bg-light' : ''
+                }`}
+                onClick={() => handleSectionChange('all')}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
+                  <span className="text-uppercase fw-semibold">{isAr ? 'الكل' : 'All'}</span>
+                  <i className="fa-solid fa-clipboard-list text-primary"></i>
+                </div>
+                <div className="fs-3 fw-bold text-primary">{totalAll}</div>
+                <div className="text-muted small">{isAr ? 'جميع التكليفات' : 'All assignments'}</div>
               </div>
-              <div className="fs-3 fw-bold text-dark">{totalUpcoming}</div>
-              <div className="text-muted small">{t.upcomingSubtitle}</div>
             </div>
 
-            <div
-              className={`egsa-card p-3 h-100 border-start border-4 border-warning cursor-pointer transition-all ${
-                activeSection === 'submitted' ? 'shadow-sm bg-light' : ''
-              }`}
-              onClick={() => handleSectionChange('submitted')}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
-                <span className="text-uppercase fw-semibold">{t.submittedTab}</span>
-                <i className="fa-solid fa-hourglass-half text-warning"></i>
+            <div className="col-12 col-sm-6 col-lg">
+              <div
+                className={`egsa-card p-3 h-100 border-start border-4 border-secondary cursor-pointer transition-all ${
+                  activeSection === 'upcoming' || activeSection === 'not_submitted' ? 'shadow-sm bg-light' : ''
+                }`}
+                onClick={() => handleSectionChange('not_submitted')}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
+                  <span className="text-uppercase fw-semibold">{isAr ? 'لم يُسلَّم' : 'Not Submitted'}</span>
+                  <i className="fa-solid fa-calendar-day text-secondary"></i>
+                </div>
+                <div className="fs-3 fw-bold text-dark">{totalNotSubmitted}</div>
+                <div className="text-muted small">{isAr ? 'بانتظار تسليمك' : 'Pending submission'}</div>
               </div>
-              <div className="fs-3 fw-bold text-warning">{totalSubmitted}</div>
-              <div className="text-muted small">{t.submittedSubtitle}</div>
             </div>
 
-            <div
-              className={`egsa-card p-3 h-100 border-start border-4 border-success cursor-pointer transition-all ${
-                activeSection === 'evaluated' ? 'shadow-sm bg-light' : ''
-              }`}
-              onClick={() => handleSectionChange('evaluated')}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
-                <span className="text-uppercase fw-semibold">{t.evaluatedTab}</span>
-                <i className="fa-solid fa-circle-check text-success"></i>
+            <div className="col-12 col-sm-6 col-lg">
+              <div
+                className={`egsa-card p-3 h-100 border-start border-4 border-warning cursor-pointer transition-all ${
+                  activeSection === 'submitted' ? 'shadow-sm bg-light' : ''
+                }`}
+                onClick={() => handleSectionChange('submitted')}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
+                  <span className="text-uppercase fw-semibold">{isAr ? 'تم التسليم' : 'Submitted'}</span>
+                  <i className="fa-solid fa-hourglass-half text-warning"></i>
+                </div>
+                <div className="fs-3 fw-bold text-warning">{totalSubmitted}</div>
+                <div className="text-muted small">{isAr ? 'قيد المراجعة' : 'Under review'}</div>
               </div>
-              <div className="fs-3 fw-bold text-success">{totalEvaluated}</div>
-              <div className="text-muted small">{t.evaluatedSubtitle}</div>
             </div>
 
-            <div
-              className={`egsa-card p-3 h-100 border-start border-4 border-primary cursor-pointer transition-all ${
-                activeSection === 'all' ? 'shadow-sm bg-light' : ''
-              }`}
-              onClick={() => handleSectionChange('all')}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
-                <span className="text-uppercase fw-semibold">{t.allTab}</span>
-                <i className="fa-solid fa-clipboard-list text-primary"></i>
+            <div className="col-12 col-sm-6 col-lg">
+              <div
+                className={`egsa-card p-3 h-100 border-start border-4 border-danger cursor-pointer transition-all ${
+                  activeSection === 'overdue' ? 'shadow-sm bg-light' : ''
+                }`}
+                onClick={() => handleSectionChange('overdue')}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
+                  <span className="text-uppercase fw-semibold">{isAr ? 'متأخر' : 'Overdue'}</span>
+                  <i className="fa-solid fa-clock text-danger"></i>
+                </div>
+                <div className="fs-3 fw-bold text-danger">{totalOverdue}</div>
+                <div className="text-muted small">{isAr ? 'فات موعد التسليم' : 'Past deadline'}</div>
               </div>
-              <div className="fs-3 fw-bold text-primary">{assessmentsData.assessments.length}</div>
-              <div className="text-muted small">
-                {assessmentsData.summary.averagePercentage != null ? `${isAr ? 'المتوسط' : 'Avg'}: ${assessmentsData.summary.averagePercentage}%` : (isAr ? 'إجمالي التقييمات' : 'Enrolled milestones')}
+            </div>
+
+            <div className="col-12 col-sm-6 col-lg">
+              <div
+                className={`egsa-card p-3 h-100 border-start border-4 border-success cursor-pointer transition-all ${
+                  activeSection === 'evaluated' || activeSection === 'graded' ? 'shadow-sm bg-light' : ''
+                }`}
+                onClick={() => handleSectionChange('graded')}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="d-flex align-items-center justify-content-between text-muted small mb-1">
+                  <span className="text-uppercase fw-semibold">{isAr ? 'تم التقييم' : 'Graded'}</span>
+                  <i className="fa-solid fa-circle-check text-success"></i>
+                </div>
+                <div className="fs-3 fw-bold text-success">{totalEvaluated}</div>
+                <div className="text-muted small">
+                  {assessmentsData.summary.averagePercentage != null ? `${isAr ? 'المتوسط' : 'Avg'}: ${assessmentsData.summary.averagePercentage}%` : (isAr ? 'تم رصد الدرجة' : 'Scores published')}
+                </div>
               </div>
             </div>
           </div>
@@ -309,21 +355,28 @@ export default function AssessmentsPage() {
             {/* Section Filter Pills */}
             <div className="d-flex flex-wrap gap-2 align-items-center">
               {[
-                { id: 'upcoming', label: t.upcomingTab, count: totalUpcoming, color: 'btn-secondary' },
-                { id: 'submitted', label: t.submittedTab, count: totalSubmitted, color: 'btn-warning text-dark' },
-                { id: 'evaluated', label: t.evaluatedTab, count: totalEvaluated, color: 'btn-success text-white' },
-                { id: 'all', label: t.allTab, count: assessmentsData.assessments.length, color: 'btn-primary' },
+                { id: 'all', label: isAr ? 'الكل' : 'All', count: totalAll },
+                { id: 'not_submitted', label: isAr ? 'لم يُسلَّم' : 'Not Submitted', count: totalNotSubmitted },
+                { id: 'submitted', label: isAr ? 'تم التسليم' : 'Submitted', count: totalSubmitted },
+                { id: 'overdue', label: isAr ? 'متأخر' : 'Overdue', count: totalOverdue },
+                { id: 'graded', label: isAr ? 'تم التقييم' : 'Graded', count: totalEvaluated },
               ].map((sec) => (
                 <button
                   key={sec.id}
                   type="button"
                   className={`btn btn-sm rounded-pill px-3 transition-all ${
-                    activeSection === sec.id ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                    activeSection === sec.id || (sec.id === 'not_submitted' && activeSection === 'upcoming') || (sec.id === 'graded' && activeSection === 'evaluated')
+                      ? 'btn-primary shadow-sm'
+                      : 'btn-outline-secondary'
                   }`}
                   onClick={() => handleSectionChange(sec.id)}
                 >
                   {sec.label}{' '}
-                  <span className={`badge rounded-pill ms-1 ${activeSection === sec.id ? 'bg-light text-primary' : 'bg-secondary text-white'}`}>
+                  <span className={`badge rounded-pill ms-1 ${
+                    activeSection === sec.id || (sec.id === 'not_submitted' && activeSection === 'upcoming') || (sec.id === 'graded' && activeSection === 'evaluated')
+                      ? 'bg-light text-primary'
+                      : 'bg-secondary text-white'
+                  }`}>
                     {sec.count}
                   </span>
                 </button>

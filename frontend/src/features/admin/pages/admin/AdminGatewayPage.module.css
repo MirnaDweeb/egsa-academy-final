@@ -1,52 +1,68 @@
+/* ========================================================
+   Egyptian Space Agency Academy — Admin Gateway Styling
+   ======================================================== */
+
 .container {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-/* Official Academy Hero Banner */
+/* Institutional Gateway Header */
 .heroBanner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  background: var(--esa-surface, #ffffff);
-  border: 1px solid var(--esa-border, #e1e6ed);
+  background: #ffffff;
+  border: 1px solid #dce5ea;
   border-radius: var(--esa-radius-md, 8px);
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.75rem;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  padding: 1.35rem 1.65rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   flex-wrap: wrap;
 }
 
 .heroLeft {
   display: flex;
   align-items: center;
-  gap: 1.15rem;
+  gap: 1.25rem;
 }
 
 .heroLogo {
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
   border-radius: 50%;
   background: #ffffff;
   padding: 2px;
-  border: 1px solid var(--esa-border, #e1e6ed);
-  box-shadow: 0 2px 6px rgba(11, 25, 44, 0.08);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
   flex-shrink: 0;
+}
+
+.agencyBadge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 0.2rem;
 }
 
 .heroTitle {
   font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--esa-logo-navy, #0b192c);
+  font-weight: 800;
+  color: #0f172a;
   margin: 0;
   line-height: 1.2;
+  letter-spacing: -0.015em;
 }
 
 .heroSubtitle {
-  font-size: 0.88rem;
-  color: var(--esa-text-secondary, #667085);
-  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: #526773;
+  margin: 0.25rem 0 0;
   line-height: 1.4;
 }
 
@@ -83,29 +99,29 @@
 }
 
 .panel {
-  background: var(--esa-surface, #ffffff);
-  border: 1px solid var(--esa-border, #e1e6ed);
+  background: #ffffff;
+  border: 1px solid #dce5ea;
   border-radius: var(--esa-radius-md, 8px);
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  transition: all 180ms ease;
   position: relative;
 }
 
 .panel:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   transform: translateY(-2px);
 }
 
 .preUniAccent {
-  border-top: 3.5px solid var(--esa-teal-green, #1e7c85);
+  border-top: 3.5px solid #1e7c85;
 }
 
 .uniAccent {
-  border-top: 3.5px solid var(--esa-gold-tan, #d4b87c);
+  border-top: 3.5px solid #d4b87c;
 }
 
 .panelHeader {
@@ -119,9 +135,9 @@
   width: 42px;
   height: 42px;
   border-radius: var(--esa-radius-sm, 6px);
-  background: var(--esa-surface-alt, #f7f9fa);
-  color: var(--esa-cosmos-blue, #3a6985);
-  border: 1px solid var(--esa-border, #e1e6ed);
+  background: #f8fafc;
+  color: #3a6985;
+  border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -131,15 +147,15 @@
 }
 
 .preUniAccent .iconWrap {
-  background: var(--esa-secondary-subtle, #e8f4f5);
-  color: var(--esa-teal-green, #1e7c85);
-  border-color: rgba(30, 124, 133, 0.25);
+  background: #e6f6f8;
+  color: #1e7c85;
+  border-color: #b3e6ec;
 }
 
 .uniAccent .iconWrap {
-  background: var(--esa-gold-subtle, #fbf8f1);
-  color: var(--esa-gold-dark, #876722);
-  border-color: rgba(212, 184, 124, 0.35);
+  background: #fdf8ec;
+  color: #8a671a;
+  border-color: #f2dfa8;
 }
 
 .titleArea {
@@ -157,38 +173,39 @@
 
 .divisionTitle {
   font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--esa-text-primary, #000000);
+  font-weight: 800;
+  color: #0f172a;
   margin: 0;
   line-height: 1.3;
 }
 
 .educationBadge {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--esa-text-secondary, #334155);
-  background: var(--esa-surface-alt, #f5f7fa);
-  border: 1px solid var(--esa-border, #e1e6ed);
-  padding: 0.15rem 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 0.15rem 0.5rem;
   border-radius: 4px;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .preUniAccent .educationBadge {
-  background: var(--esa-secondary-subtle, #e8f4f5);
-  color: var(--esa-teal-green, #1e7c85);
-  border-color: rgba(30, 124, 133, 0.3);
+  background: #e6f6f8;
+  color: #0e6973;
+  border-color: #b3e6ec;
 }
 
 .uniAccent .educationBadge {
-  background: var(--esa-gold-subtle, #fbf8f1);
-  color: var(--esa-gold-dark, #876722);
-  border-color: rgba(212, 184, 124, 0.35);
+  background: #fdf8ec;
+  color: #855f15;
+  border-color: #f2dfa8;
 }
 
 .divisionDesc {
   font-size: 0.85rem;
-  color: var(--esa-text-secondary, #667085);
+  color: #526773;
   margin: 0.4rem 0 0;
   line-height: 1.45;
 }
@@ -199,10 +216,10 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 0.4rem;
   background: #f8fafc;
-  border: 1px solid #eaeff5;
+  border: 1px solid #e2e8f0;
   border-radius: var(--esa-radius-sm, 6px);
   padding: 0.85rem 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.35rem;
 }
 
 @media (max-width: 576px) {
@@ -219,31 +236,22 @@
 
 .metricLabel {
   display: block;
-  font-size: 0.72rem;
-  color: var(--esa-text-secondary, #667085);
-  font-weight: 500;
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 0.25rem;
+  text-transform: uppercase;
 }
 
 .metricValue {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--esa-text-primary, #172033);
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0f172a;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-}
-
-/* Operations Scope Note */
-.operationsScope {
-  font-size: 0.76rem;
-  color: var(--esa-text-secondary, #667085);
-  margin-bottom: 1.35rem;
-  display: flex;
-  align-items: center;
-  line-height: 1.4;
 }
 
 .panelFooter {
@@ -256,24 +264,24 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: var(--esa-cosmos-blue, #3a6985);
+  background: #3a6985;
   color: #ffffff;
-  border: 1px solid var(--esa-cosmos-blue, #3a6985);
+  border: 1px solid #3a6985;
   border-radius: var(--esa-radius-sm, 6px);
   padding: 0.65rem 1rem;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  transition: all 140ms ease;
 }
 
 .entryButton:hover {
-  background: var(--esa-primary-hover, #2e546b);
-  border-color: var(--esa-primary-hover, #2e546b);
-  box-shadow: 0 2px 6px rgba(58, 105, 133, 0.28);
+  background: #2e546b;
+  border-color: #2e546b;
+  box-shadow: 0 2px 8px rgba(58, 105, 133, 0.28);
 }
 
 .entryButton:focus-visible {
-  outline: 2px solid var(--esa-cosmos-blue, #3a6985);
+  outline: 2px solid #3a6985;
   outline-offset: 2px;
 }

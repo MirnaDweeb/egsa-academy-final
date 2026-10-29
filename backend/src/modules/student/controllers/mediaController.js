@@ -16,6 +16,15 @@ async function uploadMedia(req, res, next) {
   }
 }
 
+async function getAcademicResources(req, res, next) {
+  try {
+    const result = await mediaService.getAcademicResources(req.user._id, req.query);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getMyMedia(req, res, next) {
   try {
     const result = await mediaService.getStudentMedia(req.user._id, req.query);
@@ -192,6 +201,7 @@ async function adminUnpublish(req, res, next) {
 module.exports = {
   uploadMedia,
   getMyMedia,
+  getAcademicResources,
   getMediaDetails,
   submitDraft,
   resubmit,

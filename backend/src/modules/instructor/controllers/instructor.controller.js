@@ -16,6 +16,7 @@ const me = (req) => req.user.id;
 exports.dashboard = h(async (req, res) => ok(res, await S.dashboard.get(me(req))));
 exports.courses = h(async (req, res) => ok(res, await S.academic.listCourses(me(req))));
 exports.course = h(async (req, res) => ok(res, await S.academic.getCourse(me(req), req.params.id)));
+exports.courseEvaluations = h(async (req, res) => ok(res, await S.academic.getCourseEvaluations(me(req), req.params.id)));
 exports.cohorts = h(async (req, res) => ok(res, await S.academic.listCohorts(me(req), req.query)));
 exports.cohort = h(async (req, res) => ok(res, await S.academic.getCohort(me(req), req.params.id)));
 exports.cohortStudents = h(async (req, res) => ok(res, await S.student.list(me(req), { cohortId: req.params.id, search: req.query.search })));

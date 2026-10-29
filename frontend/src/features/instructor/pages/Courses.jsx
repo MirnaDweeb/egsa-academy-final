@@ -208,6 +208,7 @@ export function CourseDetail() {
   const { id } = useParams();
   const { t, fmtDate, lang } = useI18n();
   const { data, loading, error, reload } = useFetch(() => instructorApi.course(id), [id]);
+  const { data: evalData } = useFetch(() => instructorApi.courseEvaluations(id).catch(() => null), [id]);
 
   const theme = data ? COURSE_THEMES[data.code] || COURSE_THEMES.DEFAULT : COURSE_THEMES.DEFAULT;
 
@@ -291,6 +292,152 @@ export function CourseDetail() {
                   </tbody>
                 </Table>
               </div>
+            </Panel>
+
+            {/* Course & Faculty Evaluation Insights */}
+            <Panel
+              title={lang === 'ar' ? 'نتائج تقييم المقرر وأعضاء هيئة التدريس' : 'Course & Faculty Evaluation Insights'}
+              icon="fa-star-half-stroke"
+              className="mt-4"
+            >
+              {evalData && evalData.totalEvaluations > 0 ? (
+                <div>
+                  <Row className="g-4 mb-4">
+                    <Col md={4} className="border-end-md">
+                      <div className="text-center p-3 bg-light rounded-3">
+                        <div className="display-4 fw-bold text-dark mono mb-1">
+                          {evalData.overallAverage}
+                        </div>
+                        <div className="text-warning mb-2">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <i
+                              key={s}
+                              className={`fa-star ${s <= Math.round(evalData.overallAverage) ? 'fa-solid' : 'fa-regular'} me-1`}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-muted small">
+                          <span className="mono fw-semibold">{evalData.totalEvaluations}</span> {lang === 'ar' ? 'تقييم معتمد' : 'Verified Submissions'}
+                        </div>
+                        <div className="badge bg-secondary-subtle text-secondary small mt-2">
+                          <i className="fa-solid fa-user-secret me-1" />
+                          {lang === 'ar' ? 'مجهول الهوية 100%' : '100% Anonymous Feedback'}
+                        </div>
+                      </div>
+                    </Col>
+                    <Col md={8}>
+                      <div className="d-flex flex-column gap-3 justify-content-center h-100">
+                        <div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="fw-semibold text-secondary">
+                              {lang === 'ar' ? 'جودة وتعمق المنهج العلمي' : 'Curriculum Depth & Relevance'}
+                            </span>
+                            <span className="mono fw-bold">{evalData.averages?.content} / 5.0</span>
+                          </div>
+                          <div className="progress" style={{ height: '8px' }}>
+                            <div
+                              className="progress-bar bg-info"
+                              role="progressbar"
+                              style={{ width: `${(evalData.averages?.content / 5) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="fw-semibold text-secondary">
+                              {lang === 'ar' ? 'الشرح والإرشاد الأكاديمي' : 'Teaching Clarity & Mentorship'}
+                            </span>
+                            <span className="mono fw-bold">{evalData.averages?.instructor} / 5.0</span>
+                          </div>
+                          <div className="progress" style={{ height: '8px' }}>
+                            <div
+                              className="progress-bar bg-primary"
+                              role="progressbar"
+                              style={{ width: `${(evalData.averages?.instructor / 5) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="fw-semibold text-secondary">
+                              {lang === 'ar' ? 'التجارب العملية والمحاكاة' : 'Practical Labs & Simulations'}
+                            </span>
+                            <span className="mono fw-bold">{evalData.averages?.labs} / 5.0</span>
+                          </div>
+                          <div className="progress" style={{ height: '8px' }}>
+                            <div
+                              className="progress-bar bg-success"
+                              role="progressbar"
+                              style={{ width: `${(evalData.averages?.labs / 5) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="fw-semibold text-secondary">
+                              {lang === 'ar' ? 'التنظيم والدعم الأكاديمي' : 'Organization & Academic Support'}
+                            </span>
+                            <span className="mono fw-bold">{evalData.averages?.organization} / 5.0</span>
+                          </div>
+                          <div className="progress" style={{ height: '8px' }}>
+                            <div
+                              className="progress-bar bg-warning"
+                              role="progressbar"
+                              style={{ width: `${(evalData.averages?.organization / 5) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+
+                  {/* Constructive feedback quotes */}
+                  {evalData.anonymousComments && evalData.anonymousComments.length > 0 && (
+                    <div className="pt-3 border-top">
+                      <h6 className="fw-bold small text-dark mb-3">
+                        <i className="fa-solid fa-quote-left text-muted me-2" />
+                        {lang === 'ar' ? 'ملاحظات الطلاب التقديرية والتطويرية (مجهولة الهوية)' : 'Constructive Student Observations (Anonymous)'}
+                      </h6>
+                      <div className="row g-3">
+                        {evalData.anonymousComments.slice(0, 4).map((c, idx) => (
+                          <div key={idx} className="col-md-6">
+                            <div className="p-3 bg-light rounded-2 border h-100">
+                              {c.highlights && (
+                                <div className="mb-2">
+                                  <span className="badge bg-success-subtle text-success small mb-1">
+                                    <i className="fa-solid fa-thumbs-up me-1" />
+                                    {lang === 'ar' ? 'أبرز الإيجابيات' : 'Curriculum Highlight'}
+                                  </span>
+                                  <p className="small text-dark mb-0 font-italic">"{c.highlights}"</p>
+                                </div>
+                              )}
+                              {c.improvements && (
+                                <div>
+                                  <span className="badge bg-primary-subtle text-primary small mb-1">
+                                    <i className="fa-solid fa-lightbulb me-1" />
+                                    {lang === 'ar' ? 'اقتراح للتطوير' : 'Recommendation'}
+                                  </span>
+                                  <p className="small text-muted mb-0 font-italic">"{c.improvements}"</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted small">
+                  <i className="fa-solid fa-clipboard-question fa-2x mb-2 text-secondary opacity-50 d-block" />
+                  {lang === 'ar'
+                    ? 'لم يتم تسجيل تقييمات معتمدة لهذا المقرر حتى الآن أو التقييمات قيد الإعداد.'
+                    : 'No student evaluations recorded for this course yet, or evaluation cycle is currently open.'}
+                </div>
+              )}
             </Panel>
           </>
         )}

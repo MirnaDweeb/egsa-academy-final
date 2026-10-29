@@ -197,6 +197,8 @@ const adminService = {
     }
     return apiClient.get('/admin/feedback/summary', { params }).then((r) => r.data.data);
   },
+  getCourseEvaluations: (params = {}) =>
+    apiClient.get('/admin/evaluations', { params }).then((r) => r.data.data),
   // Live session monitoring
   listSessions: (divisionOrParams, maybeParams = {}) => {
     let params = {};

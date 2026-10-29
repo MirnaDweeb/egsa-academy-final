@@ -43,7 +43,7 @@ export default function TrainingQuickActions({ enrollment, isCertified = false }
 
         <div className="col-6 col-md-4">
           <Link
-            to="/student/media"
+            to="/student/learning-hub"
             className="btn btn-light w-100 p-2 text-start border d-flex align-items-center gap-2 h-100 shadow-xs"
           >
             <i className="fa-solid fa-photo-film text-primary-egsa fs-5"></i>

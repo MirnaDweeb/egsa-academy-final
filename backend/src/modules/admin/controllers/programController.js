@@ -1,7 +1,10 @@
+const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const { sendSuccess } = require('../utils/ApiResponse');
 const Course = require('../models/Course');
+const User = require('../models/User');
+const InstructorProfile = require('../models/InstructorProfile');
 const AuditLog = require('../models/AuditLog');
 const Application = require('../models/Application');
 const Cohort = require('../models/Cohort');
@@ -15,6 +18,54 @@ const {
 const { recordAudit } = require('../services/auditService');
 const { ROLES } = require('../constants/roles');
 const { PROGRAM_STATUS } = require('../constants/statuses');
+
+/**
+ * Validates that an instructor exists, is active, has instructor role,
+ * and matches the course's division and caller scope.
+ */
+async function validateInstructorAssignment(instructorId, courseDivision, user) {
+  if (!instructorId) return null;
+  const idStr = (instructorId?._id || instructorId?.id || instructorId).toString();
+  if (!mongoose.Types.ObjectId.isValid(idStr)) {
+    throw ApiError.badRequest('Invalid instructor ID format');
+  }
+
+  // Authoritative identity resolution: support both User ID and InstructorProfile ID
+  let instructor = await User.findById(idStr);
+  if (!instructor) {
+    // Check if idStr is an InstructorProfile ID
+    const profile = await InstructorProfile.findById(idStr).populate('user');
+    if (profile && profile.user) {
+      instructor = profile.user;
+    }
+  }
+
+  if (!instructor) {
+    throw ApiError.notFound('Instructor not found');
+  }
+  if (instructor.role !== ROLES.INSTRUCTOR) {
+    throw ApiError.badRequest('Selected user does not have instructor credentials');
+  }
+  if (instructor.isActive === false) {
+    throw ApiError.badRequest('Selected instructor is deactivated and cannot be assigned to courses');
+  }
+
+  // Division scoping check
+  if (user.role !== ROLES.SUPER_ADMIN && user.scopeDivision && user.scopeDivision !== 'all') {
+    if (instructor.division !== user.scopeDivision) {
+      throw ApiError.forbidden('You cannot assign an instructor from outside your authorized division');
+    }
+  }
+
+  if (courseDivision && instructor.division && instructor.division !== courseDivision) {
+    const profile = await InstructorProfile.findOne({ user: instructor._id });
+    const allowedDivisions = profile?.divisions || [instructor.division];
+    if (!allowedDivisions.includes(courseDivision)) {
+      throw ApiError.badRequest(`Instructor is registered for ${instructor.division} and cannot be assigned to ${courseDivision}`);
+    }
+  }
+  return instructor;
+}
 
 // POST /api/programs
 const createProgram = asyncHandler(async (req, res) => {
@@ -36,6 +87,7 @@ const createProgram = asyncHandler(async (req, res) => {
     startDate,
     endDate,
     reopeningDate,
+    assignedInstructor,
     assignedInstructors = [],
     prerequisites = [],
     requiredEducation = '',
@@ -45,6 +97,13 @@ const createProgram = asyncHandler(async (req, res) => {
   // A division admin may only create programs inside their own division.
   if (req.user.role !== ROLES.SUPER_ADMIN && division !== req.scopeDivision) {
     throw ApiError.forbidden('You cannot create a program outside your division');
+  }
+
+  // Validate instructor if provided
+  const targetInstId = assignedInstructor || (Array.isArray(assignedInstructors) && assignedInstructors[0]);
+  let validatedInstructor = null;
+  if (targetInstId) {
+    validatedInstructor = await validateInstructorAssignment(targetInstId, division, req.user);
   }
 
   const program = await Course.create({
@@ -64,7 +123,8 @@ const createProgram = asyncHandler(async (req, res) => {
     startDate: startDate ? new Date(startDate) : undefined,
     endDate: endDate ? new Date(endDate) : undefined,
     reopeningDate: reopeningDate ? new Date(reopeningDate) : undefined,
-    assignedInstructors: Array.isArray(assignedInstructors) ? assignedInstructors : [],
+    assignedInstructor: validatedInstructor ? validatedInstructor._id : null,
+    assignedInstructors: validatedInstructor ? [validatedInstructor._id] : (Array.isArray(assignedInstructors) ? assignedInstructors : []),
     prerequisites: Array.isArray(prerequisites) ? prerequisites : [],
     requiredEducation: requiredEducation ? requiredEducation.trim() : '',
     targetMajors: Array.isArray(targetMajors) ? targetMajors : [],
@@ -83,12 +143,38 @@ const createProgram = asyncHandler(async (req, res) => {
     reason: `Program created by ${req.user.role} ${req.user.fullName} (${req.user.email})`,
   });
 
-  sendSuccess(res, 201, { program });
+  try {
+    const { syncProgramFromAdmin } = require('../../integration/unifiedSyncService');
+    await syncProgramFromAdmin(program);
+  } catch (syncErr) {
+    console.warn('[PROGRAM CONTROLLER] syncProgramFromAdmin warning on create:', syncErr.message);
+  }
+
+  if (validatedInstructor) {
+    try {
+      const { syncCourseInstructorAssignment } = require('../../integration/unifiedSyncService');
+      await syncCourseInstructorAssignment({
+        courseId: program._id,
+        instructorId: validatedInstructor._id,
+        user: req.user,
+      });
+    } catch (syncInstErr) {
+      console.warn('[PROGRAM CONTROLLER] syncCourseInstructorAssignment warning on create:', syncInstErr.message);
+    }
+  }
+
+  const populatedProgram = await Course.findById(program._id)
+    .populate('assignedInstructors', 'fullName email division isActive')
+    .populate('assignedInstructor', 'fullName email division isActive')
+    .populate('createdBy', 'fullName email role')
+    .populate('updatedBy', 'fullName email role');
+
+  sendSuccess(res, 201, { program: populatedProgram });
 });
 
 // GET /api/programs
 const listPrograms = asyncHandler(async (req, res) => {
-  const { status, search = '', division, page = 1, limit = 20 } = req.query;
+  const { status, search = '', division, instructorId, page = 1, limit = 20 } = req.query;
   const filter = {};
 
   if (req.user.role === ROLES.SUPER_ADMIN) {
@@ -103,13 +189,31 @@ const listPrograms = asyncHandler(async (req, res) => {
     filter.status = status;
   }
 
+  if (instructorId && mongoose.Types.ObjectId.isValid(instructorId)) {
+    let targetInstId = instructorId;
+    const isProfile = await InstructorProfile.findById(instructorId).select('user');
+    if (isProfile && isProfile.user) {
+      targetInstId = isProfile.user;
+    }
+    filter.$or = [
+      { assignedInstructor: targetInstId },
+      { assignedInstructors: targetInstId },
+    ];
+  }
+
   if (search && search.trim()) {
     const searchRegex = { $regex: search.trim(), $options: 'i' };
-    filter.$or = [
+    const searchConditions = [
       { title: searchRegex },
       { description: searchRegex },
       { targetAudience: searchRegex },
     ];
+    if (filter.$or) {
+      filter.$and = [{ $or: filter.$or }, { $or: searchConditions }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchConditions;
+    }
   }
 
   const pageNum = Math.max(parseInt(page, 10) || 1, 1);
@@ -117,16 +221,35 @@ const listPrograms = asyncHandler(async (req, res) => {
 
   const total = await Course.countDocuments(filter);
   const programs = await Course.find(filter)
+    .populate('assignedInstructors', 'fullName email division isActive')
+    .populate('assignedInstructor', 'fullName email division isActive')
     .populate('createdBy', 'fullName email role')
     .populate('updatedBy', 'fullName email role')
     .sort({ createdAt: -1 })
     .skip((pageNum - 1) * limitNum)
     .limit(limitNum);
 
+  // Compute actual enrolled count from canonical Enrollment records
+  const programIds = programs.map((p) => p._id);
+  const counts = await Enrollment.aggregate([
+    { $match: { program: { $in: programIds }, status: { $in: ['CONFIRMED', 'ACTIVE'] } } },
+    { $group: { _id: '$program', count: { $sum: 1 } } },
+  ]);
+  const countMap = {};
+  counts.forEach((c) => {
+    countMap[c._id.toString()] = c.count;
+  });
+
+  const enrichedPrograms = programs.map((p) => {
+    const obj = p.toObject();
+    obj.enrolledCount = countMap[p._id.toString()] !== undefined ? countMap[p._id.toString()] : (obj.occupiedSeats || 0);
+    return obj;
+  });
+
   sendSuccess(
     res,
     200,
-    { programs },
+    { programs: enrichedPrograms },
     {
       page: pageNum,
       limit: limitNum,
@@ -139,6 +262,8 @@ const listPrograms = asyncHandler(async (req, res) => {
 // GET /api/programs/:id
 const getProgramById = asyncHandler(async (req, res) => {
   const program = await Course.findById(req.params.id)
+    .populate('assignedInstructors', 'fullName email division isActive')
+    .populate('assignedInstructor', 'fullName email division isActive')
     .populate('createdBy', 'fullName email role')
     .populate('updatedBy', 'fullName email role');
 
@@ -153,14 +278,20 @@ const getProgramById = asyncHandler(async (req, res) => {
     }
   }
 
-  const auditLogs = await AuditLog.find({
-    resource: 'Course',
-    resourceId: program._id,
-  })
-    .sort({ timestamp: -1 })
-    .populate('user', 'fullName email role');
+  const [auditLogs, enrolledCount] = await Promise.all([
+    AuditLog.find({ resource: 'Course', resourceId: program._id })
+      .sort({ timestamp: -1 })
+      .populate('user', 'fullName email role'),
+    Enrollment.countDocuments({
+      program: program._id,
+      status: { $in: ['CONFIRMED', 'ACTIVE'] },
+    }),
+  ]);
 
-  sendSuccess(res, 200, { program, auditLogs });
+  const obj = program.toObject();
+  obj.enrolledCount = enrolledCount;
+
+  sendSuccess(res, 200, { program: obj, auditLogs });
 });
 
 // PUT /api/programs/:id
@@ -191,10 +322,26 @@ const updateProgram = asyncHandler(async (req, res) => {
   if (req.body.startDate !== undefined) program.startDate = req.body.startDate ? new Date(req.body.startDate) : undefined;
   if (req.body.endDate !== undefined) program.endDate = req.body.endDate ? new Date(req.body.endDate) : undefined;
   if (req.body.reopeningDate !== undefined) program.reopeningDate = req.body.reopeningDate ? new Date(req.body.reopeningDate) : undefined;
-  if (Array.isArray(req.body.assignedInstructors)) program.assignedInstructors = req.body.assignedInstructors;
   if (Array.isArray(req.body.prerequisites)) program.prerequisites = req.body.prerequisites;
   if (req.body.requiredEducation !== undefined) program.requiredEducation = req.body.requiredEducation.trim();
   if (Array.isArray(req.body.targetMajors)) program.targetMajors = req.body.targetMajors;
+
+  // Handle instructor assignment/change with validation
+  let validatedInstructor = null;
+  let instructorChanged = false;
+  if (req.body.assignedInstructor !== undefined || req.body.assignedInstructors !== undefined) {
+    const instTarget = req.body.assignedInstructor || (Array.isArray(req.body.assignedInstructors) && req.body.assignedInstructors[0]);
+    if (instTarget) {
+      validatedInstructor = await validateInstructorAssignment(instTarget, program.division, req.user);
+      program.assignedInstructor = validatedInstructor._id;
+      program.assignedInstructors = [validatedInstructor._id];
+      instructorChanged = true;
+    } else {
+      program.assignedInstructor = null;
+      program.assignedInstructors = [];
+      instructorChanged = true;
+    }
+  }
 
   if (req.body.status !== undefined && req.body.status !== program.status) {
     validateProgramStatusTransition(program.status, req.body.status);
@@ -206,7 +353,7 @@ const updateProgram = asyncHandler(async (req, res) => {
 
   await recordAudit({
     user: req.user,
-    action: 'PROGRAM_UPDATED',
+    action: instructorChanged ? 'PROGRAM_INSTRUCTOR_UPDATED' : 'PROGRAM_UPDATED',
     resource: 'Course',
     resourceId: program._id,
     division: program.division,
@@ -215,7 +362,139 @@ const updateProgram = asyncHandler(async (req, res) => {
     reason: req.body.reason || `Program updated by ${req.user.role} ${req.user.fullName} (${req.user.email})`,
   });
 
-  sendSuccess(res, 200, { program });
+  try {
+    const { syncProgramFromAdmin } = require('../../integration/unifiedSyncService');
+    await syncProgramFromAdmin(program);
+  } catch (syncErr) {
+    console.warn('[PROGRAM CONTROLLER] syncProgramFromAdmin warning on update:', syncErr.message);
+  }
+
+  if (validatedInstructor) {
+    try {
+      const { syncCourseInstructorAssignment } = require('../../integration/unifiedSyncService');
+      await syncCourseInstructorAssignment({
+        courseId: program._id,
+        instructorId: validatedInstructor._id,
+        user: req.user,
+      });
+    } catch (syncInstErr) {
+      console.warn('[PROGRAM CONTROLLER] syncCourseInstructorAssignment warning on update:', syncInstErr.message);
+    }
+  }
+
+  const populated = await Course.findById(program._id)
+    .populate('assignedInstructors', 'fullName email division isActive')
+    .populate('assignedInstructor', 'fullName email division isActive')
+    .populate('createdBy', 'fullName email role')
+    .populate('updatedBy', 'fullName email role');
+
+  sendSuccess(res, 200, { program: populated });
+});
+
+// POST /api/programs/:id/assign-instructor
+const assignInstructorToProgram = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { instructorId, reason } = req.body;
+  if (!instructorId) {
+    throw ApiError.badRequest('instructorId is required');
+  }
+
+  const program = await Course.findById(id);
+  if (!program) {
+    throw ApiError.notFound('Program not found');
+  }
+
+  if (req.user.role !== ROLES.SUPER_ADMIN && program.division !== req.scopeDivision) {
+    throw ApiError.forbidden('You cannot assign instructors to a program outside your division');
+  }
+
+  const instructor = await validateInstructorAssignment(instructorId, program.division, req.user);
+  const before = {
+    assignedInstructor: program.assignedInstructor,
+    assignedInstructors: program.assignedInstructors,
+  };
+
+  program.assignedInstructor = instructor._id;
+  program.assignedInstructors = [instructor._id];
+  program.updatedBy = req.user._id;
+  await program.save();
+
+  await recordAudit({
+    user: req.user,
+    action: before.assignedInstructor ? 'COURSE_INSTRUCTOR_REASSIGNED' : 'COURSE_INSTRUCTOR_ASSIGNED',
+    resource: 'Course',
+    resourceId: program._id,
+    division: program.division,
+    before,
+    after: {
+      assignedInstructor: instructor._id,
+      instructorName: instructor.fullName,
+      instructorEmail: instructor.email,
+    },
+    reason: reason || `Instructor ${instructor.fullName} (${instructor.email}) assigned to "${program.title}" by ${req.user.role} ${req.user.fullName}`,
+  });
+
+  const { syncCourseInstructorAssignment } = require('../../integration/unifiedSyncService');
+  const syncResult = await syncCourseInstructorAssignment({
+    courseId: program._id,
+    instructorId: instructor._id,
+    user: req.user,
+  });
+
+  const populatedProgram = await Course.findById(program._id)
+    .populate('assignedInstructors', 'fullName email division isActive')
+    .populate('assignedInstructor', 'fullName email division isActive')
+    .populate('createdBy', 'fullName email role')
+    .populate('updatedBy', 'fullName email role');
+
+  sendSuccess(res, 200, { program: populatedProgram, syncResult });
+});
+
+// GET /api/programs/:id/enrollments
+const getProgramEnrollments = asyncHandler(async (req, res) => {
+  const program = await Course.findById(req.params.id);
+  if (!program) {
+    throw ApiError.notFound('Program not found');
+  }
+
+  if (req.user.role !== ROLES.SUPER_ADMIN && req.scopeDivision && req.scopeDivision !== 'all') {
+    if (program.division !== req.scopeDivision) {
+      throw ApiError.forbidden('You cannot access enrollments for a program outside your division');
+    }
+  }
+
+  const { status, page = 1, limit = 50 } = req.query;
+  const filter = { program: program._id };
+  if (status) filter.status = status;
+
+  const total = await Enrollment.countDocuments(filter);
+  const enrollments = await Enrollment.find(filter)
+    .populate('student', 'fullName email phone')
+    .populate('application', 'status eligibilityStatus decision createdAt')
+    .populate('cohort', 'name startDate endDate')
+    .sort({ createdAt: -1 });
+
+  const enrollmentIds = enrollments.map((e) => e._id);
+  const invoices = await Invoice.find({ enrollment: { $in: enrollmentIds } });
+  const invMap = {};
+  invoices.forEach((inv) => {
+    invMap[inv.enrollment.toString()] = inv;
+  });
+
+  const list = enrollments.map((e) => {
+    const obj = e.toObject();
+    obj.invoice = invMap[e._id.toString()] || null;
+    obj.paymentStatus = obj.invoice?.status === 'PAID' ? 'PAID' : (['CONFIRMED', 'ACTIVE'].includes(e.status) ? 'PAID' : 'PENDING');
+    return obj;
+  });
+
+  sendSuccess(res, 200, {
+    enrollments: list,
+    total,
+    enrolledCount: total,
+    capacity: program.capacity,
+    occupiedSeats: program.occupiedSeats,
+  });
 });
 
 // PATCH /api/programs/:id/status
@@ -252,6 +531,13 @@ const updateProgramStatus = asyncHandler(async (req, res) => {
     reason: reason || `Program status transitioned from ${before.status} to ${status} by ${req.user.role} ${req.user.fullName}`,
   });
 
+  try {
+    const { syncProgramFromAdmin } = require('../../integration/unifiedSyncService');
+    await syncProgramFromAdmin(program);
+  } catch (syncErr) {
+    console.warn('[PROGRAM CONTROLLER] syncProgramFromAdmin warning on status change:', syncErr.message);
+  }
+
   sendSuccess(res, 200, { program });
 });
 
@@ -266,7 +552,6 @@ const deleteOrArchiveProgram = asyncHandler(async (req, res) => {
     throw ApiError.forbidden('You cannot delete or archive a program outside your division');
   }
 
-  // Count references across platform entities
   const [appCount, cohortCount, enrollCount, invoiceCount, certCount] = await Promise.all([
     Application.countDocuments({ program: program._id }),
     Cohort.countDocuments({ program: program._id }),
@@ -279,7 +564,6 @@ const deleteOrArchiveProgram = asyncHandler(async (req, res) => {
   const before = program.toObject();
 
   if (totalReferences > 0) {
-    // Preserve business rules: Safe archive instead of hard delete
     program.status = PROGRAM_STATUS.ARCHIVED;
     program.isArchived = true;
     program.archivedAt = new Date();
@@ -295,8 +579,15 @@ const deleteOrArchiveProgram = asyncHandler(async (req, res) => {
       division: program.division,
       before,
       after: program.toObject(),
-      reason: req.body.reason || `Program safely archived due to ${totalReferences} existing operational references (Applications: ${appCount}, Cohorts: ${cohortCount}, Enrollments: ${enrollCount}, Invoices: ${invoiceCount}, Certificates: ${certCount})`,
+      reason: req.body.reason || `Program safely archived due to ${totalReferences} existing operational references`,
     });
+
+    try {
+      const { syncProgramFromAdmin } = require('../../integration/unifiedSyncService');
+      await syncProgramFromAdmin(program);
+    } catch (syncErr) {
+      console.warn('[PROGRAM CONTROLLER] syncProgramFromAdmin warning on archive:', syncErr.message);
+    }
 
     return sendSuccess(res, 200, {
       program,
@@ -307,8 +598,12 @@ const deleteOrArchiveProgram = asyncHandler(async (req, res) => {
     });
   }
 
-  // No active references — safe deletion allowed
   await Course.findByIdAndDelete(program._id);
+
+  try {
+    const StudentCourse = require('../../student/models/Course');
+    await StudentCourse.findByIdAndDelete(program._id);
+  } catch (_) {}
 
   await recordAudit({
     user: req.user,
@@ -333,6 +628,9 @@ module.exports = {
   listPrograms,
   getProgramById,
   updateProgram,
+  assignInstructorToProgram,
+  getProgramEnrollments,
   updateProgramStatus,
   deleteOrArchiveProgram,
+  validateInstructorAssignment,
 };

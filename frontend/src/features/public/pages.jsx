@@ -1,7 +1,7 @@
 import {useMemo,useState,useEffect} from 'react';
 import {Link,useParams,useSearchParams,useNavigate} from 'react-router-dom';
 import {config} from './config';
-import {vision,mission,quality,programs,news,features,highlights,trainingPillars,researchPillars,pressGuidelines,CATEGORIES,SKINS} from './data';
+import {vision,mission,quality,programs,news,features,highlights,trainingPillars,researchPillars,pressGuidelines,CATEGORIES,SKINS,getCoursePricing} from './data';
 import {usePageMeta,Reveal,Cta,PageHero} from './components.jsx';
 import PlanetSystem from './components/PlanetSystem.jsx';
 import logo from './assets/academy-logo.png';import earth from './assets/earth-night.png';import sat from './assets/satellite.png';import lab from './assets/lab.png';
@@ -18,7 +18,7 @@ export function Home() {
         <p className="slogan" aria-hidden="true">Egypt<br/>in space<br/>for a brighter<br/>future</p>
         <div className="wrap">
           <p className="eyebrow h1">Explore • Learn • Build • The Future</p>
-          <h1 className="h2">Egyptian Space Agency<span className="gold">Shaping Tomorrow’s Space</span></h1>
+          <h1 className="h2" style={{ color: '#FFFFFF' }}>Egyptian Space Agency<span className="gold">Shaping Tomorrow’s Space</span></h1>
           <p className="lead h3">The Egyptian Space Agency (EGSA) is dedicated to advancing space science, technology and innovation, while empowering the next generation of space professionals.</p>
           <div className="row h4">
             <Cta to="/programs" size="lg">Explore Our Programs</Cta>
@@ -417,7 +417,7 @@ export function Programs() {
             <span className="badge-dot" aria-hidden="true" />
             <span>Egyptian Space Academy • Academic &amp; Technical Programs</span>
           </div>
-          <h1>Explore Space Programs</h1>
+          <h1 className="phero-title" style={{ color: '#FFFFFF' }}>Explore Space Programs</h1>
           <p className="lead">
             Comprehensive aerospace curricula formulated by the Egyptian Space Agency—from orbital mechanics and satellite architectures to ground station operations and mission formulation.
           </p>
@@ -549,7 +549,9 @@ export function Programs() {
 
               {filtered.length > 0 ? (
                 <div className="prog-grid">
-                  {filtered.map((p, idx) => (
+                  {filtered.map((p, idx) => {
+                    const pPricing = getCoursePricing(p);
+                    return (
                     <article key={p.slug} className="prog-card" style={{ animationDelay: `${idx * 0.08}s` }}>
                       <div className="prog-card-media">
                         <img src={p.image} alt={p.title} loading="lazy" />
@@ -596,6 +598,22 @@ export function Programs() {
                           </div>
                         </div>
 
+                        {/* Direct Price Area on Course Card */}
+                        <div className="prog-card-pricing" aria-label="Course Tuition">
+                          <div className="prog-price-pill">
+                            <span className="prog-price-tag">Course Fee:</span>
+                            <span className={`prog-price-val ${!pPricing.hasPrice ? 'unavailable' : ''}`}>
+                              {pPricing.baseFeeText}
+                            </span>
+                          </div>
+                          {pPricing.hasTransportation && (
+                            <div className="prog-price-pill transport">
+                              <span className="prog-price-tag">With Transport:</span>
+                              <span className="prog-price-val">{pPricing.transportFeeText}</span>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="prog-card-footer">
                           <Link to={`/programs/${p.slug}`} className="btn gold sm">
                             <span>Explore Program</span>
@@ -609,7 +627,8 @@ export function Programs() {
                         </div>
                       </div>
                     </article>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 <div className="prog-empty-state">
@@ -669,6 +688,7 @@ export function Programs() {
 export function ProgramDetail() {
   const { slug } = useParams();
   const p = programs.find(x => x.slug === slug);
+  const pPricing = getCoursePricing(p);
   usePageMeta(p ? `${p.title} | Egyptian Space Academy` : 'Program Not Found', p?.tagline);
 
   if (!p) {
@@ -884,6 +904,17 @@ export function ProgramDetail() {
                 <div className="pdetail-sidebar-spec">
                   <dt>Category</dt>
                   <dd>{p.category}</dd>
+                </div>
+                <div className="pdetail-sidebar-spec">
+                  <dt>Tuition</dt>
+                  <dd style={{ color: 'var(--gold)', fontWeight: 600 }}>
+                    {pPricing.baseFeeText}
+                    {pPricing.hasTransportation && (
+                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#64748B', fontWeight: 400 }}>
+                        (With Transp: {pPricing.transportFeeText})
+                      </span>
+                    )}
+                  </dd>
                 </div>
                 <div className="pdetail-sidebar-spec">
                   <dt>Format</dt>
@@ -1247,7 +1278,7 @@ export function Contact() {
             <span className="badge-dot" aria-hidden="true" />
             <span>Official Institutional Communications • Cairo, Egypt</span>
           </div>
-          <h1>Contact Egyptian Space Agency</h1>
+          <h1 className="phero-title" style={{ color: '#FFFFFF' }}>Contact Egyptian Space Agency</h1>
           <p className="lead">
             Connect with our administrative headquarters, academic coordinators, and technical departments for program inquiries, institutional partnerships, or general questions.
           </p>
@@ -1723,7 +1754,7 @@ export function Contact() {
     </>
   );
 }
-export const NotFound=()=>{usePageMeta('Page not found');return <section className="hero short" style={{backgroundImage:`linear-gradient(rgba(6,17,29,.8),rgba(6,17,29,.9)),url(${earth})`}}><div className="wrap"><h1>Page not found</h1><p className="lead">This address does not lead anywhere in the Egyptian Space Agency site.</p><Cta to="/">Return home</Cta></div></section>};
+export const NotFound=()=>{usePageMeta('Page not found');return <section className="hero short" style={{backgroundImage:`linear-gradient(rgba(6,17,29,.8),rgba(6,17,29,.9)),url(${earth})`}}><div className="wrap"><h1 style={{ color: '#FFFFFF' }}>Page not found</h1><p className="lead">This address does not lead anywhere in the Egyptian Space Agency site.</p><Cta to="/">Return home</Cta></div></section>};
 
 export function Training() {
   usePageMeta('Training & Space Academy', 'Hands-on aerospace education, satellite engineering methodologies, and academic programs at the Egyptian Space Academy.');

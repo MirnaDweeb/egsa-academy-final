@@ -2,6 +2,7 @@ const Media = require('../models/Media');
 const Enrollment = require('../models/Enrollment');
 const TrainingSession = require('../models/TrainingSession');
 const Course = require('../models/Course');
+const Cohort = require('../models/Cohort');
 const { notify } = require('./notificationService');
 const { AppError } = require('../middleware/error');
 
@@ -572,6 +573,352 @@ async function getPublicGallery(query = {}) {
   return items;
 }
 
+function getFileType(fileName = '') {
+  const ext = (fileName.split('.').pop() || '').toLowerCase();
+  if (['pdf'].includes(ext)) return 'pdf';
+  if (['doc', 'docx', 'odt', 'rtf', 'txt'].includes(ext)) return 'word';
+  if (['xls', 'xlsx', 'csv', 'tsv'].includes(ext)) return 'excel';
+  if (['ppt', 'pptx'].includes(ext)) return 'powerpoint';
+  if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext)) return 'archive';
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) return 'image';
+  if (['py', 'js', 'json', 'cpp', 'c', 'h', 'ts', 'html', 'css', 'sql'].includes(ext)) return 'code';
+  return 'document';
+}
+
+function formatBytes(bytes) {
+  if (!bytes || isNaN(bytes)) return null;
+  if (bytes < 1024) return bytes + ' B';
+  const kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(1) + ' KB';
+  const mb = kb / 1024;
+  return mb.toFixed(1) + ' MB';
+}
+
+/**
+ * Aggregates all academic resources for an enrolled student across:
+ * 1. Course Materials (lecture slides, handouts, workshop documents)
+ * 2. Assignment Resources (instructor briefs, reference sheets, templates)
+ * 3. My Submissions (student uploaded deliverable files and versions)
+ * 4. Instructor Feedback and Returned Files (evaluated scores and written feedback)
+ */
+async function getAcademicResources(studentId, query = {}) {
+  const Assessment = require('../models/Assessment');
+  const StudentSubmission = require('../models/StudentSubmission');
+  const AssessmentResult = require('../models/AssessmentResult');
+
+  // 1. Resolve student enrollments
+  const enrollments = await Enrollment.find({
+    student: studentId,
+    status: { $in: ['Active', 'Confirmed', 'Completed'] },
+  })
+    .populate('course', 'title code level category')
+    .populate('cohort', 'name')
+    .lean();
+
+  const courseIds = enrollments.map((e) => e.course?._id).filter(Boolean);
+  const cohortIds = enrollments.map((e) => e.cohort?._id).filter(Boolean);
+
+  const coursesList = [];
+  const seenCourseIds = new Set();
+  enrollments.forEach((e) => {
+    if (e.course && !seenCourseIds.has(String(e.course._id))) {
+      seenCourseIds.add(String(e.course._id));
+      coursesList.push({
+        _id: e.course._id,
+        id: e.course._id,
+        title: e.course.title,
+        code: e.course.code,
+      });
+    }
+  });
+
+  // 2. Course Materials (from Media collection)
+  const courseMedia = await Media.find({
+    course: { $in: courseIds },
+    $or: [
+      { uploadedByType: { $in: ['Instructor', 'Admin'] } },
+      { status: { $in: ['Approved', 'Selected_For_Publication', 'Published'] } },
+    ],
+  })
+    .populate('course', 'title code')
+    .populate('cohort', 'name')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const courseMaterials = courseMedia.map((m) => ({
+    id: `cm-${m._id}`,
+    _id: m._id,
+    category: 'Course Materials',
+    tab: 'course_materials',
+    title: m.title,
+    description: m.description || m.caption || 'Academic course material and training resource',
+    fileName: m.filename,
+    originalName: m.originalName || m.filename,
+    fileUrl: m.fileUrl,
+    downloadUrl: m.fileUrl,
+    viewUrl: m.fileUrl,
+    courseId: m.course?._id || m.course,
+    courseTitle: m.course?.title || 'EGSA Course',
+    cohortName: m.cohort?.name || '',
+    fileType: getFileType(m.originalName || m.filename),
+    sizeBytes: m.fileSize,
+    fileSize: formatBytes(m.fileSize),
+    uploadedAt: m.createdAt,
+    status: m.status,
+    uploader: m.uploadedByType || 'Instructor',
+  }));
+
+  // 3. Assignment Resources (Instructor attachments on published assessments)
+  const orAssessmentConds = [];
+  if (cohortIds.length > 0) orAssessmentConds.push({ cohort: { $in: cohortIds } });
+  if (courseIds.length > 0) orAssessmentConds.push({ course: { $in: courseIds } });
+
+  const assessments = orAssessmentConds.length > 0
+    ? await Assessment.find({
+        $or: orAssessmentConds,
+        status: { $in: ['Scheduled', 'In_Progress', 'Completed'] },
+      })
+        .populate('course', 'title code')
+        .populate('cohort', 'name')
+        .sort({ dueDate: 1, createdAt: -1 })
+        .lean()
+    : [];
+
+  const assignmentResources = [];
+  assessments.forEach((a) => {
+    (a.attachments || []).forEach((att, idx) => {
+      const fileName = att.fileName || att.originalName || 'file';
+      const originalName = att.originalName || fileName;
+      assignmentResources.push({
+        id: `att-${a._id}-${idx}`,
+        category: 'Assignment Resources',
+        tab: 'assignment_resources',
+        title: `${a.title} — Reference Document`,
+        description: a.instructions || a.description || 'Instructor assignment brief and materials',
+        fileName,
+        originalName,
+        fileUrl: att.fileUrl || `/uploads/assignments/${fileName}`,
+        downloadUrl: `/api/assessments/${a._id}/attachment/${encodeURIComponent(fileName)}`,
+        viewUrl: `/api/assessments/${a._id}/attachment/${encodeURIComponent(fileName)}?view=true`,
+        courseId: a.course?._id || a.course,
+        courseTitle: a.course?.title || 'EGSA Course',
+        cohortName: a.cohort?.name || '',
+        fileType: getFileType(originalName),
+        sizeBytes: att.sizeBytes,
+        fileSize: formatBytes(att.sizeBytes),
+        uploadedAt: att.uploadedAt || a.createdAt,
+        instructorName: a.instructorName || 'EGSA Faculty',
+        assessmentId: a._id,
+        assessmentTitle: a.title,
+        dueDate: a.dueDate,
+        maxScore: a.maxScore,
+      });
+    });
+  });
+
+  // 4. My Submissions (Student work uploaded for assessments + personal project media)
+  const submissions = await StudentSubmission.find({
+    student: studentId,
+  })
+    .populate('assessment', 'title dueDate maxScore passingScore status')
+    .populate('course', 'title code')
+    .populate('cohort', 'name')
+    .sort({ submittedAt: -1 })
+    .lean();
+
+  const mySubmissions = [];
+  submissions.forEach((s) => {
+    if (s.file?.fileName) {
+      mySubmissions.push({
+        id: `sub-${s._id}`,
+        _id: s._id,
+        category: 'My Submissions',
+        tab: 'my_submissions',
+        title: `${s.assessment?.title || 'Assessment'} (Submission v${s.version})`,
+        description: s.textAnswer || 'Uploaded student deliverable',
+        fileName: s.file.fileName,
+        originalName: s.file.originalName || s.file.fileName,
+        fileUrl: s.file.fileUrl,
+        downloadUrl: `/api/assessments/submissions/${s._id}/file`,
+        viewUrl: `/api/assessments/submissions/${s._id}/file?view=true`,
+        courseId: s.course?._id || s.course,
+        courseTitle: s.course?.title || 'EGSA Course',
+        cohortName: s.cohort?.name || '',
+        fileType: getFileType(s.file.originalName || s.file.fileName),
+        sizeBytes: s.file.sizeBytes,
+        fileSize: formatBytes(s.file.sizeBytes),
+        uploadedAt: s.submittedAt || s.createdAt,
+        status: s.status,
+        isLate: Boolean(s.isLate),
+        version: s.version,
+        assessmentId: s.assessment?._id || s.assessment,
+        submissionId: s._id,
+      });
+    }
+  });
+
+  const studentMedia = await Media.find({
+    student: studentId,
+  })
+    .populate('course', 'title code')
+    .populate('cohort', 'name')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  studentMedia.forEach((m) => {
+    mySubmissions.push({
+      id: `media-${m._id}`,
+      _id: m._id,
+      category: 'My Submissions',
+      tab: 'my_submissions',
+      subCategory: 'Student Training Media',
+      title: m.title,
+      description: m.description || m.caption || 'Student field & activity media',
+      fileName: m.filename,
+      originalName: m.originalName || m.filename,
+      fileUrl: m.fileUrl,
+      downloadUrl: m.fileUrl,
+      viewUrl: m.fileUrl,
+      courseId: m.course?._id || m.course,
+      courseTitle: m.course?.title || 'EGSA Course',
+      cohortName: m.cohort?.name || '',
+      fileType: getFileType(m.originalName || m.filename),
+      sizeBytes: m.fileSize,
+      fileSize: formatBytes(m.fileSize),
+      uploadedAt: m.createdAt,
+      status: m.status,
+      mediaDoc: m,
+    });
+  });
+
+  // 5. Instructor Feedback and Returned Files
+  const results = await AssessmentResult.find({
+    student: studentId,
+    status: 'Published',
+  })
+    .populate('assessment', 'title dueDate maxScore passingScore')
+    .populate('course', 'title code')
+    .populate('instructor', 'fullName name email')
+    .sort({ publishedAt: -1, evaluatedAt: -1 })
+    .lean();
+
+  const instructorFeedback = results.map((r) => ({
+    id: `result-${r._id}`,
+    _id: r._id,
+    category: 'Instructor Feedback and Returned Files',
+    tab: 'instructor_feedback',
+    title: `Official Evaluation: ${r.assessment?.title || 'Assessment'}`,
+    description: r.feedback || 'Instructor evaluation and score breakdown',
+    fileName: null,
+    originalName: null,
+    fileUrl: null,
+    downloadUrl: null,
+    viewUrl: null,
+    courseId: r.course?._id || r.course,
+    courseTitle: r.course?.title || 'EGSA Course',
+    fileType: 'feedback',
+    uploadedAt: r.publishedAt || r.evaluatedAt,
+    instructorName: r.instructor?.fullName || r.instructor?.name || 'EGSA Faculty',
+    score: r.score,
+    maxScore: r.maxScore,
+    percentage: r.percentage,
+    resultLabel: r.resultLabel,
+    feedback: r.feedback,
+    strengths: r.strengths,
+    improvementAreas: r.improvementAreas,
+    status: 'Graded',
+    assessmentId: r.assessment?._id || r.assessment,
+  }));
+
+  // 6. Student Enrolled Assessments / Assignments
+  let studentAssignments = [];
+  try {
+    const assessmentService = require('./assessmentService');
+    const studentAssessmentsData = await assessmentService.getStudentAssessments(studentId, query);
+    studentAssignments = studentAssessmentsData.assessments || [];
+  } catch (err) {
+    console.warn('[getAcademicResources] Failed to fetch student assessments:', err.message);
+  }
+
+  const combinedCourseMaterials = [
+    ...courseMaterials,
+    ...assignmentResources,
+  ];
+
+  // Stats calculation across complete dataset
+  const stats = {
+    total: combinedCourseMaterials.length + studentAssignments.length + mySubmissions.length,
+    assignments: studentAssignments.length,
+    pendingAssignments: studentAssignments.filter(
+      (a) => (a.status === 'Upcoming' || a.submissionStatus === 'Not Submitted') && !a.isDeadlinePassed
+    ).length,
+    submittedAssignments: studentAssignments.filter(
+      (a) => a.status === 'Submitted' || a.status === 'Pending Evaluation' || a.submissionStatus === 'Submitted'
+    ).length,
+    overdueAssignments: studentAssignments.filter(
+      (a) => (a.status === 'Upcoming' || a.submissionStatus === 'Not Submitted') && a.isDeadlinePassed
+    ).length,
+    gradedAssignments: studentAssignments.filter(
+      (a) => a.status === 'Evaluated' || a.evaluationStatus === 'Evaluated'
+    ).length,
+    courseMaterials: combinedCourseMaterials.length,
+    assignmentResources: assignmentResources.length,
+    submissions: mySubmissions.length,
+    gradedEvaluations: instructorFeedback.length,
+  };
+
+  let allResources = [
+    ...assignmentResources,
+    ...courseMaterials,
+    ...mySubmissions,
+    ...instructorFeedback,
+  ];
+
+  // Apply filters
+  if (query.courseId && query.courseId !== 'ALL') {
+    allResources = allResources.filter((r) => String(r.courseId) === String(query.courseId));
+  }
+  if (query.tab && query.tab !== 'all') {
+    allResources = allResources.filter((r) => r.tab === query.tab);
+  }
+  if (query.fileType && query.fileType !== 'all') {
+    allResources = allResources.filter((r) => r.fileType === query.fileType);
+  }
+  if (query.search) {
+    const q = query.search.toLowerCase().trim();
+    allResources = allResources.filter((r) =>
+      (r.title && r.title.toLowerCase().includes(q)) ||
+      (r.originalName && r.originalName.toLowerCase().includes(q)) ||
+      (r.courseTitle && r.courseTitle.toLowerCase().includes(q)) ||
+      (r.description && r.description.toLowerCase().includes(q))
+    );
+  }
+
+  // Sort
+  if (query.sort === 'oldest') {
+    allResources.sort((a, b) => new Date(a.uploadedAt || 0) - new Date(b.uploadedAt || 0));
+  } else if (query.sort === 'name') {
+    allResources.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  } else {
+    // Default newest
+    allResources.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+  }
+
+  return {
+    resources: allResources,
+    assignments: studentAssignments,
+    stats,
+    courses: coursesList,
+    sections: {
+      assignments: studentAssignments,
+      courseMaterials: combinedCourseMaterials,
+      assignmentResources,
+      mySubmissions,
+      instructorFeedback,
+    },
+  };
+}
+
 module.exports = {
   createMediaSubmission,
   submitDraft,
@@ -587,4 +934,5 @@ module.exports = {
   publishMedia,
   unpublishMedia,
   getPublicGallery,
+  getAcademicResources,
 };

@@ -123,23 +123,35 @@ async function checkCertificateEligibility(studentId, enrollmentId) {
 
   // 3. Official Course & Instructor Evaluation Survey Check (Gate 4)
   const courseId = enrollment.course?._id || enrollment.course;
-  const evaluationExists = await Evaluation.exists({
+  let evalDoc = await Evaluation.findOne({
     student: studentId,
-    $or: [
-      { enrollment: enrollment._id },
-      { course: courseId },
-    ],
+    enrollment: enrollment._id,
   });
 
+  if (!evalDoc && enrollment.cohort) {
+    evalDoc = await Evaluation.findOne({
+      student: studentId,
+      course: courseId,
+      cohort: enrollment.cohort._id || enrollment.cohort,
+    });
+  }
+
+  const isCourseDone = Boolean(evalDoc?.courseFeedbackCompleted || evalDoc?.ratings?.content);
+  const isAgencyDone = Boolean(evalDoc?.agencyFeedbackCompleted);
+  const isAllFeedbackDone = isCourseDone && isAgencyDone;
+
   const evaluationReasons = [];
-  if (!evaluationExists) {
-    evaluationReasons.push('Official course and instructor evaluation survey has not been submitted yet.');
+  if (!isCourseDone) {
+    evaluationReasons.push('Official Course & Instructor evaluation survey has not been submitted yet.');
+  }
+  if (!isAgencyDone) {
+    evaluationReasons.push('Egyptian Space Agency experience evaluation survey has not been submitted yet.');
   }
 
   const allReasons = [...academicReasons, ...evaluationReasons];
   const academicRequirementsMet = validStatuses.includes(enrollment.status) && academicReasons.length === 0;
   const isEligibleToRequest = academicRequirementsMet;
-  const isEligibleForIssuance = academicRequirementsMet && Boolean(evaluationExists);
+  const isEligibleForIssuance = academicRequirementsMet && isAllFeedbackDone;
 
   return {
     isEligible: isEligibleToRequest,
@@ -153,7 +165,9 @@ async function checkCertificateEligibility(studentId, enrollmentId) {
       enrollmentValid: validStatuses.includes(enrollment.status),
       attendanceMet: !academicReasons.some((r) => r.toLowerCase().includes('attendance') || r.toLowerCase().includes('absence')),
       assessmentsPassed: !academicReasons.some((r) => r.toLowerCase().includes('assessment')),
-      evaluationSubmitted: Boolean(evaluationExists),
+      evaluationSubmitted: isAllFeedbackDone,
+      courseFeedbackSubmitted: isCourseDone,
+      agencyFeedbackSubmitted: isAgencyDone,
     },
   };
 }

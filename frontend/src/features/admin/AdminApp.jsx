@@ -106,7 +106,7 @@ export default function AdminApp() {
             <Route path="invoices" element={<Navigate to="/admin" replace />} />
             <Route path="payments" element={<Navigate to="/admin" replace />} />
             <Route path="certificates" element={<Navigate to="/admin" replace />} />
-            <Route path="feedback" element={<Navigate to="/admin" replace />} />
+            <Route path="feedback" element={<FeedbackPage />} />
             <Route path="notifications" element={<Navigate to="/admin" replace />} />
             <Route path="audit-logs" element={<Navigate to="/admin" replace />} />
             <Route path="reports" element={<Navigate to="/admin" replace />} />

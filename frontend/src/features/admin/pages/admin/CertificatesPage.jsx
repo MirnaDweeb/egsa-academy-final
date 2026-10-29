@@ -500,15 +500,16 @@ export default function CertificatesPage() {
 
       {/* STAT CARDS */}
       <div className={styles.statsGrid}>
-        <StatCard label="Total Certificates" value={stats.total} icon="fa-certificate" />
-        <StatCard label="Active / Valid" value={stats.issued} icon="fa-circle-check" />
-        <StatCard label="Restored" value={stats.restored} icon="fa-rotate-left" />
-        <StatCard label="Revoked" value={stats.revoked} icon="fa-ban" />
+        <StatCard label="Total Certificates" value={stats.total} icon="fa-certificate" tone="blue" helper="Issued academic credentials" />
+        <StatCard label="Active / Valid" value={stats.issued} icon="fa-circle-check" tone="teal" helper="Fully verifiable credentials" />
+        <StatCard label="Restored" value={stats.restored} icon="fa-rotate-left" tone="gold" helper="Restored validity records" />
+        <StatCard label="Revoked" value={stats.revoked} icon="fa-ban" tone={stats.revoked > 0 ? "coral" : "default"} helper="Terminated credentials" />
       </div>
 
       {/* TOOLBAR */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
+          <i className={`fa-solid fa-magnifying-glass ${styles.searchIcon}`} aria-hidden="true"></i>
           <input
             type="text"
             className="form-control form-control-sm"

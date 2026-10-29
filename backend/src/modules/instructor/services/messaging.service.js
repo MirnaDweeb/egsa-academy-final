@@ -743,7 +743,7 @@ async function updateConversationStatus(userContext, conversationId, newStatus) 
 // Admin Service Methods
 // -------------------------------------------------------------
 
-async function adminListConversations({ type, search, supportStatus, limit = 50, skip = 0 } = {}) {
+async function adminListConversations({ type, search, supportStatus, limit = 100, skip = 0 } = {}) {
   const query = {};
   if (type && type !== 'ALL') {
     query.type = type;
@@ -752,14 +752,17 @@ async function adminListConversations({ type, search, supportStatus, limit = 50,
     query.supportStatus = supportStatus;
   }
 
+  const parsedLimit = Math.min(parseInt(limit, 10) || 100, 500);
+  const parsedSkip = parseInt(skip, 10) || 0;
+
   let convs = await Conversation.find(query)
     .populate('student', 'name email externalStudentId')
     .populate('instructor', 'name email')
     .populate('cohort', 'name')
     .populate('course', 'name code')
     .sort({ lastMessageAt: -1 })
-    .skip(skip)
-    .limit(limit)
+    .skip(parsedSkip)
+    .limit(parsedLimit)
     .lean();
 
   if (search && search.trim()) {
@@ -770,19 +773,52 @@ async function adminListConversations({ type, search, supportStatus, limit = 50,
       const iName = c.instructor?.name?.toLowerCase() || '';
       const iEmail = c.instructor?.email?.toLowerCase() || '';
       const subj = c.subject?.toLowerCase() || '';
-      return sName.includes(q) || sEmail.includes(q) || iName.includes(q) || iEmail.includes(q) || subj.includes(q);
+      const courseName = c.course?.name?.toLowerCase() || '';
+      const cohortName = c.cohort?.name?.toLowerCase() || '';
+      return sName.includes(q) || sEmail.includes(q) || iName.includes(q) || iEmail.includes(q) || subj.includes(q) || courseName.includes(q) || cohortName.includes(q);
     });
   }
 
-  const unreadTotal = await Conversation.aggregate([
-    { $group: { _id: null, total: { $sum: '$unreadCountAdmin' } } },
+  // Aggregate breakdown counts by conversation type
+  const typeAgg = await Conversation.aggregate([
+    {
+      $group: {
+        _id: '$type',
+        total: { $sum: 1 },
+        unreadAdmin: { $sum: '$unreadCountAdmin' },
+      },
+    },
   ]);
+
+  const counts = {
+    student_admin: { total: 0, unread: 0 },
+    instructor_admin: { total: 0, unread: 0 },
+    direct: { total: 0, unread: 0 },
+    needs_review: { total: 0, unread: 0 },
+  };
+
+  let unreadTotal = 0;
+  let totalConversations = 0;
+
+  for (const item of typeAgg) {
+    totalConversations += item.total || 0;
+    unreadTotal += item.unreadAdmin || 0;
+    if (counts[item._id]) {
+      counts[item._id].total = item.total || 0;
+      counts[item._id].unread = item.unreadAdmin || 0;
+    } else {
+      counts.needs_review.total += item.total || 0;
+      counts.needs_review.unread += item.unreadAdmin || 0;
+    }
+  }
 
   return {
     items: convs,
     meta: {
       total: convs.length,
-      unreadTotal: unreadTotal[0]?.total || 0,
+      totalAll: totalConversations,
+      unreadTotal,
+      counts,
     },
   };
 }
@@ -814,6 +850,14 @@ async function adminListMessages(conversationId, { limit = 100, before } = {}) {
 }
 
 async function adminSendMessage(adminUser, conversationId, rawBody, attachments = []) {
+  const conv = await Conversation.findById(conversationId);
+  if (!conv) {
+    throw ApiError.notFound('Conversation not found');
+  }
+  if (conv.type === 'direct') {
+    throw ApiError.forbidden('Direct administrative messaging is disabled in monitored student-instructor conversations');
+  }
+
   const res = await saveMessageAndDispatch({
     userContext: {
       id: adminUser._id || adminUser.id,
@@ -836,7 +880,31 @@ async function adminGetUnreadCount() {
   const r = await Conversation.aggregate([
     { $group: { _id: null, total: { $sum: '$unreadCountAdmin' } } },
   ]);
-  return { unreadCount: r[0]?.total || 0 };
+  const typeAgg = await Conversation.aggregate([
+    {
+      $group: {
+        _id: '$type',
+        total: { $sum: 1 },
+        unreadAdmin: { $sum: '$unreadCountAdmin' },
+      },
+    },
+  ]);
+  const counts = {
+    student_admin: { total: 0, unread: 0 },
+    instructor_admin: { total: 0, unread: 0 },
+    direct: { total: 0, unread: 0 },
+    needs_review: { total: 0, unread: 0 },
+  };
+  for (const item of typeAgg) {
+    if (counts[item._id]) {
+      counts[item._id].total = item.total || 0;
+      counts[item._id].unread = item.unreadAdmin || 0;
+    } else {
+      counts.needs_review.total += item.total || 0;
+      counts.needs_review.unread += item.unreadAdmin || 0;
+    }
+  }
+  return { unreadCount: r[0]?.total || 0, counts };
 }
 
 module.exports = {

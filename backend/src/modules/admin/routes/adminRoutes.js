@@ -108,6 +108,7 @@ const {
 const {
   listFeedbackAdminController,
   getFeedbackSummaryAdminController,
+  getCourseEvaluationsAdminController,
 } = require('../controllers/feedbackController');
 const {
   listAdminNotifications,
@@ -251,7 +252,8 @@ router.post('/notifications/feedback-reminder', resolveDivisionScope, requirePer
 router.post('/notifications/:id/retry-email', resolveDivisionScope, requirePermission(PERMISSIONS.NOTIFICATIONS_VIEW), retryNotificationEmailAdmin);
 router.get('/notifications', resolveDivisionScope, requirePermission(PERMISSIONS.NOTIFICATIONS_VIEW), listAdminNotifications);
 
-// Student Feedback Center — Division scoped
+// Student Feedback Center & Gate 4 Evaluation Telemetry — Division scoped
+router.get('/evaluations', resolveDivisionScope, requirePermission(PERMISSIONS.STUDENTS_VIEW), getCourseEvaluationsAdminController);
 router.get('/feedback/summary', resolveDivisionScope, requirePermission(PERMISSIONS.STUDENTS_VIEW), getFeedbackSummaryAdminController);
 router.get('/feedback', resolveDivisionScope, requirePermission(PERMISSIONS.STUDENTS_VIEW), listFeedbackAdminController);
 

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageHeader from '../../components/common/PageHeader';
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 import adminService from '../../services/api/adminService';
@@ -25,8 +24,10 @@ const DIVISION_META = {
   },
 };
 
-// The Super Admin Administration Gateway (/admin).
-// Displays real, database-derived operational metrics for each academy division.
+/**
+ * Super Admin Administration Gateway (/admin)
+ * Displays database-derived operational metrics for each academy division
+ */
 export default function AdminGatewayPage() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -55,8 +56,8 @@ export default function AdminGatewayPage() {
 
   return (
     <div className={styles.container}>
-      {/* Official Academy Emblem & Gateway Title Banner */}
-      <div className={styles.heroBanner}>
+      {/* Official Academy Header */}
+      <header className={styles.heroBanner}>
         <div className={styles.heroLeft}>
           <img
             src="/egsa-logo.png"
@@ -64,9 +65,10 @@ export default function AdminGatewayPage() {
             className={styles.heroLogo}
           />
           <div>
+            <div className={styles.agencyBadge}>Egyptian Space Agency Academy</div>
             <h1 className={styles.heroTitle}>Administration Gateway</h1>
             <p className={styles.heroSubtitle}>
-              Manage academy divisions and access their administrative workspaces.
+              Select an institutional division workspace to inspect training delivery, students, and curricula.
             </p>
           </div>
         </div>
@@ -74,7 +76,7 @@ export default function AdminGatewayPage() {
           <button
             type="button"
             id="btn-gateway-manage-admins"
-            className="btn btn-primary"
+            className="btn btn-outline-primary btn-sm"
             onClick={() => navigate('/admin/administrators')}
             title="Configure platform administrators, roles, and granular permissions"
           >
@@ -82,9 +84,9 @@ export default function AdminGatewayPage() {
             Manage Administrators
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Two Primary Division Workspace Cards */}
+      {/* Two Primary Division Workspace Panels */}
       <div className={styles.grid}>
         {data.divisions.map((division) => {
           const meta = DIVISION_META[division.key] || {
@@ -111,7 +113,7 @@ export default function AdminGatewayPage() {
                 </div>
               </div>
 
-              {/* Compact Metrics Row with Live Calculated Statistics */}
+              {/* High-Contrast Live Statistics */}
               <div className={styles.metricsRow}>
                 <div className={styles.metricItem}>
                   <span className={styles.metricLabel}>Students</span>
@@ -131,12 +133,6 @@ export default function AdminGatewayPage() {
                 </div>
               </div>
 
-              {/* Concise Secondary Feature Note */}
-              <div className={styles.operationsScope}>
-                <i className="fa-solid fa-layer-group me-1.5 text-muted" aria-hidden="true"></i>
-                <span>Managed operations: Students · Programs · Cohorts · Applications · Instructors · Assessments · Delivery</span>
-              </div>
-
               {/* Panel Action Button */}
               <div className={styles.panelFooter}>
                 <button
@@ -146,7 +142,7 @@ export default function AdminGatewayPage() {
                   onClick={() => navigate(meta.path)}
                   aria-label={`Enter ${division.name} workspace`}
                 >
-                  <span>Enter Workspace</span>
+                  <span>Enter {division.name} Workspace</span>
                   <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
                 </button>
               </div>

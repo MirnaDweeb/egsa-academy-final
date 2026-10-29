@@ -27,6 +27,7 @@ const courseSchema = new mongoose.Schema(
     endDate: { type: Date },
     reopeningDate: { type: Date },
     assignedInstructors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    assignedInstructor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     isArchived: { type: Boolean, default: false, index: true },
     archivedAt: { type: Date },
     archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
